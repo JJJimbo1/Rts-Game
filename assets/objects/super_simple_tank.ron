@@ -1,0 +1,64 @@
+#![enable(implicit_some)]
+GameObject (
+    id : "super_simple_tank",
+    object_type : Unit,
+    ui_info : (
+        display_name : "Tank",
+        description : "",
+        thumbnail : "",
+    ),
+    queues : (
+        queues : [
+            "crane_yard",
+            "factory",
+        ],
+        cost : 300,
+        time_to_build : Duration(
+            secs : 5,
+            nanos : 500_000_000,
+        )
+    ),
+    mobility : (
+        follow : false,
+        max_forward_speed : 18.0,
+        max_backwards_speed : 16.0,
+    ),
+    health : (
+        max_health : 750,
+        health : 750,
+        resistance : 0.0,
+        resistances : (
+            kinetic : 0.15,
+            fire : -0.5,
+            energy : 0.0,
+            sonic : 0.7,
+            explosive : -0.3,
+            shock : 0.0,
+            radioactivity : 0.9,
+        )
+    ),
+    weapons : (
+        closing_range : 48.0,
+        weapons : [
+            (
+                target : None,
+                target_force : Enemy,
+                target_type : Universal,
+                range : 50.0,
+                damage : 75.0,
+                damage_types : (
+                    kinetic : 1.0,
+                    fire : 0.0,
+                    energy: 0.0,
+                    sonic: 0.0,
+                    explosive: 0.7,
+                    shock: 0.0,
+                    radioactivity: 0.0,
+                ),
+                fire_rate : 2.0,
+                fire_time : 0.0,
+            )
+        ],
+    )
+    
+)

@@ -1,0 +1,42 @@
+#![enable(implicit_some)]
+GameObject (
+    id : "factory",
+    object_type : Building,
+    ui_info : (
+        display_name : "Factory",
+        description : "",
+        thumbnail : "",
+    ),
+    queues : (
+        queues : [
+            "crane_yard"
+        ],
+        cost : 2_000,
+        time_to_build : Duration(
+            secs : 2,
+            nanos : 0,
+        )
+    ),
+    trainer : (
+        spawn_point : (3.75, 0.2, -4.0),
+        end_point : (3.75, 0.0, -24.0),
+    ),
+    power : (
+        power_gen : 0,
+        power_drain : 10,
+    ),
+    health : (
+        max_health : 3000,
+        health : 3000,
+        resistance : 0.0,
+        resistances : (
+            kinetic : 0.5,
+            fire : -0.8,
+            energy : 0.0,
+            sonic : 0.9,
+            explosive : -0.4,
+            shock : 0.0,
+            radioactivity : 0.9,
+        )
+    ),
+)

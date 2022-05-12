@@ -1,0 +1,11 @@
+#![enable(implicit_some)]
+(
+    ui_info : (
+        display_name : "direction",
+        thumbnail : "",
+        description : "Sandbox Map"
+    ),
+    base : "dirmap",
+    bounds : (1000.0, 1000.0),
+    box_collider : (1000.0, 1.0, 1000.0),
+)

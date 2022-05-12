@@ -1,0 +1,76 @@
+#![enable(implicit_some)]
+(
+    ui_info : (
+        display_name : "Direction",
+        description : "Map used to test everything.",
+        thumbnail : "",
+    ),
+    save_state : (
+        actors: (
+            actors: {
+                (
+                    team: 1,
+                    player: 0,
+                ): (
+                    actor_type: Player,
+                    rating: (
+                        economy_score: 8,
+                        production_score: 0,
+                        power_score: 0,
+                    ),
+                    economy: (
+                        resources: 5000,
+                        settings: (
+                            tipping_point: 4,
+                            dim_rate: 0.9,
+                            economy_core: false,
+                            eco_value: 4,
+                        ),
+                    ),
+                ),
+                (
+                    team: 2,
+                    player: 0,
+                ): (
+                    actor_type: AI(
+                        difficulty: Easy,
+                        settings: (
+                            dynamic: None,
+                        ),
+                    ),
+                    rating: (
+                        economy_score: 75,
+                        production_score: 0,
+                        power_score: 0,
+                    ),
+                    economy: (
+                        resources: 5000,
+                        settings: (
+                            tipping_point: 4,
+                            dim_rate: 0.9,
+                            economy_core: false,
+                            eco_value: 4,
+                        ),
+                    ),
+                ),
+            },
+        ),
+        map : "direction",
+        units : [
+            (
+                prefab : "super_simple_tank",
+                transform : (
+                    position : (0., 0., 0.,),
+                    rotation : (0., 1, 0., 0.),
+                    scale : (1., 1., 1.,),
+                ),
+                teamplayer : TeamPlayer (
+                    team : 1,
+                    player : 0,
+                ),
+            ),
+        ],
+        buildings : [],
+        multiplayer : false,
+    )
+)

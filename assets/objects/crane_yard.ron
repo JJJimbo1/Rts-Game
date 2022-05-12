@@ -1,0 +1,57 @@
+#![enable(implicit_some)]
+GameObject (
+    id : "crane_yard",
+    object_type : Building,
+    ui_info : (
+        display_name : "Crane Yard",
+        description : "",
+        thumbnail : "",
+    ),
+    constructor : (
+        builder : true,
+    ),
+    trainer : (
+        spawn_point : (3.75, 0.2, -4.0),
+        end_point : (3.75, 0.0, -24.0),
+    ),
+    health : (
+        max_health : 10000,
+        health : 10000,
+        resistance : 0.0,
+        resistances : (
+            kinetic : 0.5,
+            fire : -0.8,
+            energy : 0.0,
+            sonic : 0.9,
+            explosive : -0.4,
+            shock : 0.0,
+            radioactivity : 0.9,
+        )
+    ),
+    // cost : 0,
+    // queues : ["standard"],
+    // time_to_build : Duration(
+    //     secs : 1,
+    //     nanos : 0,
+    // ),
+
+
+    // tags : (
+    //     health : (
+    //         max_health : 10000,
+    //         health : 10000,
+    //         resistance : 0.0,
+    //         resistances : (
+    //             kinetic : 0.5,
+    //             fire : -0.8,
+    //             energy : 0.0,
+    //             sonic : 0.9,
+    //             explosive : -0.4,
+    //             shock : 0.0,
+    //             radioactivity : 0.9,
+    //         )
+    //     ),
+    //     trainer : (0, (3.75, 0.2, -4.0), (3.75, 0.0, -24.0)),
+    //     builder : 0,
+    // )
+)

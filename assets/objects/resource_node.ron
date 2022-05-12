@@ -1,0 +1,42 @@
+#![enable(implicit_some)]
+GameObject (
+    id : "resource_node",
+    object_type : Building,
+    ui_info : (
+        display_name : "Resource Node",
+        description : "",
+        thumbnail : "",
+    ),
+    queues : (
+        queues : [
+            "crane_yard"
+        ],
+        cost : 3_000,
+        time_to_build : Duration(
+            secs : 3,
+            nanos : 0,
+        )
+    ),
+    economy : (
+        resource_gen : 100.0,
+        resource_drain : 0.0,
+    ),
+    power : (
+        power_gen : 0,
+        power_drain : 10,
+    ),
+    health : (
+        max_health : 1000,
+        health : 1000,
+        resistance : 0.0,
+        resistances : (
+            kinetic : 0.5,
+            fire : -0.8,
+            energy : 0.0,
+            sonic : 0.9,
+            explosive : -0.4,
+            shock : 0.0,
+            radioactivity : 0.9,
+        )
+    ),
+)

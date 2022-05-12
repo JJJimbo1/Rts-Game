@@ -1,0 +1,5 @@
+///Do not modifiy this file unless you really know what you're doing.
+#![enable(implicit_some)]
+(
+    saves_folder_location : "C/Users/Admin/Games/My Games/the5thfundamental/the5thfundamental_game/assets/saves/"
+)

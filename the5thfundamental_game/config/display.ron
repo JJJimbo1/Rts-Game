@@ -1,0 +1,7 @@
+#![enable(implicit_some)]
+(
+    title : "War March",
+    dimensions : (1920, 1080),
+    //icon : "assets/textures/texture_resource_node.png",
+    //fullscreen : MonitorIdent(0, "default"),
+)

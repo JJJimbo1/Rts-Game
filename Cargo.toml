@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "the5thfundamental_common",
+    "the5thfundamental_game",
+    # "the5thfundamental_server",
+]

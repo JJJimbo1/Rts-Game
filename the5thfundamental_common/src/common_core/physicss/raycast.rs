@@ -23,7 +23,7 @@ mod raycast {
         windows: &Windows,
         camera: &Camera,
         camera_transform: &GlobalTransform,
-    ) -> Option<Ray<f32>> {
+    ) -> (Vec3, Vec3) {
         let camera_position = camera_transform.compute_matrix();
         let window = windows.get_primary().unwrap();
         let screen_size = Vec2::from([window.width() as f32, window.height() as f32]);
@@ -37,6 +37,6 @@ mod raycast {
         let cursor_pos_near: Vec3 = ndc_to_world.project_point3(cursor_pos_ndc_near);
         let cursor_pos_far: Vec3 = ndc_to_world.project_point3(cursor_pos_ndc_far);
         let ray_direction = cursor_pos_far - cursor_pos_near;
-        Some(Ray::new(cursor_pos_near.convert(), ray_direction.convert()))
+        (cursor_pos_near, ray_direction)
     }
 }

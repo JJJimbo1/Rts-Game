@@ -10,7 +10,7 @@ mod teamplayer {
     };
     use xtrees::quad::*;
 
-    use crate::{Actors, Convert, Map, TargetForce, Weapon};
+    use crate::{Actors, Map, TargetForce, Weapon};
 
     #[derive(Debug, Copy, Clone, Serialize, Deserialize, Hash, Eq)]
     #[derive(Component)]

@@ -2,9 +2,10 @@ pub use systems::*;
 mod systems {
     use bevy::{math::Vec3Swizzles, prelude::*};
     use bevy_pathfinding::PathFinder;
+    use bevy_rapier3d::prelude::Collider;
     use xtrees::Quad;
 
-    use crate::{Actors, AttackCommand, Collider, CommonSystemSets, DirtyEntities, Health, Identifiers, Map, Selectable, Target, TeamPlayer, TeamPlayerWorld, WeaponSet, MobileObject};
+    use crate::{Actors, AttackCommand, CommonSystemSets, DirtyEntities, Health, Identifiers, Map, Target, TeamPlayer, TeamPlayerWorld, WeaponSet, MobileObject};
 
     #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
     pub enum CombatSystems {
@@ -20,26 +21,26 @@ mod systems {
 
     impl Plugin for CombatBundle {
         fn build(&self, app: &mut App) {
-            app.add_startup_system(combat_startup_system.system())
+            app.add_startup_system(combat_startup_system)
                 .add_system_set(SystemSet::new().label(CommonSystemSets::Combat)
-                    .with_system(team_player_world_updater_system.system().label(CombatSystems::TeamPlayerWorldUpdaterSystem))
-                    .with_system(manual_targeting_system.system().label(CombatSystems::ManualTargetingSystem).after(CombatSystems::TeamPlayerWorldUpdaterSystem))
-                    .with_system(auto_targeting_system.system().label(CombatSystems::AutoTargetingSystem).after(CombatSystems::ManualTargetingSystem))
-                    .with_system(weapons_look_at_system.system().label(CombatSystems::WeaponsSystem).after(CombatSystems::AutoTargetingSystem))
-                    .with_system(weapons_system.system().label(CombatSystems::WeaponsSystem).after(CombatSystems::AutoTargetingSystem))
-                    .with_system(health_system.system().label(CombatSystems::HealthSystem).after(CombatSystems::WeaponsSystem)));
+                    .with_system(team_player_world_updater_system.label(CombatSystems::TeamPlayerWorldUpdaterSystem))
+                    .with_system(manual_targeting_system.label(CombatSystems::ManualTargetingSystem).after(CombatSystems::TeamPlayerWorldUpdaterSystem))
+                    .with_system(auto_targeting_system.label(CombatSystems::AutoTargetingSystem).after(CombatSystems::ManualTargetingSystem))
+                    .with_system(weapons_look_at_system.label(CombatSystems::WeaponsSystem).after(CombatSystems::AutoTargetingSystem))
+                    .with_system(weapons_system.label(CombatSystems::WeaponsSystem).after(CombatSystems::AutoTargetingSystem))
+                    .with_system(health_system.label(CombatSystems::HealthSystem).after(CombatSystems::WeaponsSystem)));
                 }
             }
 
     ///Make sure you include the startup system.
     pub fn combat_system_set(set : SystemSet) -> SystemSet {
         set.label(CommonSystemSets::Combat)
-            .with_system(team_player_world_updater_system.system().label(CombatSystems::TeamPlayerWorldUpdaterSystem))
-            .with_system(manual_targeting_system.system().label(CombatSystems::ManualTargetingSystem).after(CombatSystems::TeamPlayerWorldUpdaterSystem))
-            .with_system(auto_targeting_system.system().label(CombatSystems::AutoTargetingSystem).after(CombatSystems::ManualTargetingSystem))
-            .with_system(weapons_look_at_system.system().label(CombatSystems::WeaponsSystem).after(CombatSystems::AutoTargetingSystem))
-            .with_system(weapons_system.system().label(CombatSystems::WeaponsSystem).after(CombatSystems::AutoTargetingSystem))
-            .with_system(health_system.system().label(CombatSystems::HealthSystem).after(CombatSystems::WeaponsSystem))
+            .with_system(team_player_world_updater_system.label(CombatSystems::TeamPlayerWorldUpdaterSystem))
+            .with_system(manual_targeting_system.label(CombatSystems::ManualTargetingSystem).after(CombatSystems::TeamPlayerWorldUpdaterSystem))
+            .with_system(auto_targeting_system.label(CombatSystems::AutoTargetingSystem).after(CombatSystems::ManualTargetingSystem))
+            .with_system(weapons_look_at_system.label(CombatSystems::WeaponsSystem).after(CombatSystems::AutoTargetingSystem))
+            .with_system(weapons_system.label(CombatSystems::WeaponsSystem).after(CombatSystems::AutoTargetingSystem))
+            .with_system(health_system.label(CombatSystems::HealthSystem).after(CombatSystems::WeaponsSystem))
     }
 
     pub fn combat_startup_system(actors : Res<Actors>, map : Res<Map>, mut commands : Commands) {
@@ -49,8 +50,9 @@ mod systems {
 
     fn team_player_world_updater_system(mut team_player_world : ResMut<TeamPlayerWorld>, query : Query<(Entity, &Transform, &Collider, &TeamPlayer)>) {
         team_player_world.clear_trees();
-        query.for_each(|(ent, tran, col, tp)| {
-            let quad = Quad::new(tran.translation.x, tran.translation.z, col.extent(), col.extent());
+        query.for_each(|(ent, tran, _, tp)| {
+            //TODO: Fix Extents
+            let quad = Quad::new(tran.translation.x, tran.translation.z, 0.5, 0.5);
             team_player_world.insert(*tp, ent, quad);
         })
     }
@@ -91,30 +93,6 @@ mod systems {
                 }
             })
         });
-        // match *actor_command {
-        //     ActorCommand::Attack(pui) => {
-        //         query.for_each_mut(|(sel, tp, mut wep)| {
-        //             //TODO: This might cause problems later... idk tho
-        //             if !sel.selected { return; }
-        //             match identifiers.get_entity(pui) {
-        //                 Some(x) => {
-        //                     match team_player_world.is_enemy(x, *tp, &team_players) {
-        //                         Ok(y) => {
-        //                             if y {
-        //                                 wep.weapons[0].target = Target::ManualTarget(pui);
-        //                             }
-        //                         },
-        //                         Err(_) => {
-        //                             wep.weapons[0].target = Target::None;
-        //                         }
-        //                     }
-        //                 },
-        //                 None => { }
-        //             }
-        //         })
-        //     },
-        //     _ => { }
-        // }
     }
 
     fn auto_targeting_system(team_player_world : Res<TeamPlayerWorld>, identifiers : Res<Identifiers>, transforms : Query<&Transform>, mut query : Query<(&Transform, &TeamPlayer, &mut WeaponSet)>) {
@@ -208,7 +186,7 @@ mod systems {
         trans : Query<&Transform>,
         mut healths : Query<&mut Health>
     ) {
-        query_iter.for_each_mut(|(ent, tran, mut wep)| {
+        query_iter.for_each_mut(|(_, tran, mut wep)| {
             for w in wep.weapons.iter_mut() {
                 if w.fire_time < w.fire_rate {
                     w.fire_time += time.delta_seconds();

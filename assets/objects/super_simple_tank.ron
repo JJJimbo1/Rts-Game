@@ -8,10 +8,10 @@ GameObject (
         thumbnail : "",
     ),
     queues : (
-        queues : [
-            "crane_yard",
-            "factory",
-        ],
+        // queues : [
+        //     "crane_yard",
+        //     "factory",
+        // ],
         cost : 300,
         time_to_build : Duration(
             secs : 5,

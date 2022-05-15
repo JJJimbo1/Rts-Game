@@ -1,5 +1,6 @@
 pub mod game_state {
 
+    use bevy_rapier3d::prelude::*;
     use bevy_pathfinding::{PathFinder, Path};
     use qloader::*;
     use the5thfundamental_common::*;
@@ -14,11 +15,6 @@ pub mod game_state {
     pub fn singleplayer_game_on_enter() -> SystemSet {
         SystemSet::on_enter(GameState::SingleplayerGame)
             .with_system(singleplayer_game_state_on_enter.label(GameSystems::OnStart))
-
-            
-
-
-
             .with_system(combat_startup_system.label(GameSystems::CombatStartup).after(GameSystems::OnStart))
             .with_system(create_debug_menu.after(GameSystems::OnStart))
             .with_system(create_gameplay_ui.after(GameSystems::OnStart))

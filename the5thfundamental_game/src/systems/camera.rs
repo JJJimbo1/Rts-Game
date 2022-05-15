@@ -1,11 +1,15 @@
 use std::f32::{NEG_INFINITY, INFINITY,};
 
-use bevy::{gltf::{Gltf, GltfMesh}, input::mouse::{MouseScrollUnit, MouseWheel}, prelude::*, render::camera::Camera};
+use bevy::{gltf::{Gltf, GltfMesh}, input::mouse::{MouseScrollUnit, MouseWheel}, prelude::*, render::camera::Camera, utils::tracing::Event};
 use bevy_ninepatch::*;
 use bevy_pathfinding::PathFinder;
+use bevy_rapier3d::{prelude::{Velocity, InteractionGroups, RigidBody}, plugin::RapierContext};
+use mathfu::D1;
 use the5thfundamental_common::*;
 use qloader::*;
 use crate::*;
+
+pub const CLICK_BUFFER : usize = 8;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
 pub enum CameraSetupSystems {
@@ -24,6 +28,8 @@ pub enum CameraSystems {
     BuildingPlacementSystem,
 }
 
+//TODO: Fix camera movement
+
 pub fn camera_setup_system_set(set : SystemSet) -> SystemSet {
     set.label(SystemSets::Camera)
         .with_system(create_camera.label(CameraSetupSystems::CreateCamera))
@@ -37,30 +43,40 @@ pub fn camera_system_set(set : SystemSet) -> SystemSet {
         .with_system(camera_raycast_system.label(CameraSystems::CameraRaycastSystem).after(CameraSystems::CameraControlSystem))
         .with_system(building_placement_system.label(CameraSystems::BuildingPlacementSystem).after(CameraSystems::CameraRaycastSystem))
         .with_system(camera_raycast_response_system.label(CameraSystems::CameraRaycastResponseSystem).after(CameraSystems::BuildingPlacementSystem))
+        .with_system(show_selection_box.after(camera_raycast_response_system))
+        .with_system(camera_select.after(show_selection_box))
         .with_system(camera_context_focus_system.label(CameraSystems::CameraContextFocusSystem).after(CameraSystems::CameraRaycastResponseSystem))
         .with_system(selection_highlighter.label(CameraSystems::SelectionHighlighterSystem).after(CameraSystems::CameraRaycastResponseSystem))
         .with_system(command_system.label(CameraSystems::CommandSystem).after(CameraSystems::CameraRaycastResponseSystem))
 }
 
 pub struct CameraController {
-    pub camera_root : Entity,
-    pub camera_pivot : Entity,
-    pub camera : Entity,
+    pub camera_root: Entity,
+    // pub camera_pivot: Entity,
+    pub camera: Entity,
 
-    outside_window : bool,
-    just_entered : bool,
-    holding : bool,
+    pub root_velocity: Vec3,
+    pub rotation_velocity: f32,
+    pub zoom_precentage: f32,
+    pub zoom_velocity: f32,
+    // pub root_velocity: InterForce,
+
+    outside_window: bool,
+    just_entered: bool,
+    holding: bool,
 }
 
-pub fn create_camera(camera_settings : Res<CameraSettings>, map : Res<Map>, mut commands : Commands) {
-    let direction = Vec3::new(0.0, camera_settings.offset.1, camera_settings.offset.0).normalize_or_zero();
+pub fn create_camera(
+    settings: Res<CameraSettings>,
+    map: Res<Map>,
+    mut commands: Commands
+) {
+    let (direction, distance) = settings.default_direction_and_distance();
 
-    let distance = mathfu::D1::normalize_from_01(mathfu::D1::clamp01(camera_settings.default_zoom), camera_settings.min_zoom, camera_settings.max_zoom);
-
-    let min_z = direction.z * camera_settings.min_zoom;
-    let min_y = direction.y * camera_settings.min_zoom;
-    let max_z = direction.z * camera_settings.max_zoom;
-    let max_y = direction.y * camera_settings.max_zoom;
+    // let min_z = direction.z * settings.min_zoom;
+    // let min_y = direction.y * settings.min_zoom;
+    // let max_z = direction.z * settings.max_zoom;
+    // let max_y = direction.y * settings.max_zoom;
     let z = direction.z * distance;
     let y = direction.y * distance;
 
@@ -70,36 +86,47 @@ pub fn create_camera(camera_settings : Res<CameraSettings>, map : Res<Map>, mut 
     let root_entity = commands.spawn()
         .insert(Transform::default())
         .insert(GlobalTransform::default())
-        .insert(Velocity::new(0., 0., 0., true))
-        .insert(Torque::default())
+        // .insert(Velocity { linvel : Vec3::new(0.0, 0.0, 0.0), angvel : Vec3::new(0.0, 0.0, 0.0)})
+        // .insert(RigidBody::KinematicVelocityBased)
+        // .insert(Torque::default())
         .insert(LocalBounds {
             x : Vec2::new(-map.bounds.0 / 2.0, map.bounds.0 / 2.0),
             y : Vec2::new(NEG_INFINITY, INFINITY),
             z : Vec2::new(-map.bounds.1 / 2.0, map.bounds.1 / 2.0)
+            // x : Vec2::new(-20.0, 20.0),
+            // y : Vec2::new(NEG_INFINITY, INFINITY),
+            // z : Vec2::new(-20.0, 20.0)
         }).id();
 
-    let pivot_entity = commands.spawn()
-        .insert(Transform::default())
-        .insert(GlobalTransform::default())
-        .insert(Torque::default())
-        .insert(Parent(root_entity)).id();
+    // let pivot_entity = commands.spawn()
+    //     .insert(Transform::default())
+    //     .insert(GlobalTransform::default())
+    //     .insert(Velocity { linvel : Vec3::new(0.0, 0.0, 0.0), angvel : Vec3::new(0.0, 0.0, 0.0)})
+    //     .insert(Parent(root_entity)).id();
 
     let camera_entity = commands.spawn_bundle(PerspectiveCameraBundle {
         transform,
         ..Default::default()
     })
-        .insert(Velocity::new(0., 0., 0., true))
-        .insert(LocalBounds {
-            x : Vec2::new(0.0, 0.0),
-            y : Vec2::new(min_y, max_y),
-            z : Vec2::new(min_z, max_z),
-        })
-        .insert(Parent(pivot_entity)).id();
-
+    // .insert(Velocity { linvel : Vec3::new(0.0, 0.0, 0.0), angvel : Vec3::new(0.0, 0.0, 0.0)})
+        // .insert(LocalBounds {
+        //     x : Vec2::new(0.0, 0.0),
+        //     y : Vec2::new(min_y, max_y),
+        //     z : Vec2::new(min_z, max_z),
+        // })
+        .insert(Parent(root_entity))
+        .id();
+        
     commands.insert_resource(CameraController {
         camera_root : root_entity,
-        camera_pivot : pivot_entity,
+        // camera_pivot : pivot_entity,
         camera : camera_entity,
+
+        // root_velocity: InterForce { force: Vec3::default(), max_speed: 1.0, acceleration: settings.scroll_acceleration},
+        root_velocity: Vec3::default(),
+        rotation_velocity: 0.0,
+        zoom_precentage: settings.default_zoom,
+        zoom_velocity: 0.0,
 
         outside_window : false,
         just_entered : false,
@@ -109,16 +136,14 @@ pub fn create_camera(camera_settings : Res<CameraSettings>, map : Res<Map>, mut 
 
 //TODO: Abstract out key bindings.
 pub fn camera_control_system(
-    time : Res<Time>,
-    mut controller : ResMut<CameraController>,
     settings : Res<CameraSettings>,
-    windows : Res<Windows>,
-    mut trans : Query<&mut Transform>,
-    mut velocities : Query<&mut Velocity>,
-    mut torques : Query<&mut Torque>,
+    mut controller : ResMut<CameraController>,
+    mut scroll_evr: EventReader<MouseWheel>,
     mouse_buttons : Res<Input<MouseButton>>,
     key_input : Res<Input<KeyCode>>,
-    mut scroll_evr: EventReader<MouseWheel>,
+    windows : Res<Windows>,
+    time : Res<Time>,
+    mut trans : Query<&mut Transform>,
 ) {
     let window = windows.get_primary().unwrap();
     let half_size = Vec2::new(window.width() / 2.0, window.height() / 2.0);
@@ -148,8 +173,17 @@ pub fn camera_control_system(
         mathfu::D1::normalize_from_01(settings.thresholds.1, 0., half_size.y),
     );
 
-    let height = trans.get_mut(controller.camera).map_or(1.0, |x|
-        mathfu::D1::clamp(mathfu::D1::normalize_from_to(x.translation.y, settings.min_zoom, settings.max_zoom, settings.zoom_base, settings.zoom_base * settings.zoom_ratio), 0.01, 100.));
+    let height = trans.get_mut(controller.camera).map_or(1.0, |x|{
+
+        // println!("{}", x.translation.y);
+        // println!("{}", settings.min_zoom);
+        // println!("{}", settings.max_zoom);
+        // println!("{}", settings.zoom_base);
+        // println!("{}", settings.zoom_base * settings.zoom_ratio);
+        // println!("{}", mathfu::D1::normalize_from_to(x.translation.distance(Vec3::default()), settings.min_zoom().length(), settings.max_zoom().length(), settings.zoom_base, settings.zoom_base * settings.zoom_ratio));
+        mathfu::D1::clamp(mathfu::D1::normalize_from_to(x.translation.distance(Vec3::default()), settings.min_zoom().length(), settings.max_zoom().length(),
+        settings.zoom_base, settings.zoom_base * settings.zoom_ratio), settings.zoom_base, settings.zoom_base * settings.zoom_ratio)
+    });
 
     let slow = if key_input.pressed(KeyCode::C) {
         (settings.slow_rotation_multiplier, settings.slow_scroll_multiplier, settings.slow_zoom_multiplier)
@@ -190,131 +224,133 @@ pub fn camera_control_system(
         -settings.max_scroll_speed * height, settings.max_scroll_speed * height),
     );
 
-    let mut zoom= 0.0;
-    for ev in scroll_evr.iter() {
-        match ev.unit {
-            MouseScrollUnit::Line => {
-                zoom = -ev.y;
-            }
-            MouseScrollUnit::Pixel => {
-                zoom = -ev.y
-            }
-        }
-    }
     let delta = mathfu::D1::clamp(time.delta_seconds(), 0.0, 1.0 / settings.minimum_fps_for_deltatime as f32);
 
-    if let (Ok(mut tran), Ok(mut vel), Ok(mut tor)) = (trans.get_mut(controller.camera_root), velocities.get_mut(controller.camera_root), torques.get_mut(controller.camera_root)) {
+    // controller.root_velocity.apply_force(Vec3::new(x, 0.0, z), delta);
+
+    
+    if let Ok(mut tran) = trans.get_mut(controller.camera_root) {
         //*Rotation
         let mut dir = 0.;
         if key_input.pressed(KeyCode::Q) {
-            tor.y = mathfu::D1::clamp(tor.y, 0., INFINITY);
+            controller.rotation_velocity = mathfu::D1::clamp(controller.rotation_velocity, 0., INFINITY);
             dir += 0.01;
         }
 
         if key_input.pressed(KeyCode::E) {
-            tor.y = mathfu::D1::clamp(tor.y, NEG_INFINITY, 0.);
+            controller.rotation_velocity = mathfu::D1::clamp(controller.rotation_velocity, NEG_INFINITY, 0.);
             dir -= 0.01;
         }
 
         if dir != 0. {
-            tor.y = mathfu::D1::lerp(tor.y, dir * settings.max_rotation_speed * slow.0, mathfu::D1::clamp01(settings.rotation_acceleration * delta));
+            controller.rotation_velocity = mathfu::D1::lerp(controller.rotation_velocity, dir * settings.max_rotation_speed * slow.0, mathfu::D1::clamp01(settings.rotation_acceleration * delta));
         } else {
-            tor.y = mathfu::D1::lerp(tor.y, 0.0, mathfu::D1::clamp01(settings.rotation_deceleration * delta));
+            controller.rotation_velocity = mathfu::D1::lerp(controller.rotation_velocity, 0.0, mathfu::D1::clamp01(settings.rotation_deceleration * delta));
         }
+        tran.rotate(Quat::from_rotation_y(controller.rotation_velocity));
 
         //*Scrolling
         if x.is_normal() {
-            if mathfu::D1::same_sign(x, vel.x) {
-                if mathfu::D1::farther_from_zero(x, vel.x) {
-                    vel.x = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(vel.x, x, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
+            if mathfu::D1::same_sign(x, controller.root_velocity.x) {
+                if mathfu::D1::farther_from_zero(x, controller.root_velocity.x) {
+                    controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
+                        mathfu::D1::lerp(controller.root_velocity.x, x, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
                     );
                 } else {
-                    vel.x = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(vel.x, x, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
+                    controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
+                        mathfu::D1::lerp(controller.root_velocity.x, x, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
                     );
                 }
             } else {
-                if vel.x.abs() < settings.fast_decceleration_threshold {
-                    vel.x = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(vel.x, x, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
+                if controller.root_velocity.x.abs() < settings.fast_decceleration_threshold {
+                    controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
+                        mathfu::D1::lerp(controller.root_velocity.x, x, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
                     );
                 } else {
-                    vel.x = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(vel.x, x, mathfu::D1::clamp01(settings.scroll_deceleration * settings.fast_decceleration_strength * delta))
+                    controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
+                        mathfu::D1::lerp(controller.root_velocity.x, x, mathfu::D1::clamp01(settings.scroll_deceleration * settings.fast_decceleration_strength * delta))
                     );
                 }
             }
         } else {
-            vel.x = mathfu::D1::more_than_or_zero_pog(
-                mathfu::D1::lerp(vel.x, 0.0, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
+            controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
+                mathfu::D1::lerp(controller.root_velocity.x, 0.0, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
             );
         }
 
         if z.is_normal() {
-            if mathfu::D1::same_sign(z, vel.z) {
-                if mathfu::D1::farther_from_zero(z, vel.z) {
-                    vel.z = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(vel.z, z, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
+            if mathfu::D1::same_sign(z, controller.root_velocity.z) {
+                if mathfu::D1::farther_from_zero(z, controller.root_velocity.z) {
+                    controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
+                        mathfu::D1::lerp(controller.root_velocity.z, z, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
                     );
                 } else {
-                    vel.z = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(vel.z, z, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
+                    controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
+                        mathfu::D1::lerp(controller.root_velocity.z, z, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
                     );
                 }
             } else {
-                if vel.z.abs() < settings.fast_decceleration_threshold {
-                    vel.z = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(vel.z, z, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
+                if controller.root_velocity.z.abs() < settings.fast_decceleration_threshold {
+                    controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
+                        mathfu::D1::lerp(controller.root_velocity.z, z, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
                     );
                 } else {
-                    vel.z = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(vel.z, z, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
+                    controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
+                        mathfu::D1::lerp(controller.root_velocity.z, z, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
                     );
                 }
             }
         } else {
-            vel.z = mathfu::D1::more_than_or_zero_pog(
-                mathfu::D1::lerp(vel.z, 0.0, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
+            controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
+                mathfu::D1::lerp(controller.root_velocity.z, 0.0, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
             );
         }
 
-        if key_input.pressed(KeyCode::Grave) {
+        let movement = tran.rotation * controller.root_velocity * delta;
+        tran.translation += movement;
+
+        if key_input.just_pressed(KeyCode::Grave) {
             tran.rotation = Quat::default();
-            tor.y = 0.;
         }
     }
 
-    match (trans.get_mut(controller.camera), velocities.get_mut(controller.camera)) {
-        //*Zooming
-        (Ok(mut tran), Ok(mut vel)) => {
-
-            if zoom > 0. {
-                vel.z = mathfu::D1::clamp(vel.z, 0., INFINITY);
-            } else if zoom < 0. {
-                vel.z = mathfu::D1::clamp(vel.z, NEG_INFINITY, 0.);
-            }
-
-            if zoom != 0. {
-                vel.z = mathfu::D1::lerp(vel.z, zoom * height * settings.max_zoom_speed * slow.2, mathfu::D1::clamp01(settings.zoom_acceleration * delta));
-            } else {
-                vel.z = mathfu::D1::lerp(vel.z, 0., mathfu::D1::clamp01(settings.zoom_deceleration * delta));
-            }
-
-            if key_input.pressed(KeyCode::Grave) {
-                let dz = mathfu::D1::normalize_from_01(mathfu::D1::clamp01(settings.default_zoom), settings.min_zoom, settings.max_zoom);
-                vel.z = 0.;
-                let dir = Vec3::new(0.0, settings.offset.1, settings.offset.0).normalize();
-                let y = dir.y * dz;
-                let z = dir.z * dz;
-                tran.translation = Vec3::new(0.0, y, z);
-            }
-            tran.look_at(Vec3::ZERO, Vec3::Y);
-        },
-        _ => {
-
+    if let Ok(mut tran) = trans.get_mut(controller.camera) {
+        let mut zoom_add = 0.0;
+        for ev in scroll_evr.iter() {
+            zoom_add = -ev.y;
         }
-    };
+
+        let min_zoom = settings.min_zoom();
+        let max_zoom = settings.max_zoom();
+
+        if zoom_add > 0. {
+            zoom_add = mathfu::D1::clamp(zoom_add, 0., INFINITY);
+        } else if zoom_add < 0. {
+            zoom_add = mathfu::D1::clamp(zoom_add, NEG_INFINITY, 0.);
+        }
+
+        if zoom_add != 0. {
+            controller.zoom_velocity = mathfu::D1::lerp(controller.zoom_velocity, zoom_add * height * settings.max_zoom_speed * slow.2, mathfu::D1::clamp01(settings.zoom_acceleration * delta));
+        } else {
+            controller.zoom_velocity = mathfu::D1::lerp(controller.zoom_velocity, 0., mathfu::D1::clamp01(settings.zoom_deceleration * delta));
+        }
+
+        controller.zoom_precentage = D1::clamp01(controller.zoom_precentage + controller.zoom_velocity * delta);
+
+        let zoom_y = D1::normalize_from_01(controller.zoom_precentage, min_zoom.y, max_zoom.y);
+        let zoom_z = D1::normalize_from_01(controller.zoom_precentage, min_zoom.z, max_zoom.z);
+
+        tran.translation.y = zoom_y;
+        tran.translation.z = zoom_z;
+
+        if key_input.just_pressed(KeyCode::Grave) {
+            let (direction, distance) = settings.default_direction_and_distance();
+            tran.translation = direction * distance;
+            controller.zoom_velocity = 0.0;
+            controller.zoom_precentage = settings.default_zoom;
+        }
+        tran.look_at(Vec3::ZERO, Vec3::Y);
+    }
 
     if (real_mouse_pos.x.abs() < threshholds.0.abs() && real_mouse_pos.y.abs() < threshholds.1.abs()) || !settings.post_action_stall {
         controller.just_entered = false;
@@ -322,150 +358,94 @@ pub fn camera_control_system(
     }
 }
 
-pub struct UiHit {
-    pub hit : bool,
-    pub holding : bool,
-}
-
 pub fn camera_raycast_system(
-    windows : Res<Windows>,
     controller : Res<CameraController>,
-    ui_hit : Res<UiHit>,
+    windows : Res<Windows>,
+    ui_hit : Res<UiHit<CLICK_BUFFER>>,
+    context : Res<RapierContext>,
+    identifiers : Res<Identifiers>,
     mut cast : ResMut<CameraRaycast>,
 
-
     cameras : Query<(&GlobalTransform, &Camera)>,
-    colliders : Query<(&Transform, &Collider)>,
 ) {
     cast.current_cast = None;
-    if ui_hit.hit { return; }
+    if ui_hit.hit() { return; }
 
-    if let Some(ray_cast_result) = cameras.get(controller.camera)
-        .map_or(None, |x| Some(x))
-        .and_then(|(gt, c)| windows.get_primary()
-            .and_then(|w| w.cursor_position())
-            .and_then(|p| ray(p, &windows, c, gt)))
-        .and_then(|ray| PhysicsWorld::ray_cast(&colliders, ray)) {
-        cast.last_valid_cast = Some(ray_cast_result);
-        cast.current_cast = Some(ray_cast_result);
+    if let Ok((gl_transform, camera)) = cameras.get(controller.camera) {
+        if let Some(cursor) = windows.get_primary().and_then(|w| w.cursor_position()) {
+            let (origin, direction) = ray(cursor, &windows, camera, gl_transform);
+            if let Some((entity, len)) = context.cast_ray(origin, direction, f32::MAX, true, InteractionGroups::all(), None) {
+                let point = origin + direction * len;
+                if let Some(cam_cast) = identifiers.get_unique_id(entity).map(|id| RayCastResult { id, point, len}) {
+                    cast.last_valid_cast = Some(cam_cast);
+                    cast.current_cast = Some(cam_cast);
+                }
+            }
+        }
+
     }
+}
+
+pub enum BoxSelectStatus {
+    Idle,
+    Dragging,
 }
 
 pub struct CameraSelector {
     selection_box_entity : Entity,
     mouse_start_pos : Vec2,
     mouse_end_pos : Vec2,
-    box_selecting : bool,
-    add_to_selection : bool,
-    to_clear : bool,
+    minimum_distance : f32,
+    // box_selecting : bool,
+    status: BoxSelectStatus,
+
+    // add_to_selection : bool,
+    // to_clear : bool,
 }
 
 impl CameraSelector {
-    fn box_select(&self,
-        physics_world : &PhysicsWorld,
-        player_id : TeamPlayer,
-        cam : &Camera,
-        windows : &Windows,
-        global_tran : &GlobalTransform,
-        selectables : &mut Query<&mut Selectable>,
-    ) {
-
-        let ents = physics_world.box_cast(
-            (self.mouse_start_pos.x.min(self.mouse_end_pos.x),
-            self.mouse_start_pos.x.max(self.mouse_end_pos.x),
-            self.mouse_start_pos.y.min(self.mouse_end_pos.y),
-            self.mouse_start_pos.y.max(self.mouse_end_pos.y)),
-            player_id, cam, windows, global_tran);
-
-        if !self.add_to_selection || (self.to_clear && ents.len() > 0) {
-            selectables.for_each_mut(|mut sel| {
-                sel.selected = false;
-            });
-        }
-
-        let mut empty = true;
-        selectables.for_each_mut(|sel| {
-            if sel.selected {
-                empty = false;
-            }
-        });
-
-        for e in ents.iter() {
-            let mut context : Option<SelectableContext> = None;
-            match selectables.get_mut(*e) {
-                Ok(x) => {
-                    context = Some(x.context);
-                },
-                _ => { }
-            }
-            match context {
-                Some(x) => {
-                    match x {
-                        SelectableContext::Single => {
-                            if (!self.add_to_selection || empty) && ents.len() == 1 {
-                                selectables.for_each_mut(|mut sel| {
-                                    sel.selected = false;
-                                });
-                                match selectables.get_mut(*e) {
-                                    Ok(mut s) => {
-                                        s.selected = true;
-                                    },
-                                    _ => { }
-                                }
-                            }
-                        },
-                        SelectableContext::MultiSelect => {
-                            match selectables.get_mut(*e) {
-                                Ok(mut s) => {
-                                    s.selected = true;
-                                },
-                                _ => { }
-                            }
-                        },
-                        SelectableContext::Clear => {
-
-                        }
-                    }
-                },
-                None => { }
-            }
-        }
-
-    }
-
-    fn show_or_hide_box(&self, visibles : &mut Query<&mut Visibility>, children : &Query<&Children>, styles : &mut Query<&mut Style>) -> bool {
-
-        match styles.get_mut(self.selection_box_entity) {
-            Ok(mut x) => {
-                let extents = (self.mouse_start_pos.x.min(self.mouse_end_pos.x),
-                self.mouse_start_pos.x.max(self.mouse_end_pos.x),
-                self.mouse_start_pos.y.min(self.mouse_end_pos.y),
-                self.mouse_start_pos.y.max(self.mouse_end_pos.y));
-
-                x.position.left = Val::Px(extents.0);
-                x.position.bottom = Val::Px(extents.2);
-                x.size.width = Val::Px(extents.1 - extents.0);
-                x.size.height = Val::Px(extents.3 - extents.2);
-            },
-            _ => { }
-        }
-
-        if mathfu::D2::distance(
-            (self.mouse_start_pos.x, self.mouse_start_pos.y),
-            (self.mouse_end_pos.x, self.mouse_end_pos.y)) >= 40.0 && self.box_selecting {
-            self.open(visibles, children);
-            return false;
-
-        } else {
-            self.close(visibles, children);
-            return true;
-        }
+    pub fn showing(&self) -> bool {
+        self.mouse_start_pos.distance(self.mouse_end_pos) >= self.minimum_distance
     }
 }
 
 impl Menu for CameraSelector {
     fn main_container(&self) -> Entity {
         self.selection_box_entity
+    }
+}
+
+pub fn camera_raycast_response_system(
+    mut selector : ResMut<CameraSelector>,
+    ui_hit : Res<UiHit<CLICK_BUFFER>>,
+    placement : Res<CurrentPlacement<CLICK_BUFFER>>,
+    windows : Res<Windows>,
+    mouse_input : Res<Input<MouseButton>>,
+    mut selection_events : EventWriter<SelectionEvent>,
+) {
+    if ui_hit.hit()
+    || placement.placing()
+    { return; }
+
+    match selector.status {
+        BoxSelectStatus::Idle => {
+            if mouse_input.just_pressed(MouseButton::Left) {
+                selector.mouse_start_pos = windows.get_primary().and_then(|w| w.cursor_position()).unwrap_or(Vec2::new(0.0, 0.0));
+                selector.mouse_end_pos = selector.mouse_start_pos;
+                selector.status = BoxSelectStatus::Dragging;
+            }
+        },
+        BoxSelectStatus::Dragging => {
+            selector.mouse_end_pos = windows.get_primary().and_then(|w| w.cursor_position()).unwrap_or(Vec2::new(0.0, 0.0));
+            if mouse_input.just_released(MouseButton::Left) {
+                selector.status = BoxSelectStatus::Idle;
+                if selector.showing() {
+                    selection_events.send(SelectionEvent::Box(selector.mouse_start_pos, selector.mouse_end_pos))
+                } else {
+                    selection_events.send(SelectionEvent::Single);
+                }
+            }
+        },
     }
 }
 
@@ -497,153 +477,175 @@ pub fn create_selector(
         selection_box_entity : container_entity,
         mouse_start_pos : Vec2::ZERO,
         mouse_end_pos : Vec2::ZERO,
-        box_selecting : false,
-        add_to_selection : false,
-        to_clear : false,
+        ///TODO: Add setting for this
+        minimum_distance: 40.0,
+        status: BoxSelectStatus::Idle,
     });
 
-    commands.insert_resource(CurrentPlacement {
+    commands.insert_resource(CurrentPlacement::<CLICK_BUFFER> {
         status : PlacementStatus::Idle,
         constructor : None,
         data : None,
         ins_data : None,
         entity : None,
-        // placed : [false; 8],
-        placing : false,
+        placing : [false; CLICK_BUFFER],
     });
 }
 
-pub fn camera_raycast_response_system(
-    camera : Res<CameraController>,
-    mut selector : ResMut<CameraSelector>,
-    placement : Res<CurrentPlacement>,
-    physics_world : Res<PhysicsWorld>,
-    cast : Res<CameraRaycast>,
-    idents : Res<Identifiers>,
+pub fn show_selection_box(
+    selector : ResMut<CameraSelector>,
+    placement : Res<CurrentPlacement<CLICK_BUFFER>>,
 
-    windows : Res<Windows>,
-    key_input : Res<Input<KeyCode>>,
-    mouse_input : Res<Input<MouseButton>>,
-
-    cameras : Query<(&GlobalTransform, &Camera)>,
+    mut styles : Query<&mut Style>,
     mut visibles : Query<&mut Visibility>,
     children : Query<&Children>,
-    mut styles : Query<&mut Style>,
-    mut selectables : Query<&mut Selectable>,
-    team_players : Query<&TeamPlayer>,
-
-
 ) {
-    if placement.placing { return; }
-    // if placement.placed.first().map_or(false, |f| *f) { return; }
-    if placement.status != PlacementStatus::Idle {
-        return;
-    }
-    selector.add_to_selection = key_input.pressed(KeyCode::LShift) || key_input.pressed(KeyCode::RShift);
-    selector.to_clear = false;
-    let mouse_pos = windows.get_primary().unwrap().cursor_position().unwrap_or(Vec2::new(0.0, 0.0));
-    let left_down = mouse_input.pressed(MouseButton::Left);
-    let left_up = mouse_input.just_released(MouseButton::Left);
-    let result = cameras.get(camera.camera).unwrap();
+    if placement.placing() { return; };
+    match selector.status {
+        BoxSelectStatus::Idle => {
+            selector.close(&mut visibles, &children);
+        },
+        BoxSelectStatus::Dragging => {
+            if let Ok(mut style) = styles.get_mut(selector.selection_box_entity) {
+                let extents = (selector.mouse_start_pos.x.min(selector.mouse_end_pos.x), selector.mouse_start_pos.x.max(selector.mouse_end_pos.x),
+                    selector.mouse_start_pos.y.min(selector.mouse_end_pos.y), selector.mouse_start_pos.y.max(selector.mouse_end_pos.y));
 
-    if !selector.box_selecting && left_down {
-        selector.mouse_start_pos = mouse_pos;
-        selector.box_selecting = true;
-    } else if selector.box_selecting {
-        selector.mouse_end_pos = mouse_pos;
-        if !left_down {
-            selector.box_selecting = false;
-            if mathfu::D2::distance(
-            (selector.mouse_start_pos.x, selector.mouse_start_pos.y),
-            (selector.mouse_end_pos.x, selector.mouse_end_pos.y)) >= 40.0 {
-                selectables.for_each_mut(|sel| {
-                    if sel.selected && sel.context == SelectableContext::Single {
-                        selector.to_clear = true;
-                    }
-                });
-                if selector.show_or_hide_box(&mut visibles, &children, &mut styles) {
-                    selector.box_select(&physics_world, PLAYER_ID, &result.1, &windows, &result.0, &mut selectables);
-                }
-                return;
+                style.position.left = Val::Px(extents.0);
+                style.position.bottom = Val::Px(extents.2);
+                style.size.width = Val::Px(extents.1 - extents.0);
+                style.size.height = Val::Px(extents.3 - extents.2);
+            }
+
+            if selector.showing() {
+                selector.open(&mut visibles, &children);
+            } else {
+                selector.close(&mut visibles, &children);
             }
         }
-        selector.show_or_hide_box(&mut visibles, &children, &mut styles);
+    }
+}
 
+#[derive(Debug, Clone, Copy)]
+pub enum SelectionEvent {
+    Single,
+    Box(Vec2, Vec2),
+}
+
+pub fn camera_select(
+    mut selection_event : EventReader<SelectionEvent>,
+    camera : Res<CameraController>,
+    cast : Res<CameraRaycast>,
+    identifiers : Res<Identifiers>,
+    player : Res<Player>,
+
+    windows : Res<Windows>,
+    images : Res<Assets<Image>>,
+
+    key_input : Res<Input<KeyCode>>,
+
+    mut units : Query<(Entity, &GlobalTransform, &mut Selectable, &TeamPlayer)>,
+    // teamplayers : Query<&TeamPlayer>,
+    cameras : Query<(&GlobalTransform, &Camera)>,
+) {
+    for event in selection_event.iter() {
+
+        let add_to_selection = key_input.pressed(KeyCode::LShift) || key_input.pressed(KeyCode::RShift);
         let mut empty = true;
-        selectables.for_each_mut(|sel| {
-            if sel.selected == true {
+        units.for_each(|(_, _, sel, _)| {
+            if sel.selected {
                 empty = false;
             }
         });
 
-        if !left_up { return; }
-        if let Some(rc) = cast.current_cast {
-            if let Some(e) = idents.get_entity(rc.id) {
-                let mut context : Option<(SelectableContext, TeamPlayer)> = None;
-                if let (Ok(s), Ok(tp)) = (selectables.get_mut(e), team_players.get(e)) {
-                    if *tp != PLAYER_ID {
-                        return;
+        match event {
+            SelectionEvent::Single => {
+                let entity = cast.current_cast
+                    .and_then(|c| identifiers.get_entity(c.id))
+                    .and_then(|e| units.get_mut(e)
+                        .map_or(None, |(ent, _, _, _,)| Some(ent))
+                );
+                if let Some(ent) = entity {
+                    let clear = units.get_mut(ent).unwrap().2.context == SelectableContext::Clear;
+                    if clear && !add_to_selection {
+                        units.for_each_mut(|(_, _, mut selectable, team_player)| {
+                            if *team_player == player.0 {
+                                selectable.selected = false;
+                            }
+                        });
+                        continue;
                     }
-                    context = Some((s.context, *tp));
-                }
-                if let Some(ctp) = context {
-                    match ctp.0 {
-                        SelectableContext::Single => {
-                            if !selector.add_to_selection || empty {
-                                selectables.for_each_mut(|mut sel| {
-                                    sel.selected = false;
-                                });
-                                if let Ok(mut s) = selectables.get_mut(e) {
-                                    s.selected = true;
-                                }
+                    if !empty && add_to_selection {
+                        let (_, _, mut sel, tp) = units.get_mut(ent).unwrap();
+                        if sel.context == SelectableContext::MultiSelect {
+                            if *tp == player.0 {
+                                sel.selected = true;
                             }
-                        },
-                        SelectableContext::MultiSelect => {
-                            if selector.add_to_selection {
-                                let mut to_clear = false;
-                                selectables.for_each_mut(|sel| {
-                                    match sel.context {
-                                        SelectableContext::Single => {
-                                            to_clear = true;
-                                        },
-                                        _ => { }
-                                    }
-                                });
-                                if to_clear {
-                                    selectables.for_each_mut(|mut sel| {
-                                        sel.selected = false;
-                                    });
-                                }
-                                if let Ok(mut s) = selectables.get_mut(e) {
-                                    s.selected = true;
-                                }
-                            } else {
-                                selectables.for_each_mut(|mut sel| {
-                                    sel.selected = false;
-                                });
-                                if let Ok(mut s) = selectables.get_mut(e) {
-                                    s.selected = true;
-                                }
+                        }
+                    } else {
+                        units.for_each_mut(|(_, _, mut selectable, team_player)| {
+                            if *team_player == player.0 {
+                                selectable.selected = false;
                             }
-                        },
-                        SelectableContext::Clear => {
-                            if !selector.add_to_selection {
-                                selectables.for_each_mut(|mut sel| {
-                                    sel.selected = false;
-                                });
-                            }
+                        });
+                        let (_, _, mut sel, tp) = units.get_mut(ent).unwrap();
+                        if *tp == player.0 {
+                            sel.selected = true;
                         }
                     }
                 } else {
-                    if !selector.add_to_selection {
-                        selectables.for_each_mut(|mut sel| {
-                            sel.selected = false;
+                    if !add_to_selection {
+                        units.for_each_mut(|(_, _, mut selectable, team_player)| {
+                            if *team_player == player.0 {
+                                selectable.selected = false;
+                            }
                         });
+                    }
+                }
+            },
+            SelectionEvent::Box(min, max) => {
+                if let Ok((cam_tran, camera)) = cameras.get(camera.camera) {
+
+                    if !add_to_selection {
+                        units.for_each_mut(|(_, _, mut selectable, team_player)| {
+                            if *team_player == player.0 {
+                                selectable.selected = false;
+                            }
+                        });
+                    }
+
+                    let mut ents = Vec::new();
+
+                    units.for_each(|(ent, gl_tran, _, tp)| {
+                        if *tp == player.0 {
+                            if let Some(center) = camera.world_to_screen(&windows, &images, cam_tran, gl_tran.translation) {
+                                if center.x > min.x && center.x < max.x
+                                && center.y < min.y && center.y > max.y {
+                                    ents.push(ent);
+                                }
+                            }
+                        }
+                    });
+
+                    for e in ents.iter() {
+                        let (_, _, mut sel, _) = units.get_mut(*e).unwrap();
+                        match sel.context {
+                            SelectableContext::Single => {
+                                if ents.len() == 1 {
+                                    sel.selected = true;
+                                }
+                            },
+                            SelectableContext::MultiSelect => {
+                                sel.selected = true;
+                            },
+                            _ => { }
+                        }
                     }
                 }
             }
         }
     }
+
+
 }
 
 pub fn camera_context_focus_system(
@@ -663,23 +665,38 @@ pub fn selection_highlighter(
     idents : Res<Identifiers>,
     mut debug_lines : ResMut<DebugLines>,
 
-    query : Query<(&Transform, &Collider, &Selectable)>,
-    single : Query<(&Transform, &Collider)>,
+    query : Query<(&GlobalTransform, &Selectable)>,
 ) {
-    PhysicsWorld::highlight_selected(&query, &mut debug_lines);
-    if let Some(x) = cast.current_cast {
-        if let Some(e) = idents.get_entity(x.id) {
-            PhysicsWorld::highlight_single(e, &single, &mut debug_lines);
-        }
+    if let Some((glt, _)) = cast.current_cast
+        .and_then(|c| idents.get_entity(c.id))
+        .and_then(|e| query.get(e)
+            .map_or(None, |x| Some(x))
+    ) {
+        debug_lines.line_colored(
+            glt.translation,
+            glt.translation + Vec3::Y * 10.0,
+            0.0,
+            Color::rgba(0.1, 0.35, 0.45, 1.0),
+        );
     }
+
+    query.for_each(|(glt, sel)| {
+        if sel.selected {
+            debug_lines.line_colored(
+                glt.translation,
+                glt.translation + Vec3::Y * 3.0,
+                0.0,
+                Color::rgba(0.1, 0.35, 0.45, 1.0),
+            );
+        }
+    });
 }
 
 pub fn command_system(
     player : Res<Player>,
     cast : Res<CameraRaycast>,
     idents : Res<Identifiers>,
-    current_placement : Res<CurrentPlacement>,
-    // mut rand : ResMut<Random>,
+    current_placement : Res<CurrentPlacement<CLICK_BUFFER>>,
     input : Res<Input<MouseButton>>,
 
     units : Query<(&SnowFlake, &Selectable), With<PathFinder>>,
@@ -688,7 +705,7 @@ pub fn command_system(
     mut move_commands : EventWriter<MoveCommand>,
     mut attack_commands : EventWriter<AttackCommand>,
 ) {
-    if current_placement.placing { return; }
+    if current_placement.placing() { return; }
     if input.just_released(MouseButton::Right) {
         if let Some(ray_cast) = cast.current_cast {
             if idents.get_entity(ray_cast.id)
@@ -714,7 +731,7 @@ pub enum PlacementStatus {
     Began,
     Placing(Entity),
     Rotating(Entity),
-    Stopped(Entity),
+    // Stopped(Entity),
     Canceled(Entity),
     Completed(Entity),
 }
@@ -726,17 +743,16 @@ impl Default for PlacementStatus {
 }
 
 #[derive(Debug, Clone)]
-pub struct CurrentPlacement {
+pub struct CurrentPlacement<const U : usize> {
     pub status : PlacementStatus,
     pub constructor : Option<Entity>,
     pub data : Option<StackData>,
     pub ins_data : Option<InstantiationData>,
     pub entity : Option<Entity>,
-    // pub placed : [bool; U],
-    pub placing : bool,
+    pub placing : [bool; U],
 }
 
-impl CurrentPlacement {
+impl<const U : usize> CurrentPlacement<U> {
     pub fn new() -> Self {
         Self {
             status : PlacementStatus::Idle,
@@ -744,14 +760,17 @@ impl CurrentPlacement {
             data : None,
             ins_data : None,
             entity : None,
-            // placed : [false; U],
-            placing : false,
+            placing : [false; U],
         }
+    }
+
+    pub fn placing(&self) -> bool {
+        self.placing.first().map_or(false, |f| *f) || self.status != PlacementStatus::Idle
     }
 }
 
 pub fn building_placement_startup_system(mut commands : Commands) {
-    commands.insert_resource(CurrentPlacement::new());
+    commands.insert_resource(CurrentPlacement::<CLICK_BUFFER>::new());
 }
 
 pub fn building_placement_system(
@@ -761,7 +780,7 @@ pub fn building_placement_system(
     cast : Res<CameraRaycast>,
     input : Res<Input<MouseButton>>,
 
-    mut current_placement : ResMut<CurrentPlacement>,
+    mut current_placement : ResMut<CurrentPlacement::<CLICK_BUFFER>>,
 
     team_players : Query<&TeamPlayer>,
 
@@ -770,14 +789,13 @@ pub fn building_placement_system(
 
     mut commands : Commands,
 ) {
-    // for i in 1..current_placement.placed.len() {
-    //     current_placement.placed[i-1] = current_placement.placed[i];
-    // }
-    current_placement.placing = current_placement.status != PlacementStatus::Idle;
-    // let y = current_placement.status != PlacementStatus::Idle;
-    // if let Some(x) = current_placement.placed.last_mut() {
-    //     *x = y;
-    // }
+    for i in 1..current_placement.placing.len() {
+        current_placement.placing[i-1] = current_placement.placing[i];
+    }
+    let y = current_placement.status != PlacementStatus::Idle;
+    if let Some(x) = current_placement.placing.last_mut() {
+        *x = y;
+    }
     let down = input.just_pressed(MouseButton::Left);
     let up = input.just_released(MouseButton::Left);
     match current_placement.status {
@@ -800,8 +818,16 @@ pub fn building_placement_system(
                         transform : Transform::from_xyz(lvc.point.x, lvc.point.y, lvc.point.z),
                         ..Default::default()
                     });
+                } else {
+                    entity_builder.insert_bundle(PbrBundle {
+                        mesh,
+                        material,
+                        transform : Transform::default(),
+                        ..Default::default()
+                    });
                 }
             }
+            entity_builder.insert(Visibility { is_visible: false});
             let e = entity_builder.id();
             current_placement.status = PlacementStatus::Placing(e);
             current_placement.entity = Some(e);
@@ -848,9 +874,9 @@ pub fn building_placement_system(
                 }
             }
         },
-        PlacementStatus::Stopped(e) => {
+        // PlacementStatus::Stopped(e) => {
 
-        },
+        // },
         PlacementStatus::Canceled(e) => {
             commands.entity(e).despawn();
             current_placement.status = PlacementStatus::Idle;

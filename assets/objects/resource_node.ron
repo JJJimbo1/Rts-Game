@@ -8,17 +8,17 @@ GameObject (
         thumbnail : "",
     ),
     queues : (
-        queues : [
-            "crane_yard"
-        ],
-        cost : 3_000,
+        // queues : [
+        //     "crane_yard"
+        // ],
+        cost : 600,
         time_to_build : Duration(
-            secs : 3,
+            secs : 10,
             nanos : 0,
         )
     ),
     economy : (
-        resource_gen : 100.0,
+        resource_gen : 5.0,
         resource_drain : 0.0,
     ),
     power : (

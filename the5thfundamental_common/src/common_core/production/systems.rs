@@ -14,8 +14,8 @@ mod systems {
 
     pub fn economy_system_set(set : SystemSet) -> SystemSet {
         set.label(CommonSystemSets::Economy)
-            .with_system(resource_adder_system.system().label(EconomySystems::ResourceAdderSystem))
-            .with_system(queue_system.system().label(EconomySystems::QueueSystem).after(EconomySystems::ResourceAdderSystem))
+            .with_system(resource_adder_system.label(EconomySystems::ResourceAdderSystem))
+            .with_system(queue_system.label(EconomySystems::QueueSystem).after(EconomySystems::ResourceAdderSystem))
     }
 
     fn resource_adder_system(time : Res<Time>, mut actors : ResMut<Actors>, query : Query<(&TeamPlayer, &ResourceProvider)>) {

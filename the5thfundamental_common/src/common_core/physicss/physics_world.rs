@@ -82,14 +82,14 @@ pub mod physics_world {
             return result;
         }
 
-        pub fn box_cast(&self, extents : (f32, f32, f32, f32), player : TeamPlayer, cam : &Camera, windows : &Windows, cam_transform : &GlobalTransform) -> Vec<Entity> {
+        pub fn box_cast(&self, extents : (f32, f32, f32, f32), player : TeamPlayer, cam : &Camera, windows : &Windows, images : &Assets<Image>, cam_transform : &GlobalTransform) -> Vec<Entity> {
             match self.layers.get(player.team()) {
                 Some(x) => {
                     match x.get(player.player()) {
                         Some(y) => {
                             let mut results : Vec<Entity> = Vec::new();
                             for col in y.iter() {
-                                let center = cam.world_to_screen(windows, cam_transform, col.1);
+                                let center = cam.world_to_screen(windows, images, cam_transform, col.1);
                                 if let Some(center) = center {
                                     if center.x >= extents.0 && center.x <= extents.1 && center.y >= extents.2 && center.y <= extents.3 {
                                         results.push(col.0);

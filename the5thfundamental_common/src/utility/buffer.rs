@@ -7,56 +7,37 @@ mod buffer {
 
     use crate::{SMALL_BUFFER_SIZE, MEDIUM_BUFFER_SIZE, LARGE_BUFFER_SIZE};
 
-    pub type SmallBuffer = [u8; SMALL_BUFFER_SIZE];
-    pub type MediumBuffer = [u8; MEDIUM_BUFFER_SIZE];
-    pub type LargeBuffer = [u8; LARGE_BUFFER_SIZE];
+    #[derive(Debug, Clone, Copy)]
+    pub struct LimitedBuffer<const B: usize> {
+        message: [u8; B],
+    }
 
-    pub struct LimitedBuffer;
-
-    impl LimitedBuffer {
-        pub fn new_small() -> SmallBuffer {
-            [0; SMALL_BUFFER_SIZE]
-        }
-        pub fn new_medium() -> MediumBuffer {
-            [0; MEDIUM_BUFFER_SIZE]
-        }
-        pub fn new_large() -> LargeBuffer {
-            [0; LARGE_BUFFER_SIZE]
-        }
-        pub fn small_from_string(string : &str) -> SmallBuffer {
-            let mut b = [0; SMALL_BUFFER_SIZE];
-            for c in string.to_string().char_indices() {
-                if c.0 > SMALL_BUFFER_SIZE { break; }
-                b[c.0] = c.1 as u8;
-            }
-            b
-        }
-        pub fn medium_from_string(string : &str) -> MediumBuffer {
-            let mut b = [0; MEDIUM_BUFFER_SIZE];
-            for c in string.to_string().char_indices() {
-                if c.0 > MEDIUM_BUFFER_SIZE { break; }
-                b[c.0] = c.1 as u8;
-            }
-            b
-        }
-        pub fn large_from_string(string : &str) -> LargeBuffer {
-            let mut b = [0; LARGE_BUFFER_SIZE];
-            for c in string.to_string().char_indices() {
-                if c.0 > LARGE_BUFFER_SIZE { break; }
-                b[c.0] = c.1 as u8;
-            }
-            b
-        }
-        pub fn to_string(buffer : &[u8]) -> String {
-            let mut s = String::with_capacity(buffer.len());
-            for c in buffer {
-                if *c != 0 {
-                    s.push(*c as char);
+    impl<const U: usize> From<LimitedBuffer<U>> for String {
+        fn from(buffer: LimitedBuffer<U>) -> Self {
+            let mut s = String::with_capacity(buffer.message.len());
+            for c in buffer.message {
+                if c != 0 {
+                    s.push(c as char);
                 }
             }
             s
         }
     }
+
+    impl<const U: usize> From<String> for LimitedBuffer<U> {
+        fn from(s: String) -> Self {
+            let mut b = [0; U];
+            for c in s.to_string().char_indices() {
+                if c.0 > U { break; }
+                b[c.0] = c.1 as u8;
+            }
+            Self { message: b }
+        }
+    }
+
+    pub type SmallBuffer = LimitedBuffer<SMALL_BUFFER_SIZE>;
+    pub type MediumBuffer = LimitedBuffer<MEDIUM_BUFFER_SIZE>;
+    pub type LargeBuffer = LimitedBuffer<LARGE_BUFFER_SIZE>;
 
     #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
     #[derive(Serialize, Deserialize)]

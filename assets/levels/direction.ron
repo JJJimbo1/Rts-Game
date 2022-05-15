@@ -60,7 +60,7 @@
             (
                 prefab : "super_simple_tank",
                 transform : (
-                    position : (0., 0., 0.,),
+                    translation : (0., 0., 0.,),
                     rotation : (0., 1, 0., 0.),
                     scale : (1., 1., 1.,),
                 ),

@@ -7,10 +7,24 @@ GameObject (
         description : "",
         thumbnail : "",
     ),
+    // queues : (
+    //     cost : 0,
+    //     time_to_build : Duration(
+    //         secs : 1,
+    //         nanos : 0,
+    //     ),
+    // )
     constructor : (
+        buildings : [
+            "resource_node",
+            "factory",
+        ],
         builder : true,
     ),
     trainer : (
+        trainies : [
+            "super_simple_tank"
+        ],
         spawn_point : (3.75, 0.2, -4.0),
         end_point : (3.75, 0.0, -24.0),
     ),

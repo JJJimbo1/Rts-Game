@@ -1,6 +1,6 @@
 
 use bevy::{ecs::system::EntityCommands, gltf::{Gltf, GltfMesh}, math::Vec3Swizzles, prelude::*};
-use bimap::BiMap;
+use bevy_rapier3d::prelude::{Collider, RigidBody, Velocity, AsyncCollider, MassProperties};
 use bevy_pathfinding::{PathFinder, Path};
 use qloader::QLoader;
 use snowflake::ProcessUniqueId;
@@ -19,6 +19,7 @@ pub fn object_spawn_system(
     gltf_assets : Res<QLoader<GltfAsset, AssetServer>>,
     gltfs : Res<Assets<Gltf>>,
     gltf_meshes : Res<Assets<GltfMesh>>,
+    meshes: Res<Assets<Mesh>>,
 
     mut identifiers : ResMut<Identifiers>,
     mut actors : ResMut<Actors>,
@@ -35,7 +36,7 @@ pub fn object_spawn_system(
 
                     let save_data = SaveObject {
                         otype : ObjectType::Building,
-                        prefab : LimitedBuffer::small_from_string(&prefab.0.id),
+                        prefab : LimitedBuffer::from(prefab.0.id.clone()),
                     };
 
                     let sf = SnowFlake(ProcessUniqueId::new());
@@ -53,13 +54,13 @@ pub fn object_spawn_system(
                         .insert(Selectable {
                             selected : false,
                             context : SelectableContext::Single
-                        })
-                        .insert(Immobile::default());
+                        });
+                        // .insert(Immobile::default());
 
                     actors.assign_building(r.2.team_player, sf);
                     identifiers.insert(sf, entity);
 
-                    match_tags(&gltf_assets, &gltfs, &gltf_meshes, sf, trans, &prefab.0, &master_queue, entity_commands);
+                    match_tags(&gltf_assets, &gltfs, &gltf_meshes, &meshes, sf, trans, &prefab.0, &master_queue, entity_commands);
                 }
             },
             ObjectType::Unit => {
@@ -73,7 +74,7 @@ pub fn object_spawn_system(
 
                     let save_data = SaveObject {
                         otype : ObjectType::Unit,
-                        prefab : LimitedBuffer::small_from_string(&prefab.0.id),
+                        prefab : LimitedBuffer::from(prefab.0.id.clone()),
                     };
 
                     let sf = SnowFlake(ProcessUniqueId::new());
@@ -92,24 +93,25 @@ pub fn object_spawn_system(
                             selected : false,
                             context : SelectableContext::MultiSelect
                         })
+                        .insert(MassProperties { mass : 1.0, ..default()})
                         .insert(Velocity::default());
+
+                    // println!("{:?}", r.2.end_point);
 
                     if let Some(x) = r.2.end_point {
                         let end = trans.mul_vec3(Vec3::new(x.0, x.1, x.2)).xz();
                         let pf = PathFinder::default();
                         let mut path = Path::default();
-                        // pf.set_start(trans.translation.xz());
-                        // pf.set_start(end);
-                        path.0 = Some(vec![end]);
+                        path.0 = Some(vec![trans.translation.xz(), end]);
 
 
                         entity_commands.insert(pf).insert(path);
                     }
 
-                    actors.assign_building(r.2.team_player, sf);
+                    // actors.assign_building(r.2.team_player, sf);
                     identifiers.insert(sf, entity);
 
-                    match_tags(&gltf_assets, &gltfs, &gltf_meshes, sf, trans, &prefab.0, &master_queue, entity_commands);
+                    match_tags(&gltf_assets, &gltfs, &gltf_meshes, &meshes, sf, trans, &prefab.0, &master_queue, entity_commands);
                 }
             }
         }
@@ -123,7 +125,7 @@ pub fn object_spawn_system(
 
                     let save_data = SaveObject {
                         otype : ObjectType::Building,
-                        prefab : LimitedBuffer::small_from_string(&prefab.0.id),
+                        prefab : LimitedBuffer::from(prefab.0.id.clone()),
                     };
 
                     let sf = SnowFlake(ProcessUniqueId::new());
@@ -136,13 +138,13 @@ pub fn object_spawn_system(
                         .insert(Selectable {
                             selected : false,
                             context : SelectableContext::Single
-                        })
-                        .insert(Immobile::default());
+                        });
+                        // .insert(Immobile::default());
 
                     actors.assign_building(r.2.team_player, sf);
                     identifiers.insert(sf, r.3);
 
-                    match_tags(&gltf_assets, &gltfs, &gltf_meshes, sf, trans, &prefab.0, &master_queue, entity_commands);
+                    match_tags(&gltf_assets, &gltfs, &gltf_meshes, &meshes, sf, trans, &prefab.0, &master_queue, entity_commands);
                 }
             },
             ObjectType::Unit => {
@@ -156,7 +158,7 @@ pub fn object_spawn_system(
 
                     let save_data = SaveObject {
                         otype : ObjectType::Unit,
-                        prefab : LimitedBuffer::small_from_string(&prefab.0.id),
+                        prefab : LimitedBuffer::from(prefab.0.id.clone()),
                     };
 
                     let sf = SnowFlake(ProcessUniqueId::new());
@@ -175,17 +177,18 @@ pub fn object_spawn_system(
                     actors.assign_building(r.2.team_player, sf);
                     identifiers.insert(sf, r.3);
 
+
                     if let Some(x) = r.2.end_point {
                         let end = trans.mul_vec3(Vec3::new(x.0, x.1, x.2)).xz();
                         let pf = PathFinder::default();
                         let mut path = Path::default();
-                        path.0 = Some(vec![end]);
-
-
-                        entity_commands.insert(pf).insert(path);
+                        path.0 = Some(vec![trans.translation.xz(), end]);
+                        entity_commands
+                            .insert(pf)
+                            .insert(path);
                     }
 
-                    match_tags(&gltf_assets, &gltfs, &gltf_meshes, sf, trans, &prefab.0, &master_queue, entity_commands);
+                    match_tags(&gltf_assets, &gltfs, &gltf_meshes, &meshes, sf, trans, &prefab.0, &master_queue, entity_commands);
                 }
             }
         }
@@ -196,7 +199,7 @@ pub fn object_spawn_system(
 
 pub fn clear_buffer_system(
     mut requests : ResMut<InitRequests>,
-    mut current_placement : ResMut<CurrentPlacement>,
+    mut current_placement : ResMut<CurrentPlacement<CLICK_BUFFER>>,
     mut queues : Query<&mut Queues>,
 ) {
     if let (Some(e), Some(d)) = (current_placement.constructor, current_placement.data.clone()) {
@@ -240,8 +243,9 @@ pub fn match_tags(
     gltf_assets : &QLoader<GltfAsset, AssetServer>,
     gltfs : &Assets<Gltf>,
     gltf_meshes : &Assets<GltfMesh>,
+    meshes : &Assets<Mesh>,
 
-    sf : SnowFlake,
+    _sf : SnowFlake,
     trans : Transform,
     prefab : &GameObject,
     master_queue : &MasterQueue,
@@ -256,7 +260,7 @@ pub fn match_tags(
     };
 
     let pbr = PbrBundle {
-        mesh,
+        mesh: mesh.clone(),
         material,
         transform : trans,
         ..Default::default()
@@ -264,14 +268,14 @@ pub fn match_tags(
 
     entity_commands.insert_bundle(pbr);
 
-    // if let Ok(col) = Collider::from_gltf(sf, &models.get(&prefab.id).unwrap().0) {
-    //     entity_commands.insert(col);
-    // }
-
-    let col = Collider::new_sphere(sf, 5.0);
-    entity_commands.insert(col);
+    if let Some(m) = meshes.get(mesh) {
+        entity_commands.insert(RigidBody::KinematicVelocityBased);
+        entity_commands.insert(Collider::bevy_mesh(m).unwrap());
+    }
 
     if let Some(x) = prefab.mobility {
+        let mut x = x;
+        x.follow = true;
         entity_commands.insert(x);
     }
 

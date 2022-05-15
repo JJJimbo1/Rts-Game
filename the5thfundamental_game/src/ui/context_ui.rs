@@ -345,7 +345,7 @@ pub mod context_menu {
     pub fn context_menu_event_reader_system(
         master_queues : Res<MasterQueue>,
         mut menu : ResMut<ContextMenu>,
-        mut current_placement : ResMut<CurrentPlacement>,
+        mut current_placement : ResMut<CurrentPlacement<CLICK_BUFFER>>,
         mut context_menu_events : EventReader<ContextMenuButtons>,
         mut queues : Query<&mut Queues>,
     ) {

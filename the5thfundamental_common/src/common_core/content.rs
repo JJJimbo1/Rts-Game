@@ -7,11 +7,11 @@ mod content {
     use bevy::{
         prelude::{Commands, Entity, Transform},
     };
+    use bevy_rapier3d::prelude::Velocity;
     use log::error;
     use serde::{
         Serialize, Deserialize,
     };
-    use snowflake::ProcessUniqueId;
     use qloader::*;
     use ronfile::*;
     use crate::*;
@@ -81,18 +81,19 @@ mod content {
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct QueueObject {
-        pub queues : Vec<String>,
         pub cost : u128,
         pub time_to_build : Duration,
     }
 
-    #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+    #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct ConstructorObject {
+        pub buildings : Vec<String>,
         pub builder : bool,
     }
 
-    #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+    #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct TrainerObject {
+        pub trainies : Vec<String>,
         pub spawn_point : (f32, f32, f32),
         pub end_point : (f32, f32, f32),
     }
@@ -274,10 +275,6 @@ mod content {
         pub access : AccessGroup,
     }
 
-    use crate::{
-        ResourceProvider,
-    };
-
     #[derive(Debug, Clone)]
     pub struct BuildingPrefab(pub GameObject);
 
@@ -315,7 +312,7 @@ mod content {
         selectable : Selectable,
         save_data : SaveObject,
         team_player : TeamPlayer,
-        immobile : Immobile,
+        // immobile : Immobile,
     }
 
     #[derive(Bundle)]

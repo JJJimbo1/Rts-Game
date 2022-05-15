@@ -5,19 +5,22 @@ authors = ["Alten Reeves"]
 edition = "2021"
 
 [dependencies]
-bevy = "0.6.1"
-bevy_prototype_debug_lines = {version = "0.6.1", features = ["3d"]}
+bevy = "0.7.0"
+bevy_rapier3d = { version = "0.13.2", features = []}
+bevy_prototype_debug_lines = { version = "0.7.0", features = ["3d"]}
+bevy-debug-text-overlay = "2.0.0"
 ron = "0.7.0"
 serde = "1.0.115"
 log = "0.4.11"
-ncollide3d = { version = "0.27.0", features = []}
+# ncollide3d = { version = "0.27.0", features = []}
 obj = "0.10.1"
 easy-gltf = "0.1.4"
 walkdir = "2.3.1"
 bimap = { version = "0.6.0", features = ["serde"]}
 bincode = "1.3.2"
+approx = "0.5.1"
 mathfu = { path = "../../../crates/math_fu"}
-zipqueue = { path = "../../../crates/zipqueue", features = ["serde"] }
+zipqueue = { path = "../../../crates/zipqueue", features = ["serde"]}
 xtrees = { path = "../../../crates/xtrees"}
 qloader = { path = "../../../crates/qloader"}
 ronfile = { path = "../../../crates/ronfile"}

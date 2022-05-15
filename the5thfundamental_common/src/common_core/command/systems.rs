@@ -3,7 +3,8 @@ mod systems {
     use bevy::{math::Vec3Swizzles, prelude::*, tasks::ComputeTaskPool};
     use bevy_prototype_debug_lines::DebugLines;
     use bevy_pathfinding::*;
-    use crate::{ActorType, Actors, CommonSystemSets, Identifiers, MoveCommand, Queues, ResourceProvider, TeamPlayer, TeamPlayerWorld, Velocity, WeaponSet, MobileObject};
+    use bevy_rapier3d::prelude::Velocity;
+    use crate::{ActorType, Actors, CommonSystemSets, Identifiers, MoveCommand, Queues, ResourceProvider, TeamPlayer, WeaponSet, MobileObject};
     use simple_random::*;
 
     #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
@@ -49,7 +50,7 @@ mod systems {
     ) {
         for a in actors.actors.iter() {
             match a.1.actor_type {
-                ActorType::AI { difficulty, settings } => {
+                ActorType::AI { difficulty: _, settings: _ } => {
                     for b in a.1.buildings.clone().iter() {
                         if let Some(e) = idents.get_entity(*b) {
                             if let Ok(mut q) = queues.get_mut(e) {
@@ -94,39 +95,40 @@ mod systems {
     }
 
     pub fn path_following_system(
-        pool : Res<ComputeTaskPool>,
+        // pool : Res<ComputeTaskPool>,
         mut debug : ResMut<DebugLines>,
         mut followers : Query<(&mut Path, &mut Transform, &mut Velocity, &mut MobileObject)>,
     ) {
-        followers.par_for_each_mut(&pool, 8, |(mut path, mut tran, mut vel, mut mobility)| {
+        followers.for_each_mut(|(mut path, mut tran, mut vel, mut mobility)| {
             if !mobility.follow { return; }
             if let Some(x) = path.0.as_ref().and_then(|f| f.first().cloned()) {
                 let y = tran.translation.y;
                 tran.look_at(x.extend(y).xzy(), Vec3::Y);
+                if tran.rotation.is_nan() { tran.rotation = Quat::IDENTITY}
                 let distance = mathfu::D1::more_than_value_or_zero(mathfu::D2::distance((tran.translation.x, tran.translation.z), (x.x, x.y)), 0.5) * 2.0;
                 let dir = Vec2::new(x.x - tran.translation.x, x.y - tran.translation.z).normalize();
                 if path.0.as_ref().and_then(|f| f.get(1).cloned()).is_some() {
                     if distance > 0.5 {
-                        vel.x =  dir.x * mobility.max_forward_speed.abs();
-                        vel.z =  dir.y * mobility.max_forward_speed.abs();
+                        vel.linvel.x =  dir.x * mobility.max_forward_speed.abs();
+                        vel.linvel.z =  dir.y * mobility.max_forward_speed.abs();
                     } else {
                         path.0.as_mut().unwrap().remove(0);
                     }
                 } else {
                     if distance > 0.1 {
-                        vel.x =  dir.x * mathfu::D1::clamp(distance, -mobility.max_backwards_speed, mobility.max_forward_speed).abs();
-                        vel.z =  dir.y * mathfu::D1::clamp(distance, -mobility.max_backwards_speed, mobility.max_forward_speed).abs();
+                        vel.linvel.x =  dir.x * mathfu::D1::clamp(distance, -mobility.max_backwards_speed, mobility.max_forward_speed).abs();
+                        vel.linvel.z =  dir.y * mathfu::D1::clamp(distance, -mobility.max_backwards_speed, mobility.max_forward_speed).abs();
                     } else {
-                        vel.x = 0.0;
-                        vel.z = 0.0;
+                        vel.linvel.x = 0.0;
+                        vel.linvel.z = 0.0;
                         path.0.as_mut().unwrap().remove(0);
                         mobility.follow = false;
                     }
                 }
 
             } else {
-                vel.x = 0.0;
-                vel.z = 0.0;
+                vel.linvel.x = 0.0;
+                vel.linvel.z = 0.0;
             }
         });
 

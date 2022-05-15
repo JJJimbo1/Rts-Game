@@ -14,6 +14,7 @@ use bevy::{diagnostic::DiagnosticsPlugin, prelude::*};
 use bevy_ninepatch::*;
 use bevy_pathfinding::{PathFindingPlugin, DefaultPather};
 use bevy_prototype_debug_lines::{DebugLines, DebugLinesPlugin};
+use bevy_rapier3d::plugin::{RapierPhysicsPlugin, NoUserData};
 use chrono::Local;
 use lazy_static::__Deref;
 use the5thfundamental_common::*;
@@ -93,10 +94,6 @@ fn begin_log() {
 
 
 
-//TODO: Fix object files.
-
-
-
 fn play_game() {
     App::new()
         .insert_resource(Msaa { samples: 4 })
@@ -107,7 +104,7 @@ fn play_game() {
             ..Default::default()
         })
         .insert_resource(ClearColor(CLEAR_COLOR))
-        .insert_resource(UiHit{ hit : false, holding : false, })
+        .insert_resource(UiHit::<CLICK_BUFFER>{ hitting : [false; CLICK_BUFFER], holding : false, })
         .insert_resource(FPSCounter{
             timer : Timer::from_seconds(0.25, true),
             frames : 0,
@@ -115,10 +112,14 @@ fn play_game() {
         })
 
         .add_plugins(DefaultPlugins)
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
+        .add_plugin(PhysicsPlugin)
         .add_plugin(DiagnosticsPlugin::default())
         .add_plugin(NinePatchPlugin::<()>::default())
         .add_plugin(DebugLinesPlugin::with_depth_test(false))
         .add_plugin(PathFindingPlugin::<DefaultPather>::default())
+
+        .add_event::<SelectionEvent>()
 
         .add_event::<TopMenuButtons>()
         .add_event::<CampaignButtons>()
@@ -128,11 +129,12 @@ fn play_game() {
         .add_event::<MoveCommand>()
         .add_event::<AttackCommand>()
 
+        //TODO: fix physics.
         .insert_resource(Random::<WichmannHill>::seeded(123.456))
         .insert_resource(Identifiers::default())
         .insert_resource(DirtyEntities::default())
         .insert_resource(InitRequests::default())
-        .insert_resource(PhysicsWorld::default())
+        // .insert_resource(PhysicsWorld::default())
 
         .add_system_set(loading_on_enter())
         .add_system_set(loading_on_update())
@@ -147,14 +149,13 @@ fn play_game() {
         .add_system_set(singleplayer_game_on_update())
         .add_system_set(singleplayer_game_on_exit())
 
-        .add_system(ui_hit_detection_system::<8>.label("ui_hit"))
+        .add_system(ui_hit_detection_system.label("ui_hit"))
         .add_system_set(camera_system_set(SystemSet::on_update(GameState::SingleplayerGame).after("ui_hit")))
         .add_system_set(misc_system_set(SystemSet::on_update(GameState::SingleplayerGame)))
 
         .add_system_set(combat_system_set(SystemSet::on_update(GameState::SingleplayerGame)))
         .add_system_set(command_system_set(SystemSet::on_update(GameState::SingleplayerGame)))
         .add_system_set(economy_system_set(SystemSet::on_update(GameState::SingleplayerGame)))
-        .add_system_set(physics_system_set(SystemSet::on_update(GameState::SingleplayerGame)))
         .add_state(GameState::Loading)
 
         // .add_startup_system(setup)

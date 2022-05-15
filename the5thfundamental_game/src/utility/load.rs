@@ -2,6 +2,7 @@ pub use load::*;
 mod load {
 
     use bevy::{ecs::system::EntityCommands, gltf::{Gltf, GltfMesh}, prelude::*, prelude::shape::Plane};
+    use bevy_rapier3d::prelude::*;
     use bimap::BiMap;
     use bevy_pathfinding::{PathFinder, Path};
     use qloader::*;
@@ -14,23 +15,24 @@ mod load {
         gltf_assets : Res<QLoader<GltfAsset, AssetServer>>,
         gltfs : Res<Assets<Gltf>>,
         gltf_meshes : Res<Assets<GltfMesh>>,
+        meshes : Res<Assets<Mesh>>,
         models : Res<QLoader<ModelAsset, ()>>,
         master_queue : Res<MasterQueue>,
         mut identifiers : ResMut<Identifiers>,
         mut actors : ResMut<Actors>,
         mut commands : Commands,
     ) /*-> Result<(), SaveLoadError>*/ {
-        match initialize_map(&gltf_assets, &gltfs, &gltf_meshes, &models, &save_file.map, maps, &mut identifiers, &mut commands) {
+        match initialize_map(&gltf_assets, &gltfs, &gltf_meshes, &meshes, &models, &save_file.map, maps, &mut identifiers, &mut commands) {
             Ok(()) => { },
             Err(e) => { println!("{}", e); }
         }
         let mut weapons = Vec::new();
         let mut id_converter = save_file.id_converter.clone();
-        match initialize_buildings(&gltf_assets, &gltfs, &gltf_meshes, &models, &mut id_converter, &save_file.buildings, &master_queue, &mut identifiers, &mut actors, &mut commands, &mut weapons) {
+        match initialize_buildings(&gltf_assets, &gltfs, &gltf_meshes, &meshes, &models, &mut id_converter, &save_file.buildings, &master_queue, &mut identifiers, &mut actors, &mut commands, &mut weapons) {
             Ok(()) => { },
             Err(e) => { println!("{}", e); }
         }
-        match initialize_units(&gltf_assets, &gltfs, &gltf_meshes, &models, &mut id_converter, &save_file.units, &master_queue, &mut identifiers, &mut commands, &mut weapons) {
+        match initialize_units(&gltf_assets, &gltfs, &gltf_meshes, &meshes, &models, &mut id_converter, &save_file.units, &master_queue, &mut identifiers, &mut commands, &mut weapons) {
             Ok(()) => { },
             Err(e) => { println!("{}", e); }
         }
@@ -45,6 +47,7 @@ mod load {
         gltf_assets : &QLoader<GltfAsset, AssetServer>,
         gltfs : &Assets<Gltf>,
         gltf_meshes : &Assets<GltfMesh>,
+        meshes : &Assets<Mesh>,
         models : &QLoader<ModelAsset, ()>,
 
         map : &str,
@@ -87,15 +90,17 @@ mod load {
             };
 
             let pbr = PbrBundle {
-                mesh,
+                mesh : mesh.clone(),
                 material,
                 ..Default::default()
             };
 
             entity_commands.insert_bundle(pbr);
 
-            if let Ok(col) = Collider::from_gltf(sf, &models.get(&m.base).unwrap().0) {
-                entity_commands.insert(col);
+
+            if let Some(m) = meshes.get(mesh) {
+                entity_commands.insert(Collider::bevy_mesh(m).unwrap());
+                entity_commands.insert(RigidBody::Fixed);
             }
             // let col = Collider::new_box(sf, m.box_collider.0, m.box_collider.1, m.box_collider.2);
         } else {
@@ -109,6 +114,7 @@ mod load {
         gltf_assets : &QLoader<GltfAsset, AssetServer>,
         gltfs : &Assets<Gltf>,
         gltf_meshes : &Assets<GltfMesh>,
+        meshes : &Assets<Mesh>,
         models : &QLoader<ModelAsset, ()>,
 
         id_converter : &mut BiMap<SnowFlake, SnowFlake>,
@@ -124,11 +130,11 @@ mod load {
         let mut entities = Vec::new();
         for building in buildings.iter() {
             if let Some(prefab) = master_queue.building_prefabs.get(&building.prefab) {
-                let trans = building.transform.to_transform();
+                let trans = Transform::from(building.transform);
 
                 let save_data = SaveObject {
                     otype : ObjectType::Building,
-                    prefab : LimitedBuffer::small_from_string(&building.prefab),
+                    prefab : LimitedBuffer::from(building.prefab.clone()),
                 };
 
                 let sf = SnowFlake(ProcessUniqueId::new());
@@ -149,13 +155,13 @@ mod load {
                     .insert(Selectable {
                         selected : false,
                         context : SelectableContext::Single
-                    })
-                    .insert(Immobile::default());
+                    });
+                    // .insert(Immobile::default());
 
                 actors.assign_building(building.teamplayer, sf);
                 identifiers.insert(sf, entity);
 
-                match match_save_tags(&gltf_assets, &gltfs, &gltf_meshes, &models, sf, trans, &building.save_tags, &prefab.0, master_queue, entity_commands, weapons) {
+                match match_save_tags(&gltf_assets, &gltfs, &gltf_meshes, &meshes, &models, sf, trans, &building.save_tags, &prefab.0, master_queue, entity_commands, weapons) {
                     Ok(()) => { },
                     Err(e) => {
                         return Err(e);
@@ -170,6 +176,7 @@ mod load {
         gltf_assets : &QLoader<GltfAsset, AssetServer>,
         gltfs : &Assets<Gltf>,
         gltf_meshes : &Assets<GltfMesh>,
+        meshes : &Assets<Mesh>,
         models : &QLoader<ModelAsset, ()>,
 
         id_converter : &mut BiMap<SnowFlake, SnowFlake>,
@@ -181,15 +188,15 @@ mod load {
         weapons : &mut Vec<(SnowFlake, WeaponSet)>,
     ) -> Result<(), SaveLoadError> {
         println!("Units: {}", units.len());
-        let mut entities = Vec::new();
+        // let mut entities = Vec::new();
         for unit in units.iter() {
             if let Some(prefab) = master_queue.unit_prefabs.get(&unit.prefab) {
 
-                let trans = unit.transform.to_transform();
+                let trans = Transform::from(unit.transform);
 
                 let save_data = SaveObject {
                     otype : ObjectType::Unit,
-                    prefab : LimitedBuffer::small_from_string(&unit.prefab),
+                    prefab : LimitedBuffer::from(unit.prefab.clone()),
                 };
 
                 let sf = SnowFlake(ProcessUniqueId::new());
@@ -201,7 +208,7 @@ mod load {
                 let mut entity_commands = commands.spawn();
 
                 let entity = entity_commands.id();
-                entities.push(entity);
+                // entities.push(entity);
 
                 entity_commands
                     .insert(save_data)
@@ -212,11 +219,11 @@ mod load {
                         selected : false,
                         context : SelectableContext::MultiSelect
                     })
-                    .insert(unit.save_tags.as_ref().unwrap_or(&SaveTags::empty()).velocity.unwrap_or(Velocity::default()));
+                    .insert(unit.save_tags.as_ref().and_then(|st| st.velocity).map_or(Velocity::default(), |vel| Velocity::from(vel)));
 
                 identifiers.insert(sf, entity);
 
-                match match_save_tags(&gltf_assets, &gltfs, &gltf_meshes, &models, sf, trans, &unit.save_tags, &prefab.0, master_queue, entity_commands, weapons) {
+                match match_save_tags(&gltf_assets, &gltfs, &gltf_meshes, &meshes, &models, sf, trans, &unit.save_tags, &prefab.0, master_queue, entity_commands, weapons) {
                     Ok(()) => { },
                     Err(e) => {
                         return Err(e);
@@ -270,6 +277,7 @@ mod load {
         gltf_assets : &QLoader<GltfAsset, AssetServer>,
         gltfs : &Assets<Gltf>,
         gltf_meshes : &Assets<GltfMesh>,
+        meshes: &Assets<Mesh>,
         models : &QLoader<ModelAsset, ()>,
 
         sf : SnowFlake,
@@ -290,7 +298,7 @@ mod load {
         };
 
         let pbr = PbrBundle {
-            mesh,
+            mesh : mesh.clone(),
             material,
             transform : trans,
             ..Default::default()
@@ -298,8 +306,9 @@ mod load {
 
         entity_commands.insert_bundle(pbr);
 
-        if let Ok(col) = Collider::from_gltf(sf, &models.get(&prefab.id).unwrap().0) {
-            entity_commands.insert(col);
+        if let Some(m) = meshes.get(mesh) {
+            entity_commands.insert(RigidBody::KinematicVelocityBased);
+            entity_commands.insert(Collider::bevy_mesh(m).unwrap());
         }
 
         if let Some(x) = prefab.mobility {

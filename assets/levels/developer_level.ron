@@ -60,7 +60,7 @@
             (
                 prefab : "resource_node",
                 transform : (
-                    position : (50., 0., 160.,),
+                    translation : (50., 0., 160.,),
                     rotation : (0., 1., 0., 0.),
                     scale : (1., 1., 1.,),
                 ),
@@ -72,7 +72,7 @@
             (
                 prefab : "crane_yard",
                 transform : (
-                    position : (0., 0., 150.,),
+                    translation : (0., 0., 150.,),
                     rotation : (0., 1., 0., 0.),
                     scale : (1., 1., 1.,),
                 ),
@@ -84,7 +84,7 @@
             (
                 prefab : "crane_yard",
                 transform : (
-                    position : (0., 0., -150.,),
+                    translation : (0., 0., -150.,),
                     rotation : (0., 0., 0., 1.),
                     scale : (1., 1., 1.,),
                 ),
@@ -95,102 +95,102 @@
             ),
         ],
         units : [
-            (
-                prefab : "super_simple_tank",
-                transform : (
-                    position : (5., 0., 120.,),
-                    rotation : (0., 0., 0., 1.),
-                    scale : (1., 1., 1.,),
-                ),
-                teamplayer : (
-                    team : 1,
-                    player : 0,
-                ),
-            ),
-            (
-                prefab : "super_simple_tank",
-                transform : (
-                    position : (-5., 0., 120.,),
-                    rotation : (0., 0., 0., 1.0),
-                    scale : (1., 1., 1.,),
-                ),
-                teamplayer : (
-                    team : 1,
-                    player : 0,
-                ),
-            ),
-            (
-                prefab : "super_simple_tank",
-                transform : (
-                    position : (15., 0., 120.,),
-                    rotation : (0., 0., 0., 1.0),
-                    scale : (1., 1., 1.,),
-                ),
-                teamplayer : (
-                    team : 1,
-                    player : 0,
-                ),
-            ),
-            (
-                prefab : "super_simple_tank",
-                transform : (
-                    position : (-15., 0., 120.,),
-                    rotation : (0., 0., 0., 1.0),
-                    scale : (1., 1., 1.,),
-                ),
-                teamplayer : (
-                    team : 1,
-                    player : 0,
-                ),
-            ),
-            (
-                prefab : "super_simple_tank",
-                transform : (
-                    position : (5., 0., -120.,),
-                    rotation : (0., 1., 0., 0.),
-                    scale : (1., 1., 1.,),
-                ),
-                teamplayer : (
-                    team : 2,
-                    player : 0,
-                ),
-            ),
-            (
-                prefab : "super_simple_tank",
-                transform : (
-                    position : (-5., 0., -120.,),
-                    rotation : (0., 1., 0., 0.),
-                    scale : (1., 1., 1.,),
-                ),
-                teamplayer : (
-                    team : 2,
-                    player : 0,
-                ),
-            ),
-            (
-                prefab : "super_simple_tank",
-                transform : (
-                    position : (15., 0., -120.,),
-                    rotation : (0., 1., 0., 0.),
-                    scale : (1., 1., 1.,),
-                ),
-                teamplayer : (
-                    team : 2,
-                    player : 0,
-                ),
-            ),
-            (
-                prefab : "super_simple_tank",
-                transform : (
-                    position : (-15., 0., -120.,),
-                    rotation : (0., 1., 0., 0.),
-                    scale : (1., 1., 1.,),
-                ),
-                teamplayer : (
-                    team : 2,
-                    player : 0,
-                ),
-            ),
+            // (
+            //     prefab : "super_simple_tank",
+            //     transform : (
+            //         translation : (5., 0., 120.,),
+            //         rotation : (0., 0., 0., 1.),
+            //         scale : (1., 1., 1.,),
+            //     ),
+            //     teamplayer : (
+            //         team : 1,
+            //         player : 0,
+            //     ),
+            // ),
+            // (
+            //     prefab : "super_simple_tank",
+            //     transform : (
+            //         translation : (-5., 0., 120.,),
+            //         rotation : (0., 0., 0., 1.0),
+            //         scale : (1., 1., 1.,),
+            //     ),
+            //     teamplayer : (
+            //         team : 1,
+            //         player : 0,
+            //     ),
+            // ),
+            // (
+            //     prefab : "super_simple_tank",
+            //     transform : (
+            //         translation : (15., 0., 120.,),
+            //         rotation : (0., 0., 0., 1.0),
+            //         scale : (1., 1., 1.,),
+            //     ),
+            //     teamplayer : (
+            //         team : 1,
+            //         player : 0,
+            //     ),
+            // ),
+            // (
+            //     prefab : "super_simple_tank",
+            //     transform : (
+            //         translation : (-15., 0., 120.,),
+            //         rotation : (0., 0., 0., 1.0),
+            //         scale : (1., 1., 1.,),
+            //     ),
+            //     teamplayer : (
+            //         team : 1,
+            //         player : 0,
+            //     ),
+            // ),
+            // (
+            //     prefab : "super_simple_tank",
+            //     transform : (
+            //         translation : (5., 0., -120.,),
+            //         rotation : (0., 1., 0., 0.),
+            //         scale : (1., 1., 1.,),
+            //     ),
+            //     teamplayer : (
+            //         team : 2,
+            //         player : 0,
+            //     ),
+            // ),
+            // (
+            //     prefab : "super_simple_tank",
+            //     transform : (
+            //         translation : (-5., 0., -120.,),
+            //         rotation : (0., 1., 0., 0.),
+            //         scale : (1., 1., 1.,),
+            //     ),
+            //     teamplayer : (
+            //         team : 2,
+            //         player : 0,
+            //     ),
+            // ),
+            // (
+            //     prefab : "super_simple_tank",
+            //     transform : (
+            //         translation : (15., 0., -120.,),
+            //         rotation : (0., 1., 0., 0.),
+            //         scale : (1., 1., 1.,),
+            //     ),
+            //     teamplayer : (
+            //         team : 2,
+            //         player : 0,
+            //     ),
+            // ),
+            // (
+            //     prefab : "super_simple_tank",
+            //     transform : (
+            //         translation : (-15., 0., -120.,),
+            //         rotation : (0., 1., 0., 0.),
+            //         scale : (1., 1., 1.,),
+            //     ),
+            //     teamplayer : (
+            //         team : 2,
+            //         player : 0,
+            //     ),
+            // ),
         ],
         multiplayer : false,
     )

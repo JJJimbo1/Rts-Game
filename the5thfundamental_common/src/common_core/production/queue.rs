@@ -3,12 +3,12 @@ mod queue {
 
     use std::collections::HashMap;
 
-    use bevy::{prelude::{Commands, Component, Res}};
+    use bevy::{prelude::Component};
     use serde::{Serialize, Deserialize,};
 
     use zipqueue::ZipQueue;
     use qloader::*;
-    use crate::{BuildingPrefab, BuildingUIData, DEFAULT_BUILD_TIME, DEFAULT_COST, DEFAULT_POWER_DRAIN, GameObject, ObjectType, QueueData, SMALL_BUFFER_SIZE, StackData, UnitPrefab, UnitUIData};
+    use crate::{BuildingPrefab, BuildingUIData, GameObject, ObjectType, QueueData, SMALL_BUFFER_SIZE, StackData, UnitPrefab, UnitUIData};
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
     #[derive(Component)]
@@ -92,51 +92,38 @@ mod queue {
                 }
                 let mut lqueues : Option<Queues> = None;
 
-                if let Some(x) = object.constructor {
+                if let Some(_co) = &object.constructor {
                     //TODO: x does nothing. I don't know what I want it to do.
+                    let data = QueueData {
+                        timer : 0.0,
+                        spawn_point : None,
+                        end_point : None,
+                        buffer : Vec::new(),
+                    };
                     match lqueues.as_mut() {
                         Some(q) => {
-                            let data = QueueData {
-                                timer : 0.0,
-                                spawn_point : None,
-                                end_point : None,
-                                buffer : Vec::new(),
-                            };
                             q.building_queue = Some(ZipQueue::<StackData, QueueData>::new(data));
                         },
                         None => {
                             lqueues = Some(Queues::new(id.to_owned()));
-                            let data = QueueData {
-                                timer : 0.0,
-                                spawn_point : None,
-                                end_point : None,
-                                buffer : Vec::new(),
-                            };
                             lqueues.as_mut().unwrap().building_queue = Some(ZipQueue::<StackData, QueueData>::new(data));
                         }
                     }
                 }
 
-                if let Some(x) = object.trainer {
-                    //TODO: x does nothing. I don't know what I want it to do.
+                if let Some(t) = &object.trainer {
+                    let data = QueueData {
+                        timer : 0.0,
+                        spawn_point : Some(t.spawn_point),
+                        end_point : Some(t.end_point),
+                        buffer : Vec::new(),
+                    };
                     match lqueues.as_mut() {
                         Some(q) => {
-                            let data = QueueData {
-                                timer : 0.0,
-                                spawn_point : Some(x.spawn_point),
-                                end_point : Some(x.end_point),
-                                buffer : Vec::new(),
-                            };
                             q.unit_queue = Some(ZipQueue::<StackData, QueueData>::new(data));
                         },
                         None => {
                             lqueues = Some(Queues::new(id.to_owned()));
-                            let data = QueueData {
-                                timer : 0.0,
-                                spawn_point : Some(x.spawn_point),
-                                end_point : Some(x.end_point),
-                                buffer : Vec::new(),
-                            };
                             lqueues.as_mut().unwrap().unit_queue = Some(ZipQueue::<StackData, QueueData>::new(data));
                         }
                     }
@@ -148,47 +135,21 @@ mod queue {
             }
 
             for (id, object) in objects.iter() {
-                if let Ok(sd) = StackData::try_from(object.clone()) {
-                    match object.queues.clone() {
-                        Some(x) => {
-                            match object.object_type {
-                                ObjectType::Building => {
-                                    for s in x.queues.iter() {
-                                        match queues.get_mut(s) {
-                                            Some(q) => {
-                                                match q.building_queue.as_mut() {
-                                                    Some(x) => {
-                                                        println!("{}, {}", s, sd.id);
-                                                        x.push_stack(sd.clone());
-                                                    },
-                                                    None => { println!("1"); }
-                                                }
-                                            },
-                                            None => { println!("2"); }
-                                        }
-                                    }
-                                },
-                                ObjectType::Unit => {
-                                    for s in x.queues.iter() {
-                                        match queues.get_mut(s) {
-                                            Some(q) => {
-                                                match q.unit_queue.as_mut() {
-                                                    Some(x) => {
-                                                        x.push_stack(sd.clone());
-                                                    },
-                                                    None => { }
-                                                }
-                                            },
-                                            None => { }
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        None => { println!("3"); }
+                if let Some(q) = queues.get_mut(id) {
+                    if let Some(co) = &object.constructor {
+                        for s in co.buildings.iter() {
+                            let ob = building_prefabs.get(s).unwrap();
+                            let sd = StackData::try_from(ob.0.clone()).unwrap();
+                            q.building_queue.as_mut().unwrap().push_stack(sd);
+                        }
                     }
-                } else {
-                    println!("cant make stack data from {}", id);
+                    if let Some(t) = &object.trainer {
+                        for s in t.trainies.iter() {
+                            let ob = unit_prefabs.get(s).unwrap();
+                            let sd = StackData::try_from(ob.0.clone()).unwrap();
+                            q.unit_queue.as_mut().unwrap().push_stack(sd);
+                        }
+                    }
                 }
             }
 

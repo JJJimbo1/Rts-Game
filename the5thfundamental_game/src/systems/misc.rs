@@ -16,12 +16,13 @@ mod misc {
         textures : Res<QLoader<ImageAsset, AssetServer>>,
         mut materials : ResMut<Assets<ColorMaterial>>,
         windows : Res<Windows>,
+        images : Res<Assets<Image>>,
         camera : Res<CameraController>,
 
         mut commands : Commands,
 
         add_health_bars : Query<(Entity, &Health), Without<HealthBar>>,
-        health_bars : Query<(&Transform, &Collider, &Health, &HealthBar)>,
+        health_bars : Query<(&Transform, &Health, &HealthBar)>,
         mut styles : Query<&mut Style>,
         mut visibles : Query<&mut Visibility>,
         children : Query<&Children>,
@@ -40,17 +41,18 @@ mod misc {
         }
 
         let cam = cameras.get(camera.camera).unwrap();
-        health_bars.for_each(|(tran, col, hel, bar)| {
+        health_bars.for_each(|(tran, hel, bar)| {
             if hel.is_full_health() {
                 bar.close(&mut visibles, &children);
             } else {
                 bar.open(&mut visibles, &children);
-                match cam.0.world_to_screen(&windows, cam.1, tran.translation) {
+                match cam.0.world_to_screen(&windows, &images, cam.1, tran.translation) {
                     Some(point) => {
                         if let Ok(mut s) = styles.get_mut(bar.main_container()) {
                             let point = point + bar.offset();
                             s.position.left = Val::Px(point.x);
-                            s.position.bottom = Val::Px(point.y + col.extent() * 10.0);
+                            //TODO: find some way to get how far up the screen to put the health bar.
+                            s.position.bottom = Val::Px(point.y + 50.0);
                         }
                     },
                     None => { },

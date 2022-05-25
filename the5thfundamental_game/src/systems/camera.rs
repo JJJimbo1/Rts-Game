@@ -515,7 +515,7 @@ pub fn camera_select(
     cameras : Query<(&GlobalTransform, &Camera)>,
 ) {
     for event in selection_event.iter() {
-        println!("send selection event of {:?}", event);
+        // println!("send selection event of {:?}", event);
 
         let add_to_selection = key_input.pressed(KeyCode::LShift) || key_input.pressed(KeyCode::RShift);
         let mut empty = true;

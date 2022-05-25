@@ -8,15 +8,15 @@ use std::{
     path::{
         PathBuf,
     },
+    process::Command,
 };
 
 use bevy::{diagnostic::DiagnosticsPlugin, prelude::*};
 use bevy_ninepatch::*;
 use bevy_pathfinding::{PathFindingPlugin, DefaultPather};
 use bevy_prototype_debug_lines::{DebugLines, DebugLinesPlugin};
-use bevy_rapier3d::plugin::{RapierPhysicsPlugin, NoUserData};
+use bevy_rapier3d::{plugin::{RapierPhysicsPlugin, NoUserData}, prelude::RapierDebugRenderPlugin};
 use chrono::Local;
-use lazy_static::__Deref;
 use the5thfundamental_common::*;
 use simple_random::*;
 
@@ -39,6 +39,7 @@ pub enum GameState {
     Loading,
     MainMenu,
     SingleplayerGame,
+    MatchLoadingState,
     MultiplayerGame,
 }
 
@@ -54,17 +55,8 @@ pub struct FPSCounter{
     pub frames_total : u64,
 }
 
+//TODO: Fix context menu.
 pub fn main() {
-    // if (*PROJECT_ROOT_DIRECTORY).is_err() {
-    //     log::error!("No root folder found. Game cannot start.");
-    //     crash();
-    //     return;
-    // }
-    // if !std::path::Path::new(ASSET_DIRECTORY.deref()).is_dir() {
-    //     log::error!("No asset folder found. Game cannot start.");
-    //     crash();
-    //     return;
-    // }
     println!("ROOT: {:?}", *PROJECT_ROOT_DIRECTORY);
 
     begin_log();
@@ -74,7 +66,7 @@ pub fn main() {
 }
 
 fn begin_log() {
-    let path = PathBuf::from(format!("{}\\log.txt", *PROJECT_ROOT_DIRECTORY));
+    let path = PathBuf::from(format!("{}/log.txt", *PROJECT_ROOT_DIRECTORY));
     let mut _f = match OpenOptions::new()
         .write(true)
         .open(path.clone()) {
@@ -112,12 +104,16 @@ fn play_game() {
         })
 
         .add_plugins(DefaultPlugins)
+
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
+        .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(PhysicsPlugin)
+
         .add_plugin(DiagnosticsPlugin::default())
         .add_plugin(NinePatchPlugin::<()>::default())
         .add_plugin(DebugLinesPlugin::with_depth_test(false))
         .add_plugin(PathFindingPlugin::<DefaultPather>::default())
+        .add_plugin(SavePlugin)
 
         .add_event::<SelectionEvent>()
 
@@ -126,6 +122,8 @@ fn play_game() {
         .add_event::<SkirmishButtons>()
         .add_event::<ContextMenuButtons>()
 
+        .add_event::<ObjectSpawnEvent>()
+
         .add_event::<MoveCommand>()
         .add_event::<AttackCommand>()
 
@@ -133,22 +131,27 @@ fn play_game() {
         .insert_resource(Random::<WichmannHill>::seeded(123.456))
         .insert_resource(Identifiers::default())
         .insert_resource(DirtyEntities::default())
-        .insert_resource(InitRequests::default())
+        // .insert_resource(InitRequests::default())
+        .insert_resource(Manifest::default())
         // .insert_resource(PhysicsWorld::default())
 
-        .add_system_set(loading_on_enter())
-        .add_system_set(loading_on_update())
-        .add_system_set(loading_on_exit())
+        .add_system_set(game_loading_state_on_enter_system_set())
+        .add_system_set(game_loading_state_on_update_system_set())
+        .add_system_set(game_loading_state_on_exit_system_set())
 
-        .add_system_set(main_menu_on_enter())
-        .add_system_set(main_menu_on_update())
-        .add_system_set(main_menu_on_exit())
+        .add_system_set(main_menu_state_on_enter_system_set())
+        .add_system_set(main_menu_state_on_update_system_set())
+        .add_system_set(main_menu_state_on_exit_system_set())
 
-        .add_system_set(singleplayer_game_on_enter())
+        .add_system_set(match_loading_state_on_enter_system_set())
+        .add_system_set(match_loading_state_on_update_system_set())
+        .add_system_set(match_loading_state_on_exit_system_set())
+
+        .add_system_set(singleplayer_game_state_on_enter_system_set())
+        .add_system_set(singleplayer_game_state_on_update_system_set())
+        .add_system_set(singleplayer_game_state_on_exit_system_set())
+
         .add_system_set(camera_setup_system_set(SystemSet::on_enter(GameState::SingleplayerGame)))
-        .add_system_set(singleplayer_game_on_update())
-        .add_system_set(singleplayer_game_on_exit())
-
         .add_system(ui_hit_detection_system.label("ui_hit"))
         .add_system_set(camera_system_set(SystemSet::on_update(GameState::SingleplayerGame).after("ui_hit")))
         .add_system_set(misc_system_set(SystemSet::on_update(GameState::SingleplayerGame)))
@@ -156,6 +159,7 @@ fn play_game() {
         .add_system_set(combat_system_set(SystemSet::on_update(GameState::SingleplayerGame)))
         .add_system_set(command_system_set(SystemSet::on_update(GameState::SingleplayerGame)))
         .add_system_set(economy_system_set(SystemSet::on_update(GameState::SingleplayerGame)))
+        // .add_system_set(object_spawn_system_set())
         .add_state(GameState::Loading)
 
         // .add_startup_system(setup)
@@ -164,24 +168,24 @@ fn play_game() {
     .run();
 }
 
-fn setup(
-    mut commands : Commands,
-) {
-    commands.spawn_bundle(PerspectiveCameraBundle {
-        transform : Transform::from_translation(Vec3::new(0.0, 5.0, 5.0)).looking_at(Vec3::default(), Vec3::Y),
-        ..Default::default()
-    });
-}
+// fn setup(
+//     mut commands : Commands,
+// ) {
+//     commands.spawn_bundle(PerspectiveCameraBundle {
+//         transform : Transform::from_translation(Vec3::new(0.0, 5.0, 5.0)).looking_at(Vec3::default(), Vec3::Y),
+//         ..Default::default()
+//     });
+// }
 
 
-fn update(
-    mut debug : ResMut<DebugLines>,
-) {
-    debug.line_colored(Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 100.0, 0.0), 0.0, Color::Rgba { red: 1.0, green: 0.2, blue: 0.2, alpha: 1.0 });
-}
+// fn update(
+//     mut debug : ResMut<DebugLines>,
+// ) {
+//     debug.line_colored(Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 100.0, 0.0), 0.0, Color::Rgba { red: 1.0, green: 0.2, blue: 0.2, alpha: 1.0 });
+// }
 
 fn end_log() {
-    let path = PathBuf::from(format!("{}\\log.txt", *PROJECT_ROOT_DIRECTORY));
+    let path = PathBuf::from(format!("{}/log.txt", *PROJECT_ROOT_DIRECTORY));
     let mut _f = match OpenOptions::new()
         .append(true)
         .open(path.clone()) {
@@ -199,3 +203,16 @@ fn crash() {
     let mut s = String::new();
     match std::io::stdin().read_line(&mut s) { _ => { } }
 }
+
+
+#[test]
+fn atest() {
+    Command::new("D:/dev/rust/tools/gltf_to_collider").args([
+        "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/crane_yard_collider.glb",
+        "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/resource_node_collider.glb",
+        "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/factory_collider.glb",
+        "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/tank_collider.glb",
+    ]).spawn().unwrap();
+}
+
+

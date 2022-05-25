@@ -1,14 +1,14 @@
 pub use health::*;
 mod health {
 
-    use bevy::prelude::Component;
+    use bevy::{prelude::Component, reflect::Reflect};
     use serde::{
         Serialize, Deserialize
     };
 
     use mathfu::D1;
 
-    use crate::DamageTypes;
+    use crate::{DamageTypes, SerdeComponent};
 
     const MIN_VALUE : f32 = -9.0;
     const MAX_VALUE : f32 = 0.9;
@@ -68,6 +68,16 @@ mod health {
 
         pub fn is_dead(&self) -> bool {
             !self.is_alive()
+        }
+    }
+
+    impl SerdeComponent for Health {
+        fn saved(&self) -> Option<Self> {
+            if self.is_full_health() {
+                None
+            } else {
+                Some(*self)
+            }
         }
     }
 }

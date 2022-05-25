@@ -11,43 +11,50 @@ use crate::*;
 
 pub const CLICK_BUFFER : usize = 8;
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
-pub enum CameraSetupSystems {
-    CreateCamera,
-    CreateSelector,
-}
+// #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
+// pub enum CameraSetupSystems {
+//     CreateCamera,
+//     CreateSelector,
+// }
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
-pub enum CameraSystems {
-    CameraControlSystem,
-    CameraRaycastSystem,
-    CameraRaycastResponseSystem,
-    CameraContextFocusSystem,
-    SelectionHighlighterSystem,
-    CommandSystem,
-    BuildingPlacementSystem,
-}
-
-//TODO: Fix camera movement
+// #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
+// pub enum CameraSystems {
+//     CameraControlSystem,
+//     CameraRaycastSystem,
+//     CameraRaycastResponseSystem,
+//     CameraContextFocusSystem,
+//     SelectionHighlighterSystem,
+//     CommandSystem,
+//     BuildingPlacementSystem,
+// }
 
 pub fn camera_setup_system_set(set : SystemSet) -> SystemSet {
     set.label(SystemSets::Camera)
-        .with_system(create_camera.label(CameraSetupSystems::CreateCamera))
-        .with_system(create_selector.label(CameraSetupSystems::CreateSelector).after(CameraSetupSystems::CreateCamera))
+        .with_system(create_camera)
+        .with_system(create_selector)
         .with_system(building_placement_startup_system)
 }
 
 pub fn camera_system_set(set : SystemSet) -> SystemSet {
     set.label(SystemSets::Camera)
-        .with_system(camera_control_system.label(CameraSystems::CameraControlSystem))
-        .with_system(camera_raycast_system.label(CameraSystems::CameraRaycastSystem).after(CameraSystems::CameraControlSystem))
-        .with_system(building_placement_system.label(CameraSystems::BuildingPlacementSystem).after(CameraSystems::CameraRaycastSystem))
-        .with_system(camera_raycast_response_system.label(CameraSystems::CameraRaycastResponseSystem).after(CameraSystems::BuildingPlacementSystem))
+        // .with_system(camera_control_system.label(CameraSystems::CameraControlSystem))
+        // .with_system(camera_raycast_system.label(CameraSystems::CameraRaycastSystem).after(CameraSystems::CameraControlSystem))
+        // .with_system(building_placement_system.label(CameraSystems::BuildingPlacementSystem).after(CameraSystems::CameraRaycastSystem))
+        // .with_system(camera_raycast_response_system.label(CameraSystems::CameraRaycastResponseSystem).after(CameraSystems::BuildingPlacementSystem))
+        // .with_system(show_selection_box.after(camera_raycast_response_system))
+        // .with_system(camera_select.after(show_selection_box))
+        // .with_system(camera_context_focus_system.label(CameraSystems::CameraContextFocusSystem).after(CameraSystems::CameraRaycastResponseSystem))
+        // .with_system(selection_highlighter.label(CameraSystems::SelectionHighlighterSystem).after(CameraSystems::CameraRaycastResponseSystem))
+        // .with_system(command_system.label(CameraSystems::CommandSystem).after(CameraSystems::CameraRaycastResponseSystem))
+        .with_system(camera_control_system)
+        .with_system(camera_raycast_system.after(camera_control_system))
+        .with_system(building_placement_system.after(camera_raycast_system))
+        .with_system(camera_raycast_response_system.after(building_placement_system))
         .with_system(show_selection_box.after(camera_raycast_response_system))
         .with_system(camera_select.after(show_selection_box))
-        .with_system(camera_context_focus_system.label(CameraSystems::CameraContextFocusSystem).after(CameraSystems::CameraRaycastResponseSystem))
-        .with_system(selection_highlighter.label(CameraSystems::SelectionHighlighterSystem).after(CameraSystems::CameraRaycastResponseSystem))
-        .with_system(command_system.label(CameraSystems::CommandSystem).after(CameraSystems::CameraRaycastResponseSystem))
+        .with_system(camera_context_focus_system.after(camera_raycast_response_system))
+        .with_system(selection_highlighter.after(camera_raycast_response_system))
+        .with_system(command_system.after(camera_raycast_response_system))
 }
 
 pub struct CameraController {
@@ -68,15 +75,11 @@ pub struct CameraController {
 
 pub fn create_camera(
     settings: Res<CameraSettings>,
-    map: Res<Map>,
+    map: Res<MapBounds>,
     mut commands: Commands
 ) {
     let (direction, distance) = settings.default_direction_and_distance();
 
-    // let min_z = direction.z * settings.min_zoom;
-    // let min_y = direction.y * settings.min_zoom;
-    // let max_z = direction.z * settings.max_zoom;
-    // let max_y = direction.y * settings.max_zoom;
     let z = direction.z * distance;
     let y = direction.y * distance;
 
@@ -86,43 +89,23 @@ pub fn create_camera(
     let root_entity = commands.spawn()
         .insert(Transform::default())
         .insert(GlobalTransform::default())
-        // .insert(Velocity { linvel : Vec3::new(0.0, 0.0, 0.0), angvel : Vec3::new(0.0, 0.0, 0.0)})
-        // .insert(RigidBody::KinematicVelocityBased)
-        // .insert(Torque::default())
         .insert(LocalBounds {
-            x : Vec2::new(-map.bounds.0 / 2.0, map.bounds.0 / 2.0),
+            x : Vec2::new(-map.0.x / 2.0, map.0.x / 2.0),
             y : Vec2::new(NEG_INFINITY, INFINITY),
-            z : Vec2::new(-map.bounds.1 / 2.0, map.bounds.1 / 2.0)
-            // x : Vec2::new(-20.0, 20.0),
-            // y : Vec2::new(NEG_INFINITY, INFINITY),
-            // z : Vec2::new(-20.0, 20.0)
+            z : Vec2::new(-map.0.y / 2.0, map.0.y / 2.0)
         }).id();
-
-    // let pivot_entity = commands.spawn()
-    //     .insert(Transform::default())
-    //     .insert(GlobalTransform::default())
-    //     .insert(Velocity { linvel : Vec3::new(0.0, 0.0, 0.0), angvel : Vec3::new(0.0, 0.0, 0.0)})
-    //     .insert(Parent(root_entity)).id();
 
     let camera_entity = commands.spawn_bundle(PerspectiveCameraBundle {
         transform,
         ..Default::default()
     })
-    // .insert(Velocity { linvel : Vec3::new(0.0, 0.0, 0.0), angvel : Vec3::new(0.0, 0.0, 0.0)})
-        // .insert(LocalBounds {
-        //     x : Vec2::new(0.0, 0.0),
-        //     y : Vec2::new(min_y, max_y),
-        //     z : Vec2::new(min_z, max_z),
-        // })
         .insert(Parent(root_entity))
         .id();
-        
+
     commands.insert_resource(CameraController {
         camera_root : root_entity,
-        // camera_pivot : pivot_entity,
         camera : camera_entity,
 
-        // root_velocity: InterForce { force: Vec3::default(), max_speed: 1.0, acceleration: settings.scroll_acceleration},
         root_velocity: Vec3::default(),
         rotation_velocity: 0.0,
         zoom_precentage: settings.default_zoom,
@@ -174,13 +157,6 @@ pub fn camera_control_system(
     );
 
     let height = trans.get_mut(controller.camera).map_or(1.0, |x|{
-
-        // println!("{}", x.translation.y);
-        // println!("{}", settings.min_zoom);
-        // println!("{}", settings.max_zoom);
-        // println!("{}", settings.zoom_base);
-        // println!("{}", settings.zoom_base * settings.zoom_ratio);
-        // println!("{}", mathfu::D1::normalize_from_to(x.translation.distance(Vec3::default()), settings.min_zoom().length(), settings.max_zoom().length(), settings.zoom_base, settings.zoom_base * settings.zoom_ratio));
         mathfu::D1::clamp(mathfu::D1::normalize_from_to(x.translation.distance(Vec3::default()), settings.min_zoom().length(), settings.max_zoom().length(),
         settings.zoom_base, settings.zoom_base * settings.zoom_ratio), settings.zoom_base, settings.zoom_base * settings.zoom_ratio)
     });
@@ -226,9 +202,6 @@ pub fn camera_control_system(
 
     let delta = mathfu::D1::clamp(time.delta_seconds(), 0.0, 1.0 / settings.minimum_fps_for_deltatime as f32);
 
-    // controller.root_velocity.apply_force(Vec3::new(x, 0.0, z), delta);
-
-    
     if let Ok(mut tran) = trans.get_mut(controller.camera_root) {
         //*Rotation
         let mut dir = 0.;
@@ -382,7 +355,6 @@ pub fn camera_raycast_system(
                 }
             }
         }
-
     }
 }
 
@@ -396,11 +368,7 @@ pub struct CameraSelector {
     mouse_start_pos : Vec2,
     mouse_end_pos : Vec2,
     minimum_distance : f32,
-    // box_selecting : bool,
     status: BoxSelectStatus,
-
-    // add_to_selection : bool,
-    // to_clear : bool,
 }
 
 impl CameraSelector {
@@ -486,7 +454,7 @@ pub fn create_selector(
         status : PlacementStatus::Idle,
         constructor : None,
         data : None,
-        ins_data : None,
+        spawn_data : None,
         entity : None,
         placing : [false; CLICK_BUFFER],
     });
@@ -544,10 +512,10 @@ pub fn camera_select(
     key_input : Res<Input<KeyCode>>,
 
     mut units : Query<(Entity, &GlobalTransform, &mut Selectable, &TeamPlayer)>,
-    // teamplayers : Query<&TeamPlayer>,
     cameras : Query<(&GlobalTransform, &Camera)>,
 ) {
     for event in selection_event.iter() {
+        println!("send selection event of {:?}", event);
 
         let add_to_selection = key_input.pressed(KeyCode::LShift) || key_input.pressed(KeyCode::RShift);
         let mut empty = true;
@@ -699,7 +667,7 @@ pub fn command_system(
     current_placement : Res<CurrentPlacement<CLICK_BUFFER>>,
     input : Res<Input<MouseButton>>,
 
-    units : Query<(&SnowFlake, &Selectable), With<PathFinder>>,
+    units : Query<(Entity, &Selectable), With<PathFinder>>,
     team_players : Query<&TeamPlayer>,
     teamplayer_world : Res<TeamPlayerWorld>,
     mut move_commands : EventWriter<MoveCommand>,
@@ -713,12 +681,12 @@ pub fn command_system(
                     .map_or(false, |t| t)) {
                 attack_commands.send(AttackCommand{
                     target : ray_cast.id,
-                    units : units.iter().filter_map(|(id, sel) |if sel.selected { Some(*id) } else { None }).collect::<Vec<SnowFlake>>(),
+                    units : units.iter().filter_map(|(id, sel) |if sel.selected { idents.get_unique_id(id) } else { None }).collect::<Vec<Snowflake>>(),
                 });
             } else {
                 move_commands.send(MoveCommand {
                     position : Vec2::new(ray_cast.point.x, ray_cast.point.z),
-                    units : units.iter().filter_map(|(id, sel)| if sel.selected { Some(*id) } else { None }).collect::<Vec<SnowFlake>>(),
+                    units : units.iter().filter_map(|(id, sel)| if sel.selected { idents.get_unique_id(id) } else { None }).collect::<Vec<Snowflake>>(),
                 });
             }
         }
@@ -747,7 +715,7 @@ pub struct CurrentPlacement<const U : usize> {
     pub status : PlacementStatus,
     pub constructor : Option<Entity>,
     pub data : Option<StackData>,
-    pub ins_data : Option<InstantiationData>,
+    pub spawn_data : Option<ObjectSpawnEventData>,
     pub entity : Option<Entity>,
     pub placing : [bool; U],
 }
@@ -758,7 +726,7 @@ impl<const U : usize> CurrentPlacement<U> {
             status : PlacementStatus::Idle,
             constructor : None,
             data : None,
-            ins_data : None,
+            spawn_data : None,
             entity : None,
             placing : [false; U],
         }
@@ -804,7 +772,7 @@ pub fn building_placement_system(
 
             if let Some(x) = &current_placement.data {
                 let (mesh, material) = {
-                    let m1 = gltf_assets.get(&x.id).clone();
+                    let m1 = gltf_assets.get(&x.object_type.id()).clone();
                     let m2 = gltfs.get(m1.unwrap().0.clone());
                     let m3 = gltf_meshes.get(m2.unwrap().meshes[0].clone());
                     let m4 = m3.unwrap().primitives[0].clone();
@@ -867,7 +835,7 @@ pub fn building_placement_system(
                     }
                     if up {
                         if let Ok(teamplayer) = team_players.get(constructor) {
-                            current_placement.ins_data = Some(InstantiationData{transform : tran.clone(), spawn_point : None, end_point : None, team_player : *teamplayer, multiplayer : false, had_identifier : false,});
+                            current_placement.spawn_data = Some(ObjectSpawnEventData{snow_flake: Snowflake::new(), object_type: current_placement.data.unwrap().object_type, transform : tran.clone(), team_player : *teamplayer});
                             current_placement.status = PlacementStatus::Completed(e);
                         }
                     }

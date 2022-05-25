@@ -64,7 +64,7 @@ mod misc {
 
     pub fn health_bar_cleanup_system(mut dirty_entities : ResMut<DirtyEntities>, query : Query<&HealthBar>, mut commands : Commands) {
         for e in dirty_entities.entities.iter() {
-            println!("deleting{:?}", e);
+            // println!("deleting{:?}", e);
             commands.get_or_spawn(*e).despawn_recursive();
             // commands.entity(*e).despawn_recursive();
             if let Ok(x) = query.get(*e) {

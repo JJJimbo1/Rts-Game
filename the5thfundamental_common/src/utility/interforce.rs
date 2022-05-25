@@ -12,7 +12,7 @@ impl InterForce {
         let target_xz = direction * self.max_speed;
         let difference = target_xz - self.force;
         self.force += difference.clamp_length_max((self.acceleration * acceleration_scale).min(difference.length()));
-        println!("{}", self.force);
+        // println!("{}", self.force);
     }
 
     pub fn set_force(&mut self, force : Vec3) {

@@ -13,6 +13,7 @@ pub use gameplay_ui::gameplay_ui::*;
 pub use health_bar_ui::*;
 
 use bevy::prelude::*;
+use the5thfundamental_common::{StackData, ActiveQueue};
 pub trait Menu {
     fn main_container(&self) -> Entity;
     fn open(&self, visible_query: &mut Query<&mut Visibility>, children_query: &Query<&Children>,) -> bool {
@@ -96,11 +97,17 @@ pub enum SkirmishButtons {
 #[derive(Debug, Clone)]
 #[derive(Component)]
 pub enum ContextMenuButtons {
-    BuildingTab,
-    UnitTab,
-    BuildBuildingButton(Option<(Entity, String)>),
-    BeginPlaceBuildingButton(Option<(Entity, String)>),
-    TrainUnitButton(Option<(Entity, String)>),
+    StructuresTab,
+    SupportStructuresTab,
+    InfantryTab,
+    VehiclesTab,
+    AircraftTab,
+    WatercraftTab,
+    TechnologyTab,
+    TranformationTab,
+    BeginButton(Option<(Entity, ActiveQueue, StackData)>),
+    BeginPlaceBufferedButton(Option<(Entity, StackData)>),
+    // BeginUnbufferedButton(Option<(Entity, ActiveTab, StackData)>),
 }
 
 pub struct ButtonMaterials {

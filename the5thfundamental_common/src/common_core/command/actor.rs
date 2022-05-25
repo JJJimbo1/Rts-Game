@@ -46,9 +46,9 @@ pub mod actor {
         pub economy : Economy,
 
         #[serde(skip)]
-        pub buildings : Vec<SnowFlake>,
+        pub buildings : Vec<Snowflake>,
         #[serde(skip)]
-        pub units : Vec<SnowFlake>,
+        pub units : Vec<Snowflake>,
     }
 
     impl Actor {
@@ -61,6 +61,18 @@ pub mod actor {
                 units : Vec::new(),
             }
         }
+
+        pub fn tick_queue(&mut self, queue: &mut Queue, delta: f64) -> Option<StackData> {
+            if let Some(object) = queue.zip_queue.get_next() {
+                let cost_this_frame = object.cost as f64 / object.time_to_build.as_secs_f64() * queue.data.time(delta);
+                if self.economy.remove_resources(cost_this_frame) && queue.data.update(delta) {
+                    if let Some(sd) = queue.advance() {
+                        return Some(sd);
+                    }
+                }
+            }
+            None
+        }
     }
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,7 +84,7 @@ pub mod actor {
         // pub fn new(teams : &[u8]) -> Self {
 
         // }
-        pub fn assign_building(&mut self, actor : TeamPlayer, queues : SnowFlake) {
+        pub fn assign_building(&mut self, actor : TeamPlayer, queues : Snowflake) {
             if let Some(x) = self.actors.get_mut(&actor) {
                 x.buildings.push(queues);
             }

@@ -4,6 +4,7 @@ mod systems {
     use std::collections::HashMap;
 
     use bevy::prelude::*;
+    use snowflake::ProcessUniqueId;
     use crate::*;
 
     #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
@@ -18,7 +19,11 @@ mod systems {
             .with_system(queue_system.label(EconomySystems::QueueSystem).after(EconomySystems::ResourceAdderSystem))
     }
 
-    fn resource_adder_system(time : Res<Time>, mut actors : ResMut<Actors>, query : Query<(&TeamPlayer, &ResourceProvider)>) {
+    fn resource_adder_system(
+        time : Res<Time>,
+        mut actors : ResMut<Actors>,
+        query : Query<(&TeamPlayer, &EconomicObject)>
+    ) {
         let mut add : HashMap<TeamPlayer, (u32, f64)> = HashMap::new();
         for a in actors.actors.iter() {
             add.insert(*a.0, (0, 0.0));
@@ -26,7 +31,7 @@ mod systems {
         query.for_each(|(tp, res)| {
             if let Some(x) = add.get_mut(tp) {
                 x.0 += 1;
-                x.1 += res.strength;
+                x.1 += res.resource_gen - res.resource_drain;
             }
         });
         for actor in actors.actors.iter_mut() {
@@ -36,87 +41,45 @@ mod systems {
         }
     }
 
-    #[derive(Debug, Clone, Default)]
-    pub struct InitRequests {
-        pub requests : Vec<(ObjectType, String, InstantiationData, Option<Entity>)>,
-        pub with_entities_requests : Vec<(ObjectType, String, InstantiationData, Entity)>,
-    }
+    // #[derive(Debug, Clone, Default)]
+    // pub struct InitRequests {
+    //     pub requests : Vec<(ObjectType, String, InstantiationData, Option<Entity>)>,
+    //     pub with_entities_requests : Vec<(ObjectType, String, InstantiationData, Entity)>,
+    // }
 
-    impl InitRequests {
-        pub fn new() -> Self {
-            Self{
-                requests : Vec::new(),
-                with_entities_requests : Vec::new(),
-            }
-        }
+    // impl InitRequests {
+    //     pub fn new() -> Self {
+    //         Self{
+    //             requests : Vec::new(),
+    //             with_entities_requests : Vec::new(),
+    //         }
+    //     }
 
-        pub fn request(&mut self, otype : ObjectType, id : String, data : InstantiationData, entity : Option<Entity>) {
-            self.requests.push((otype, id, data, entity));
-        }
-    }
+    //     pub fn request(&mut self, otype : ObjectType, id : String, data : InstantiationData, entity : Option<Entity>) {
+    //         self.requests.push((otype, id, data, entity));
+    //     }
+    // }
 
-    fn queue_system(time : Res<Time>, mut actors : ResMut<Actors>, mut inits : ResMut<InitRequests>, mut query : Query<(&Transform, &TeamPlayer, &mut Queues)>) {
-        query.for_each_mut(|(tran, tp, mut que)| {
-            match &mut que.building_queue {
-                Some(x) => {
-                    if let Some(sd) = x.get_next() {
-                        if let Some(a) = actors.actors.get_mut(tp) {
-                            let cost_this_frame = sd.cost as f64 / sd.time_to_build.as_secs_f64() * x.data().time(time.delta_seconds() as f64);
-                            if a.economy.remove_resources(cost_this_frame) {
-                            // println!("{}", x.height(&sd));
-                                if x.data_mut().update(time.delta_seconds() as f64) {
-                                    match x.get_next_move() {
-                                        Some(sd) => {
-                                            x.data_mut().buffer.push(sd);
-                                        },
-                                        None => { }
-                                    }
-                                    match x.get_next() {
-                                        Some(sd) => {
-                                            x.data_mut().set_timer(sd.time_to_build.as_secs_f64());
-                                        },
-                                        None => { }
-                                    }
-                                }
-                            }
+    fn queue_system(
+        mut spawn_events: EventWriter<ObjectSpawnEvent>,
+        time : Res<Time>,
+        mut actors : ResMut<Actors>,
+        // mut inits : ResMut<InitRequests>,
+        mut query : Query<(&Transform, &TeamPlayer, &mut Queues)>
+    ) {
+        query.for_each_mut(|(tranform, team_player, mut queues)| {
+            if let Some(actor) = actors.actors.get_mut(team_player) {
+                for i in 0..queues.count() {
+                    let queue = &mut queues[i];
+                    if let Some(x) = actor.tick_queue(queue, time.delta_seconds_f64()) {
+                        if x.buffered {
+                            queue.push_buffer(x);
+                        } else {
+                            let spawn_data = ObjectSpawnEventData { snow_flake: Snowflake(ProcessUniqueId::new()), object_type: x.object_type, team_player: *team_player, transform: *tranform};
+                            spawn_events.send(ObjectSpawnEvent(spawn_data));
                         }
                     }
-                },
-                None => { }
-            }
-            match &mut que.unit_queue {
-                Some(x) => {
-                    if let Some(sd) = x.get_next() {
-                        if let Some(a) = actors.actors.get_mut(tp) {
-                            let cost_this_frame = sd.cost as f64 / sd.time_to_build.as_secs_f64() * x.data().time(time.delta_seconds() as f64);
-                            if a.economy.remove_resources(cost_this_frame) {
-                                if x.data_mut().update(time.delta_seconds() as f64) {
-                                    match x.get_next_move() {
-                                        Some(sd) => {
-                                            inits.request(sd.object_type, sd.id, InstantiationData{
-                                                transform : tran.clone(),
-                                                spawn_point : x.data().spawn_point,
-                                                end_point : x.data().end_point,
-                                                team_player : *tp,
-                                                multiplayer : false,
-                                                had_identifier : false,
-                                            }, None);
-                                            // println!("{}", inits.requests.len());
-                                        },
-                                        None => { }
-                                    }
-                                    match x.get_next() {
-                                        Some(sd) => {
-                                            x.data_mut().set_timer(sd.time_to_build.as_secs_f64());
-                                        },
-                                        None => { }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                None => { }
+                }
             }
         })
     }

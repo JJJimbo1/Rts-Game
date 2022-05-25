@@ -1,13 +1,13 @@
 use bevy::ecs::entity::Entity;
 use bimap::BiMap;
 
-use crate::SnowFlake;
+use crate::Snowflake;
 
 pub const SEPARATOR : &str = "||SS||";
 
 #[derive(Debug, Default)]
 pub struct Identifiers {
-    identifiers : BiMap<SnowFlake, Entity>,
+    identifiers : BiMap<Snowflake, Entity>,
 }
 
 impl Identifiers {
@@ -17,11 +17,11 @@ impl Identifiers {
         }
     }
 
-    pub fn insert(&mut self, left : SnowFlake, right : Entity) {
+    pub fn insert(&mut self, left : Snowflake, right : Entity) {
         self.identifiers.insert(left, right);
     }
 
-    pub fn remove_by_unique_id(&mut self, left : SnowFlake) {
+    pub fn remove_by_unique_id(&mut self, left : Snowflake) {
         self.identifiers.remove_by_left(&left);
     }
 
@@ -29,11 +29,11 @@ impl Identifiers {
         self.identifiers.remove_by_right(&right);
     }
 
-    pub fn get_entity(&self, left : SnowFlake) -> Option<Entity> {
+    pub fn get_entity(&self, left : Snowflake) -> Option<Entity> {
         self.identifiers.get_by_left(&left).cloned()
     }
 
-    pub fn get_unique_id(&self, right : Entity) -> Option<SnowFlake> {
+    pub fn get_unique_id(&self, right : Entity) -> Option<Snowflake> {
         self.identifiers.get_by_right(&right).cloned()
     }
 }

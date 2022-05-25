@@ -1,10 +1,10 @@
 use bevy::{math::{Vec2, Vec3, Mat4}, prelude::GlobalTransform, render::camera::Camera, window::Windows};
 
-use crate::SnowFlake;
+use crate::Snowflake;
 
 #[derive(Debug, Copy, Clone)]
 pub struct RayCastResult {
-    pub id : SnowFlake,
+    pub id : Snowflake,
     pub point : Vec3,
     pub len : f32,
 }

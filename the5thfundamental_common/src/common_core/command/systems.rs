@@ -18,8 +18,8 @@ mod systems {
     pub fn command_system_set(set : SystemSet) -> SystemSet {
         set.label(CommonSystemSets::Command)
             .with_system(score_calculator_system.label(CommandSystems::ScoreCalculatorSystem))
-            .with_system(ai_updater_system.label(CommandSystems::AIUpdaterSystem).after(CommandSystems::ScoreCalculatorSystem))
-            .with_system(set_follow_system.label(CommandSystems::PathFindingSystem).after(CommandSystems::AIUpdaterSystem))
+            // .with_system(ai_updater_system.label(CommandSystems::AIUpdaterSystem).after(CommandSystems::ScoreCalculatorSystem))
+            .with_system(set_follow_system.label(CommandSystems::PathFindingSystem).after(CommandSystems::ScoreCalculatorSystem))
             .with_system(path_following_system.label(CommandSystems::PathFollowingSystem).after(PathFindingSystems::PathFindingSystem))
     }
 
@@ -43,44 +43,44 @@ mod systems {
         });
     }
 
-    pub fn ai_updater_system(
-        actors : ResMut<Actors>,
-        idents : Res<Identifiers>,
-        mut queues : Query<&mut Queues>,
-    ) {
-        for a in actors.actors.iter() {
-            match a.1.actor_type {
-                ActorType::AI { difficulty: _, settings: _ } => {
-                    for b in a.1.buildings.clone().iter() {
-                        if let Some(e) = idents.get_entity(*b) {
-                            if let Ok(mut q) = queues.get_mut(e) {
-                                if let Some(uq) = q.unit_queue.as_mut() {
-                                    if uq.spine().len() > 1 {
-                                        continue;
-                                    }
-                                    for o in uq.ordered().iter() {
-                                        if uq.is_empty() {
-                                            uq.data_mut().set_timer(o.time_to_build.as_secs_f64());
-                                        }
-                                        uq.raise_stack(o.clone(), 1);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                ActorType::Player => {
+    // pub fn ai_updater_system(
+    //     actors : ResMut<Actors>,
+    //     idents : Res<Identifiers>,
+    //     mut queues : Query<&mut Queues>,
+    // ) {
+    //     for a in actors.actors.iter() {
+    //         match a.1.actor_type {
+    //             ActorType::AI { difficulty: _, settings: _ } => {
+    //                 for b in a.1.buildings.clone().iter() {
+    //                     if let Some(e) = idents.get_entity(*b) {
+    //                         if let Ok(mut q) = queues.get_mut(e) {
+    //                             if let Some(uq) = q.support_queue.as_mut() {
+    //                                 if uq.spine().len() > 1 {
+    //                                     continue;
+    //                                 }
+    //                                 for o in uq.ordered().iter() {
+    //                                     if uq.is_empty() {
+    //                                         uq.data_mut().set_timer(o.time_to_build.as_secs_f64());
+    //                                     }
+    //                                     uq.raise_stack(o.clone(), 1);
+    //                                 }
+    //                             }
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //             ActorType::Player => {
 
-                },
-            }
-        }
-    }
+    //             },
+    //         }
+    //     }
+    // }
 
     pub fn set_follow_system(
+        mut move_commands : EventReader<MoveCommand>,
         idents : Res<Identifiers>,
         mut rand : ResMut<Random>,
         mut mobile_object : Query<(&Transform, &mut PathFinder, &mut MobileObject)>,
-        mut move_commands : EventReader<MoveCommand>,
     ) {
         move_commands.iter().for_each(|c| {
             let spread = (c.units.len() as f32).sqrt() * 2.0;
@@ -95,7 +95,6 @@ mod systems {
     }
 
     pub fn path_following_system(
-        // pool : Res<ComputeTaskPool>,
         mut debug : ResMut<DebugLines>,
         mut followers : Query<(&mut Path, &mut Transform, &mut Velocity, &mut MobileObject)>,
     ) {

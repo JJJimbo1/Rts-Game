@@ -2,18 +2,18 @@ pub use commands::*;
 mod commands {
     use bevy::prelude::*;
 
-    use crate::SnowFlake;
+    use crate::Snowflake;
 
 
     #[derive(Debug, Clone)]
     pub struct MoveCommand{
         pub position : Vec2,
-        pub units : Vec<SnowFlake>,
+        pub units : Vec<Snowflake>,
     }
     #[derive(Debug, Clone)]
     pub struct AttackCommand{
-        pub target : SnowFlake,
-        pub units : Vec<SnowFlake>,
+        pub target : Snowflake,
+        pub units : Vec<Snowflake>,
     }
     // #[derive(Debug, Copy, Clone)]
     // pub enum ActorCommand {

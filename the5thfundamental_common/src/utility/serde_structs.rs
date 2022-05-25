@@ -1,16 +1,8 @@
+use bevy_pathfinding::{PathFinder, Path};
 use serde::{Serialize, Deserialize};
-use bevy::{prelude::Transform, math::{Vec3, Quat}};
+use bevy::{prelude::{Transform, Component}, math::{Vec3, Quat}};
 use bevy_rapier3d::prelude::Velocity;
 use approx::*;
-
-
-
-
-
-
-pub trait ShouldSave {
-    fn should_save(&self) -> bool;
-}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct SerdeTransform {
@@ -47,17 +39,24 @@ impl From<SerdeTransform> for Transform {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
 pub struct SerdeVelocity{
     lin: (f32, f32, f32),
     ang: (f32, f32, f32),
 }
 
-impl ShouldSave for SerdeVelocity {
-    fn should_save(&self) -> bool {
-        println!("{}", abs_diff_eq!(self.lin.0, 0.0));
-        abs_diff_eq!(self.lin.0, 0.0) && abs_diff_eq!(self.lin.1, 0.0) && abs_diff_eq!(self.lin.2, 0.0)
-        && abs_diff_eq!(self.ang.0, 0.0) && abs_diff_eq!(self.ang.1, 0.0) && abs_diff_eq!(self.ang.2, 0.0)
+impl SerdeComponent for SerdeVelocity {
+    fn saved(&self) -> Option<Self> {
+        if abs_diff_eq!(self.lin.0, 0.0, epsilon = f32::EPSILON)
+        && abs_diff_eq!(self.lin.1, 0.0, epsilon = f32::EPSILON)
+        && abs_diff_eq!(self.lin.2, 0.0, epsilon = f32::EPSILON)
+        && abs_diff_eq!(self.ang.0, 0.0, epsilon = f32::EPSILON)
+        && abs_diff_eq!(self.ang.1, 0.0, epsilon = f32::EPSILON)
+        && abs_diff_eq!(self.ang.2, 0.0, epsilon = f32::EPSILON) {
+            None
+        } else {
+            Some(*self)
+        }
     }
 }
 
@@ -75,6 +74,35 @@ impl From<SerdeVelocity> for Velocity {
         Self {
             linvel: Vec3::new(vel.lin.0, vel.lin.1, vel.lin.2),
             angvel: Vec3::new(vel.ang.0, vel.ang.1, vel.ang.2),
+        }
+    }
+}
+
+pub trait SerdeComponent: Sized {
+    fn saved(&self) -> Option<Self>;
+}
+
+
+
+impl SerdeComponent for PathFinder {
+    fn saved(&self) -> Option<Self> {
+        if abs_diff_eq!(self.start.x, 0.0, epsilon = f32::EPSILON)
+        && abs_diff_eq!(self.start.y, 0.0, epsilon = f32::EPSILON)
+        && abs_diff_eq!(self.end.x, 0.0, epsilon = f32::EPSILON)
+        && abs_diff_eq!(self.end.y, 0.0, epsilon = f32::EPSILON) {
+            None
+        } else {
+            Some(self.clone())
+        }
+    }
+}
+
+impl SerdeComponent for Path {
+    fn saved(&self) -> Option<Self> {
+        if self.0.as_ref().map_or(true, |p| p.len() == 0) {
+            None
+        } else {
+            Some(self.clone())
         }
     }
 }

@@ -1,23 +1,23 @@
 pub use weapon::*;
 mod weapon {
 
-    use bevy::prelude::Component;
+    use bevy::{prelude::Component, reflect::Reflect};
     use serde::{
         Serialize, Deserialize,
     };
 
-    use crate::SnowFlake;
+    use crate::{Snowflake, SerdeComponent};
 
 
     #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
     pub enum Target {
-        AutoTarget(SnowFlake),
-        ManualTarget(SnowFlake),
+        AutoTarget(Snowflake),
+        ManualTarget(Snowflake),
         None
     }
 
     impl Target {
-        pub fn get_target(&self) -> Option<SnowFlake> {
+        pub fn get_target(&self) -> Option<Snowflake> {
             match self {
                 Self::AutoTarget(sf) => {
                     Some(*sf)
@@ -47,7 +47,8 @@ mod weapon {
         Universal,
     }
 
-    #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+    #[derive(Debug, Clone, Copy)]
+    #[derive(Serialize, Deserialize)]
     pub struct DamageTypes {
         pub kinetic : f32,
         pub fire : f32,
@@ -58,7 +59,8 @@ mod weapon {
         pub radioactivity : f32,
     }
 
-    #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+    #[derive(Debug, Clone, Copy)]
+    #[derive(Serialize, Deserialize)]
     pub struct Weapon {
         pub target : Target,
         pub target_force : TargetForce,
@@ -67,11 +69,12 @@ mod weapon {
         pub damage : f32,
         pub damage_types : DamageTypes,
         pub fire_rate : f32,
-        #[serde(skip)]
-        pub fire_time : f32,
+        // #[serde(skip)]
+        pub cooldown : f32,
     }
 
-    #[derive(Debug, Clone, Serialize, Deserialize)]
+    #[derive(Debug, Clone)]
+    #[derive(Serialize, Deserialize)]
     #[derive(Component)]
     pub struct WeaponSet {
         ///This value should be slightly lower (~*0.98) than a weapons range.
@@ -95,6 +98,22 @@ mod weapon {
                 }
             }
             true
+        }
+    }
+
+    impl SerdeComponent for WeaponSet {
+        fn saved(&self) -> Option<Self> {
+            let mut cooled = true;
+            for weapon in self.weapons.iter() {
+                if weapon.cooldown > 0.0 {
+                    cooled = false;
+                }
+            }
+            if self.no_targets() && cooled {
+                None
+            } else {
+                Some(self.clone())
+            }
         }
     }
 }

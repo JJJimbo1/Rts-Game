@@ -18,9 +18,7 @@ pub struct BlocksRaycast;
 
 pub fn ui_hit_detection_system(
     mut ui_hit : ResMut<UiHit<CLICK_BUFFER>>,
-
     mut input : EventReader<MouseButtonInput>,
-
     interaction_query: Query<
         (&Interaction, &Visibility),
         (Changed<Interaction>, With<BlocksRaycast>),
@@ -40,13 +38,6 @@ pub fn ui_hit_detection_system(
                     }
                     ui_hit.holding = true;
                 },
-                // Interaction::None => {
-                //     ui_hit.hit = true;
-                //     ui_hit.holding = true;
-                //     for b in 0..counter.len() {
-                //         counter[b] = true;
-                //     }
-                // }
                 _ => { }
             }
         }

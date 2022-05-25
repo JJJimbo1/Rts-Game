@@ -355,12 +355,3 @@ mod collider {
         }
     }
 }
-
-#[test]
-fn atest() {
-    //for a in 1..=50 {
-        for i in 2..3 {
-            println!("What? : {}, {}, {}", i - 2, i - 1, i);
-        }
-    //}
-}

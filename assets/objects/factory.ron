@@ -1,32 +1,16 @@
 #![enable(implicit_some)]
-GameObject (
-    id : "factory",
-    object_type : Building,
-    ui_info : (
-        display_name : "Factory",
-        description : "",
-        thumbnail : "",
-    ),
-    queues : (
-        // queues : [
-        //     "crane_yard"
-        // ],
-        cost : 2_000,
-        time_to_build : Duration(
-            secs : 2,
-            nanos : 0,
+(
+    stack: (
+        Structures,
+        (
+            object_type: Factory,
+            time_to_build: Duration (
+                secs : 2,
+                nanos : 0,
+            ),
+            cost: 1200,
+            buffered: true,
         )
-    ),
-    trainer : (
-        trainies : [
-            "super_simple_tank"
-        ],
-        spawn_point : (3.75, 0.2, -4.0),
-        end_point : (3.75, 0.0, -24.0),
-    ),
-    power : (
-        power_gen : 0,
-        power_drain : 10,
     ),
     health : (
         max_health : 3000,
@@ -42,4 +26,10 @@ GameObject (
             radioactivity : 0.9,
         )
     ),
+    queues: (
+        objects: [
+            Tank,
+        ],
+    ),
+    collider_string: "GAAAAAAAAAACACBBwMzMvQAAIEECACBBwMzMvQAAIEECACBBwMzMvQAAIEEAACBBwMzMvQIAIMEAACBBwMzMvQIAIMEAACBBwMzMvQIAIMEAACBBZmY+QQIAIMEAACBBZmY+QQIAIMEAACBBZmY+QQIAIMEAACDBwMzMvQIAIEEAACDBwMzMvQIAIEEAACDBwMzMvQIAIEECACBBZmY+QQAAIEECACBBZmY+QQAAIEECACBBZmY+QQAAIEECACDBwMzMvQAAIMECACDBwMzMvQAAIMECACDBwMzMvQAAIMECACDBZmY+QQAAIMECACDBZmY+QQAAIMECACDBZmY+QQAAIMEAACDBZmY+QQIAIEEAACDBZmY+QQIAIEEAACDBZmY+QQIAIEEMAAAAAAAAABMAAAAGAAAAAwAAABMAAAADAAAAEAAAAAwAAAAHAAAAFAAAAAwAAAAUAAAAFgAAABUAAAASAAAADwAAABUAAAAPAAAACQAAABEAAAAEAAAAAAAAABEAAAAAAAAACgAAAAUAAAAIAAAADgAAAAUAAAAOAAAAAgAAAAEAAAANAAAAFwAAAAEAAAAXAAAACwAAAA=="
 )

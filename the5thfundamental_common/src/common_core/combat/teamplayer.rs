@@ -10,9 +10,10 @@ mod teamplayer {
     };
     use xtrees::quad::*;
 
-    use crate::{Actors, Map, TargetForce, Weapon};
+    use crate::{Actors, MapBounds, TargetForce, Weapon};
 
-    #[derive(Debug, Copy, Clone, Serialize, Deserialize, Hash, Eq)]
+    #[derive(Debug, Default, Copy, Clone, Hash, Eq)]
+    #[derive(Serialize, Deserialize)]
     #[derive(Component)]
     pub struct TeamPlayer {
         pub team : usize,
@@ -53,12 +54,12 @@ mod teamplayer {
     }
 
     impl TeamPlayerWorld {
-        pub fn new(actors : Res<Actors> , map : Res<Map>) -> Self {
+        pub fn new(actors : Res<Actors> , map : Res<MapBounds>) -> Self {
             let mut tpw = Self {
                 layers : HashMap::new(),
             };
             for a in actors.actors.keys() {
-                tpw.layers.insert(*a, QuadTree::new(Quad::new(0.0, 0.0, map.bounds.0 as f32, map.bounds.1 as f32), 17, 8));
+                tpw.layers.insert(*a, QuadTree::new(Quad::new(0.0, 0.0, map.0.x as f32, map.0.y as f32), 17, 8));
             }
             tpw
         }

@@ -39,8 +39,15 @@ mod buffer {
     pub type MediumBuffer = LimitedBuffer<MEDIUM_BUFFER_SIZE>;
     pub type LargeBuffer = LimitedBuffer<LARGE_BUFFER_SIZE>;
 
-    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+    // #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     #[derive(Serialize, Deserialize)]
     #[derive(Component)]
-    pub struct SnowFlake(pub ProcessUniqueId);
+    pub struct Snowflake(pub ProcessUniqueId);
+
+    impl Snowflake {
+        pub fn new() -> Self {
+            Self(ProcessUniqueId::new())
+        }
+    }
 }

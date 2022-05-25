@@ -65,11 +65,3 @@ pub mod random{
         }
     }
 }
-
-#[test]
-fn ran() {
-    let mut r = random::Random::default();
-    for _ in 0..100 {
-        println!("{}", r.range(0., 1.));
-    }
-}

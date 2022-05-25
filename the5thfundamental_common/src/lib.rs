@@ -14,8 +14,3 @@ pub enum CommonSystemSets {
     Economy,
     Physics,
 }
-
-#[test]
-fn atest() {
-    println!("Yeet");
-}

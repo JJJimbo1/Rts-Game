@@ -5,7 +5,7 @@ mod systems {
     use bevy_rapier3d::prelude::Collider;
     use xtrees::Quad;
 
-    use crate::{Actors, AttackCommand, CommonSystemSets, DirtyEntities, Health, Identifiers, Map, Target, TeamPlayer, TeamPlayerWorld, WeaponSet, MobileObject};
+    use crate::{Actors, AttackCommand, CommonSystemSets, DirtyEntities, Health, Identifiers, MapBounds, Target, TeamPlayer, TeamPlayerWorld, WeaponSet, MobileObject};
 
     #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
     pub enum CombatSystems {
@@ -19,18 +19,18 @@ mod systems {
     #[derive(Default)]
     pub struct CombatBundle;
 
-    impl Plugin for CombatBundle {
-        fn build(&self, app: &mut App) {
-            app.add_startup_system(combat_startup_system)
-                .add_system_set(SystemSet::new().label(CommonSystemSets::Combat)
-                    .with_system(team_player_world_updater_system.label(CombatSystems::TeamPlayerWorldUpdaterSystem))
-                    .with_system(manual_targeting_system.label(CombatSystems::ManualTargetingSystem).after(CombatSystems::TeamPlayerWorldUpdaterSystem))
-                    .with_system(auto_targeting_system.label(CombatSystems::AutoTargetingSystem).after(CombatSystems::ManualTargetingSystem))
-                    .with_system(weapons_look_at_system.label(CombatSystems::WeaponsSystem).after(CombatSystems::AutoTargetingSystem))
-                    .with_system(weapons_system.label(CombatSystems::WeaponsSystem).after(CombatSystems::AutoTargetingSystem))
-                    .with_system(health_system.label(CombatSystems::HealthSystem).after(CombatSystems::WeaponsSystem)));
-                }
-            }
+    // impl Plugin for CombatBundle {
+    //     fn build(&self, app: &mut App) {
+    //         app.add_startup_system(combat_startup_system)
+    //             .add_system_set(SystemSet::new().label(CommonSystemSets::Combat)
+    //                 .with_system(team_player_world_updater_system.label(CombatSystems::TeamPlayerWorldUpdaterSystem))
+    //                 .with_system(manual_targeting_system.label(CombatSystems::ManualTargetingSystem).after(CombatSystems::TeamPlayerWorldUpdaterSystem))
+    //                 .with_system(auto_targeting_system.label(CombatSystems::AutoTargetingSystem).after(CombatSystems::ManualTargetingSystem))
+    //                 .with_system(weapons_look_at_system.label(CombatSystems::WeaponsSystem).after(CombatSystems::AutoTargetingSystem))
+    //                 .with_system(weapons_system.label(CombatSystems::WeaponsSystem).after(CombatSystems::AutoTargetingSystem))
+    //                 .with_system(health_system.label(CombatSystems::HealthSystem).after(CombatSystems::WeaponsSystem)));
+    //             }
+    //         }
 
     ///Make sure you include the startup system.
     pub fn combat_system_set(set : SystemSet) -> SystemSet {
@@ -43,7 +43,7 @@ mod systems {
             .with_system(health_system.label(CombatSystems::HealthSystem).after(CombatSystems::WeaponsSystem))
     }
 
-    pub fn combat_startup_system(actors : Res<Actors>, map : Res<Map>, mut commands : Commands) {
+    pub fn combat_startup_system(actors : Res<Actors>, map : Res<MapBounds>, mut commands : Commands) {
         let tpw = TeamPlayerWorld::new(actors, map);
         commands.insert_resource(tpw);
     }
@@ -95,7 +95,12 @@ mod systems {
         });
     }
 
-    fn auto_targeting_system(team_player_world : Res<TeamPlayerWorld>, identifiers : Res<Identifiers>, transforms : Query<&Transform>, mut query : Query<(&Transform, &TeamPlayer, &mut WeaponSet)>) {
+    fn auto_targeting_system(
+        team_player_world : Res<TeamPlayerWorld>,
+        identifiers : Res<Identifiers>,
+        transforms : Query<&Transform>,
+        mut query : Query<(&Transform, &TeamPlayer, &mut WeaponSet)>
+    ) {
         query.for_each_mut(|(tran, tp, mut wep)| {
             match wep.weapons[0].target {
                 Target::AutoTarget(x) => {
@@ -188,10 +193,10 @@ mod systems {
     ) {
         query_iter.for_each_mut(|(_, tran, mut wep)| {
             for w in wep.weapons.iter_mut() {
-                if w.fire_time < w.fire_rate {
-                    w.fire_time += time.delta_seconds();
+                if w.cooldown > 0.0 {
+                    w.cooldown -= time.delta_seconds();
                 }
-                if w.fire_time < w.fire_rate {
+                if w.cooldown > 0.0 {
                     continue;
                 }
                 if let Some(sf) = w.target.get_target() {
@@ -199,7 +204,7 @@ mod systems {
                         if let (Ok(t), Ok(mut h)) = (trans.get(e), healths.get_mut(e)) {
                             if mathfu::D2::distance_magnitude((tran.translation.x, tran.translation.z), (t.translation.x, t.translation.z)) < w.range.powi(2) {
                                 h.damage(w.damage, w.damage_types);
-                                w.fire_time = 0.0;
+                                w.cooldown = w.fire_rate;
                             }
                         }
                     }

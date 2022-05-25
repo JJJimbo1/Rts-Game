@@ -19,4 +19,27 @@ mod select {
         pub selected : bool,
         pub context : SelectableContext,
     }
+
+    impl Selectable {
+        pub fn single() -> Self {
+            Self {
+                selected: false,
+                context: SelectableContext::Single
+            }
+        }
+
+        pub fn multiselect() -> Self {
+            Self {
+                selected: false,
+                context: SelectableContext::MultiSelect
+            }
+        }
+
+        pub fn clear() -> Self {
+            Self {
+                selected: false,
+                context: SelectableContext::Clear
+            }
+        }
+    }
 }

@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 bevy = "0.7.0"
-bevy_rapier3d = "0.13.2"
+bevy_rapier3d = { version = "0.13.2"}
 bevy_ninepatch = "0.7.0"
 bevy_prototype_debug_lines = { version = "0.7.0", features = ["3d"]}
 ron = "0.7.0"
@@ -19,6 +19,7 @@ lazy_static = "1.4.0"
 chrono = "0.4.19"
 bincode = "1.3.2"
 snowflake = "1.3.0"
+base64 = "0.13.0"
 the5thfundamental_common = { path = "../the5thfundamental_common"}
 zipqueue = { path = "../../../crates/zipqueue"}
 qloader = { path = "../../../crates/qloader"}

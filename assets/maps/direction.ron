@@ -5,7 +5,7 @@
         thumbnail : "",
         description : "Sandbox Map"
     ),
-    base : "dirmap",
+    base : "direction",
     bounds : (1000.0, 1000.0),
     box_collider : (1000.0, 1.0, 1000.0),
 )

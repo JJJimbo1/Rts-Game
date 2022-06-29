@@ -1,7 +1,7 @@
 pub use weapon::*;
 mod weapon {
 
-    use bevy::{prelude::Component, reflect::Reflect};
+    use bevy::{prelude::{Component, Entity}, reflect::Reflect};
     use serde::{
         Serialize, Deserialize,
     };
@@ -11,23 +11,17 @@ mod weapon {
 
     #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
     pub enum Target {
-        AutoTarget(Snowflake),
-        ManualTarget(Snowflake),
+        AutoTarget(Entity),
+        ManualTarget(Entity),
         None
     }
 
     impl Target {
-        pub fn get_target(&self) -> Option<Snowflake> {
+        pub fn get_target(&self) -> Option<Entity> {
             match self {
-                Self::AutoTarget(sf) => {
-                    Some(*sf)
-                },
-                Self::ManualTarget(sf) => {
-                    Some(*sf)
-                },
-                Self::None => {
-                    None
-                }
+                Self::AutoTarget(e) => { Some(*e) },
+                Self::ManualTarget(e) => { Some(*e) },
+                Self::None => { None }
             }
         }
     }

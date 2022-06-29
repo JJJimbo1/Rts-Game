@@ -5,7 +5,7 @@ mod buffer {
     use serde::{Deserialize, Serialize};
     use snowflake::ProcessUniqueId;
 
-    use crate::{SMALL_BUFFER_SIZE, MEDIUM_BUFFER_SIZE, LARGE_BUFFER_SIZE};
+    use crate::{SMALL_BUFFER_SIZE, MEDIUM_BUFFER_SIZE, LARGE_BUFFER_SIZE, SerdeComponent};
 
     #[derive(Debug, Clone, Copy)]
     pub struct LimitedBuffer<const B: usize> {
@@ -40,7 +40,7 @@ mod buffer {
     pub type LargeBuffer = LimitedBuffer<LARGE_BUFFER_SIZE>;
 
     // #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     #[derive(Serialize, Deserialize)]
     #[derive(Component)]
     pub struct Snowflake(pub ProcessUniqueId);
@@ -48,6 +48,13 @@ mod buffer {
     impl Snowflake {
         pub fn new() -> Self {
             Self(ProcessUniqueId::new())
+        }
+    }
+
+    impl SerdeComponent for Snowflake {
+        fn saved(&self) -> Option<Self> {
+            //TODO: Something here.
+            Some(*self)
         }
     }
 }

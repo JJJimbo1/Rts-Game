@@ -4,10 +4,9 @@ use bevy_rapier3d::prelude::Collider;
 pub use developer::*;
 
 use bevy::prelude::*;
-use qloader::QLoader;
 use serde::{Serialize, Deserialize};
 
-use crate::{load_from_file, Manifest, ColliderAsset, AssetId, AssetType, decode};
+use crate::{load_from_file, Manifest, AssetId, AssetType, decode};
 
 #[derive(Clone)]
 pub struct MapPrefabs {
@@ -18,7 +17,6 @@ pub struct MapPrefabs {
 
 pub fn load_map_prefabs(
     manifest : Res<Manifest>,
-    // colliders: Res<QLoader<ColliderAsset, ()>>,
     mut commands : Commands,
 ) {
 

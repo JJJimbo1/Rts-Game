@@ -1,32 +1,14 @@
 use std::f32::{NEG_INFINITY, INFINITY,};
 
-use bevy::{gltf::{Gltf, GltfMesh}, input::mouse::{MouseScrollUnit, MouseWheel}, prelude::*, render::camera::Camera, utils::tracing::Event};
+use bevy::{gltf::{Gltf}, input::mouse::MouseWheel, prelude::*, render::camera::Camera, math::Vec3Swizzles};
 use bevy_ninepatch::*;
-use bevy_pathfinding::PathFinder;
-use bevy_rapier3d::{prelude::{Velocity, InteractionGroups, RigidBody}, plugin::RapierContext};
+use bevy_rapier3d::{prelude::InteractionGroups, plugin::RapierContext};
 use mathfu::D1;
 use the5thfundamental_common::*;
 use qloader::*;
 use crate::*;
 
 pub const CLICK_BUFFER : usize = 8;
-
-// #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
-// pub enum CameraSetupSystems {
-//     CreateCamera,
-//     CreateSelector,
-// }
-
-// #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
-// pub enum CameraSystems {
-//     CameraControlSystem,
-//     CameraRaycastSystem,
-//     CameraRaycastResponseSystem,
-//     CameraContextFocusSystem,
-//     SelectionHighlighterSystem,
-//     CommandSystem,
-//     BuildingPlacementSystem,
-// }
 
 pub fn camera_setup_system_set(set : SystemSet) -> SystemSet {
     set.label(SystemSets::Camera)
@@ -37,15 +19,6 @@ pub fn camera_setup_system_set(set : SystemSet) -> SystemSet {
 
 pub fn camera_system_set(set : SystemSet) -> SystemSet {
     set.label(SystemSets::Camera)
-        // .with_system(camera_control_system.label(CameraSystems::CameraControlSystem))
-        // .with_system(camera_raycast_system.label(CameraSystems::CameraRaycastSystem).after(CameraSystems::CameraControlSystem))
-        // .with_system(building_placement_system.label(CameraSystems::BuildingPlacementSystem).after(CameraSystems::CameraRaycastSystem))
-        // .with_system(camera_raycast_response_system.label(CameraSystems::CameraRaycastResponseSystem).after(CameraSystems::BuildingPlacementSystem))
-        // .with_system(show_selection_box.after(camera_raycast_response_system))
-        // .with_system(camera_select.after(show_selection_box))
-        // .with_system(camera_context_focus_system.label(CameraSystems::CameraContextFocusSystem).after(CameraSystems::CameraRaycastResponseSystem))
-        // .with_system(selection_highlighter.label(CameraSystems::SelectionHighlighterSystem).after(CameraSystems::CameraRaycastResponseSystem))
-        // .with_system(command_system.label(CameraSystems::CommandSystem).after(CameraSystems::CameraRaycastResponseSystem))
         .with_system(camera_control_system)
         .with_system(camera_raycast_system.after(camera_control_system))
         .with_system(building_placement_system.after(camera_raycast_system))
@@ -59,14 +32,12 @@ pub fn camera_system_set(set : SystemSet) -> SystemSet {
 
 pub struct CameraController {
     pub camera_root: Entity,
-    // pub camera_pivot: Entity,
     pub camera: Entity,
 
     pub root_velocity: Vec3,
     pub rotation_velocity: f32,
     pub zoom_precentage: f32,
     pub zoom_velocity: f32,
-    // pub root_velocity: InterForce,
 
     outside_window: bool,
     just_entered: bool,
@@ -83,7 +54,7 @@ pub fn create_camera(
     let z = direction.z * distance;
     let y = direction.y * distance;
 
-    let mut transform = Transform::from_xyz(2.2, y, z);
+    let mut transform = Transform::from_xyz(0.0, y, z);
     transform.look_at(Vec3::ZERO, Vec3::Y);
 
     let root_entity = commands.spawn()
@@ -293,9 +264,6 @@ pub fn camera_control_system(
             zoom_add = -ev.y;
         }
 
-        let min_zoom = settings.min_zoom();
-        let max_zoom = settings.max_zoom();
-
         if zoom_add > 0. {
             zoom_add = mathfu::D1::clamp(zoom_add, 0., INFINITY);
         } else if zoom_add < 0. {
@@ -310,11 +278,10 @@ pub fn camera_control_system(
 
         controller.zoom_precentage = D1::clamp01(controller.zoom_precentage + controller.zoom_velocity * delta);
 
-        let zoom_y = D1::normalize_from_01(controller.zoom_precentage, min_zoom.y, max_zoom.y);
-        let zoom_z = D1::normalize_from_01(controller.zoom_precentage, min_zoom.z, max_zoom.z);
-
-        tran.translation.y = zoom_y;
-        tran.translation.z = zoom_z;
+        let direction = Vec3::new(0.0, D1::normalize_from_01(controller.zoom_precentage, settings.min_zoom().y, settings.max_zoom().y),
+            D1::normalize_from_01(controller.zoom_precentage, settings.min_zoom().z, settings.max_zoom().z)).normalize_or_zero();
+        let distance = D1::normalize_from_01(controller.zoom_precentage, settings.min_zoom, settings.max_zoom);
+        tran.translation = direction * distance;
 
         if key_input.just_pressed(KeyCode::Grave) {
             let (direction, distance) = settings.default_direction_and_distance();
@@ -336,9 +303,7 @@ pub fn camera_raycast_system(
     windows : Res<Windows>,
     ui_hit : Res<UiHit<CLICK_BUFFER>>,
     context : Res<RapierContext>,
-    identifiers : Res<Identifiers>,
     mut cast : ResMut<CameraRaycast>,
-
     cameras : Query<(&GlobalTransform, &Camera)>,
 ) {
     cast.current_cast = None;
@@ -349,10 +314,9 @@ pub fn camera_raycast_system(
             let (origin, direction) = ray(cursor, &windows, camera, gl_transform);
             if let Some((entity, len)) = context.cast_ray(origin, direction, f32::MAX, true, InteractionGroups::all(), None) {
                 let point = origin + direction * len;
-                if let Some(cam_cast) = identifiers.get_unique_id(entity).map(|id| RayCastResult { id, point, len}) {
-                    cast.last_valid_cast = Some(cam_cast);
-                    cast.current_cast = Some(cam_cast);
-                }
+                let cam_cast = RayCastResult { entity, point, len};
+                cast.last_valid_cast = Some(cam_cast);
+                cast.current_cast = Some(cam_cast);
             }
         }
     }
@@ -452,10 +416,6 @@ pub fn create_selector(
 
     commands.insert_resource(CurrentPlacement::<CLICK_BUFFER> {
         status : PlacementStatus::Idle,
-        constructor : None,
-        data : None,
-        spawn_data : None,
-        entity : None,
         placing : [false; CLICK_BUFFER],
     });
 }
@@ -501,9 +461,9 @@ pub enum SelectionEvent {
 
 pub fn camera_select(
     mut selection_event : EventReader<SelectionEvent>,
+    mut activation_events : EventWriter<ActivationEvent>,
     camera : Res<CameraController>,
     cast : Res<CameraRaycast>,
-    identifiers : Res<Identifiers>,
     player : Res<Player>,
 
     windows : Res<Windows>,
@@ -528,9 +488,9 @@ pub fn camera_select(
         match event {
             SelectionEvent::Single => {
                 let entity = cast.current_cast
-                    .and_then(|c| identifiers.get_entity(c.id))
-                    .and_then(|e| units.get_mut(e)
-                        .map_or(None, |(ent, _, _, _,)| Some(ent))
+                    .and_then(|cast| units.get_mut(cast.entity)
+                    .ok()
+                    .and_then(|(ent, _, _, _,)| Some(ent))
                 );
                 if let Some(ent) = entity {
                     let clear = units.get_mut(ent).unwrap().2.context == SelectableContext::Clear;
@@ -560,6 +520,8 @@ pub fn camera_select(
                             sel.selected = true;
                         }
                     }
+                    println!("activate");
+                    activation_events.send(ActivationEvent { entity: ent, player: player.0 });
                 } else {
                     if !add_to_selection {
                         units.for_each_mut(|(_, _, mut selectable, team_player)| {
@@ -630,14 +592,12 @@ pub fn camera_context_focus_system(
 
 pub fn selection_highlighter(
     cast : Res<CameraRaycast>,
-    idents : Res<Identifiers>,
     mut debug_lines : ResMut<DebugLines>,
 
     query : Query<(&GlobalTransform, &Selectable)>,
 ) {
     if let Some((glt, _)) = cast.current_cast
-        .and_then(|c| idents.get_entity(c.id))
-        .and_then(|e| query.get(e)
+        .and_then(|c| query.get(c.entity)
             .map_or(None, |x| Some(x))
     ) {
         debug_lines.line_colored(
@@ -663,45 +623,44 @@ pub fn selection_highlighter(
 pub fn command_system(
     player : Res<Player>,
     cast : Res<CameraRaycast>,
-    idents : Res<Identifiers>,
     current_placement : Res<CurrentPlacement<CLICK_BUFFER>>,
     input : Res<Input<MouseButton>>,
 
-    units : Query<(Entity, &Selectable), With<PathFinder>>,
+    units : Query<(Entity, &Selectable), With<GroundPathFinder>>,
     team_players : Query<&TeamPlayer>,
     teamplayer_world : Res<TeamPlayerWorld>,
-    mut move_commands : EventWriter<MoveCommand>,
-    mut attack_commands : EventWriter<AttackCommand>,
+    mut unit_commands : EventWriter<UnitCommand>,
 ) {
     if current_placement.placing() { return; }
     if input.just_released(MouseButton::Right) {
         if let Some(ray_cast) = cast.current_cast {
-            if idents.get_entity(ray_cast.id)
-                .map_or(false, |e| teamplayer_world.is_enemy(e, player.0, &team_players)
-                    .map_or(false, |t| t)) {
-                attack_commands.send(AttackCommand{
-                    target : ray_cast.id,
-                    units : units.iter().filter_map(|(id, sel) |if sel.selected { idents.get_unique_id(id) } else { None }).collect::<Vec<Snowflake>>(),
-                });
+            // if idents.get_entity(ray_cast.entity)
+                if teamplayer_world.is_enemy(ray_cast.entity, player.0, &team_players)
+                    .map_or(false, |t| t) {
+                let command = UnitCommand{
+                    units : units.iter().filter_map(|(id, sel)| if sel.selected { Some(id) } else { None }).collect(),
+                    command_type: UnitCommandType::Attack(ray_cast.entity),
+                };
+                unit_commands.send(command);
             } else {
-                move_commands.send(MoveCommand {
-                    position : Vec2::new(ray_cast.point.x, ray_cast.point.z),
-                    units : units.iter().filter_map(|(id, sel)| if sel.selected { idents.get_unique_id(id) } else { None }).collect::<Vec<Snowflake>>(),
+                unit_commands.send(UnitCommand {
+                    units : units.iter().filter_map(|(id, sel)| if sel.selected { Some(id) } else { None }).collect(),
+                    command_type: UnitCommandType::Move(ray_cast.point.xz()),
                 });
             }
         }
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum PlacementStatus {
     Idle,
-    Began,
-    Placing(Entity),
-    Rotating(Entity),
+    Began(PrePlacementInfo),
+    Placing(PlacementInfo),
+    Rotating(PlacementInfo),
     // Stopped(Entity),
-    Canceled(Entity),
-    Completed(Entity),
+    Canceled(PlacementInfo),
+    Completed(PlacementInfo, ObjectSpawnEventData),
 }
 
 impl Default for PlacementStatus {
@@ -713,10 +672,6 @@ impl Default for PlacementStatus {
 #[derive(Debug, Clone)]
 pub struct CurrentPlacement<const U : usize> {
     pub status : PlacementStatus,
-    pub constructor : Option<Entity>,
-    pub data : Option<StackData>,
-    pub spawn_data : Option<ObjectSpawnEventData>,
-    pub entity : Option<Entity>,
     pub placing : [bool; U],
 }
 
@@ -724,16 +679,38 @@ impl<const U : usize> CurrentPlacement<U> {
     pub fn new() -> Self {
         Self {
             status : PlacementStatus::Idle,
-            constructor : None,
-            data : None,
-            spawn_data : None,
-            entity : None,
             placing : [false; U],
         }
     }
 
     pub fn placing(&self) -> bool {
-        self.placing.first().map_or(false, |f| *f) || self.status != PlacementStatus::Idle
+        self.placing.first().map_or(false, |f| *f) || if let PlacementStatus::Idle = self.status { false } else { true }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PrePlacementInfo {
+    pub constructor: Entity,
+    pub queue: ActiveQueue,
+    pub data: StackData,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct PlacementInfo {
+    pub constructor: Entity,
+    pub ghost: Entity,
+    pub queue: ActiveQueue,
+    pub data: StackData,
+}
+
+impl From<(PrePlacementInfo, Entity)> for PlacementInfo {
+    fn from((ppi, e): (PrePlacementInfo, Entity)) -> Self {
+        Self {
+            constructor: ppi.constructor,
+            ghost: e,
+            queue: ppi.queue,
+            data: ppi.data,
+        }
     }
 }
 
@@ -742,15 +719,17 @@ pub fn building_placement_startup_system(mut commands : Commands) {
 }
 
 pub fn building_placement_system(
+    mut spawn_event_writer: EventWriter<ObjectSpawnEvent>,
     gltf_assets : Res<QLoader<GltfAsset, AssetServer>>,
     gltfs : Res<Assets<Gltf>>,
-    gltf_meshes : Res<Assets<GltfMesh>>,
+    // gltf_meshes : Res<Assets<GltfMesh>>,
     cast : Res<CameraRaycast>,
     input : Res<Input<MouseButton>>,
 
     mut current_placement : ResMut<CurrentPlacement::<CLICK_BUFFER>>,
 
     team_players : Query<&TeamPlayer>,
+    mut queueses: Query<&mut Queues>,
 
     mut trans : Query<&mut Transform>,
     mut visibles : Query<&mut Visibility>,
@@ -760,95 +739,85 @@ pub fn building_placement_system(
     for i in 1..current_placement.placing.len() {
         current_placement.placing[i-1] = current_placement.placing[i];
     }
-    let y = current_placement.status != PlacementStatus::Idle;
+    let y = if let PlacementStatus::Idle = current_placement.status { false } else { true };
     if let Some(x) = current_placement.placing.last_mut() {
         *x = y;
     }
     let down = input.just_pressed(MouseButton::Left);
     let up = input.just_released(MouseButton::Left);
+    //Todo: Fix visibility. Bug with Bevy?
     match current_placement.status {
-        PlacementStatus::Began => {
+        PlacementStatus::Began(info) => {
             let mut entity_builder = commands.spawn();
+            entity_builder.insert(Transform::from_xyz(0.0, -10000000000.0, 0.0))
+                .insert(GlobalTransform::default())
+                .insert(Visibility { is_visible: false});
 
-            if let Some(x) = &current_placement.data {
-                let (mesh, material) = {
-                    let m1 = gltf_assets.get(&x.object_type.id()).clone();
-                    let m2 = gltfs.get(m1.unwrap().0.clone());
-                    let m3 = gltf_meshes.get(m2.unwrap().meshes[0].clone());
-                    let m4 = m3.unwrap().primitives[0].clone();
-                    (m4.mesh, m4.material.unwrap())
-                };
-
-                if let Some(lvc) = cast.last_valid_cast {
-                    entity_builder.insert_bundle(PbrBundle {
-                        mesh,
-                        material,
-                        transform : Transform::from_xyz(lvc.point.x, lvc.point.y, lvc.point.z),
-                        ..Default::default()
-                    });
-                } else {
-                    entity_builder.insert_bundle(PbrBundle {
-                        mesh,
-                        material,
-                        transform : Transform::default(),
-                        ..Default::default()
-                    });
-                }
+            if let Some(gltf) = gltf_assets.get(info.data.object_type.id()).and_then(|handle| gltfs.get(handle.0.clone())) {
+                entity_builder.with_children(|parent| {
+                    parent.spawn_scene(gltf.scenes[0].clone());
+                });
             }
-            entity_builder.insert(Visibility { is_visible: false});
-            let e = entity_builder.id();
-            current_placement.status = PlacementStatus::Placing(e);
-            current_placement.entity = Some(e);
+            let ghost = entity_builder.id();
+            current_placement.status = PlacementStatus::Placing((info, ghost).into());
         },
-        PlacementStatus::Placing(e) => {
-            if let Ok(mut v) = visibles.get_mut(e) {
-                if let (Some(cc), Ok(mut t)) = (cast.current_cast, trans.get_mut(e)) {
+        PlacementStatus::Placing(info) => {
+            if let (Ok(mut v), Ok(mut t)) = (visibles.get_mut(info.ghost), trans.get_mut(info.ghost)) {
+                if let Some(cc) = cast.current_cast {
                     *t = Transform::from_xyz(cc.point.x, cc.point.y, cc.point.z);
                     v.is_visible = true;
                 } else {
+                    *t = Transform::from_xyz(0.0, -10000000000.0, 0.0);
                     v.is_visible = false;
                 }
             }
             if down {
-                current_placement.status = PlacementStatus::Rotating(e);
+                println!("down");
+                current_placement.status = PlacementStatus::Rotating(info);
             }
-            if current_placement.constructor.map_or(false, |c| trans.get(c).is_err()) {
-                current_placement.status = PlacementStatus::Canceled(e);
+            if trans.get(info.constructor).is_err() {
+                current_placement.status = PlacementStatus::Canceled(info);
             }
         },
-        PlacementStatus::Rotating(e) => {
-            if let Some((constructor, entity)) = current_placement.constructor.zip(current_placement.entity) {
-                if trans.get(constructor).is_err() {
-                    current_placement.status = PlacementStatus::Canceled(e);
-                    return;
+        PlacementStatus::Rotating(info) => {
+            if trans.get(info.constructor).is_err() {
+                current_placement.status = PlacementStatus::Canceled(info);
+                return;
+            }
+            let mut tran = trans.get_mut(info.ghost).unwrap();
+            match cast.current_cast {
+                Some(raycast) => {
+                    if (raycast.point.x - tran.translation.x).abs() > 0.01 || (raycast.point.z - tran.translation.z).abs() > 0.01 {
+                        tran.look_at(Vec3::new(raycast.point.x, 0.0, raycast.point.z), Vec3::new(0.0, 1.0, 0.0));
+                    }
+                },
+                None => {
+                    // TODO: This should be able to rotate even when cursor is off map.
                 }
-                if let Ok(mut tran) = trans.get_mut(entity) {
-                    match cast.current_cast {
-                        Some(raycast) => {
-                            if (raycast.point.x - tran.translation.x).abs() > 0.01 || (raycast.point.z - tran.translation.z).abs() > 0.01 {
-                                tran.look_at(Vec3::new(raycast.point.x, 0.0, raycast.point.z), Vec3::new(0.0, 1.0, 0.0));
-                            }
-                        },
-                        None => {
-                            // TODO: This should be able to rotate even when cursor is off map.
-                        }
-                    }
-                    if up {
-                        if let Ok(teamplayer) = team_players.get(constructor) {
-                            current_placement.spawn_data = Some(ObjectSpawnEventData{snow_flake: Snowflake::new(), object_type: current_placement.data.unwrap().object_type, transform : tran.clone(), team_player : *teamplayer});
-                            current_placement.status = PlacementStatus::Completed(e);
-                        }
-                    }
+            }
+            if up {
+                if let Ok(teamplayer) = team_players.get(info.constructor) {
+                    let spawn_data = ObjectSpawnEventData{snowflake: Snowflake::new(), object_type: info.data.object_type, transform : tran.clone(), team_player : *teamplayer};
+                    current_placement.status = PlacementStatus::Completed(info, spawn_data);
                 }
             }
         },
         // PlacementStatus::Stopped(e) => {
 
         // },
-        PlacementStatus::Canceled(e) => {
-            commands.entity(e).despawn();
+        PlacementStatus::Canceled(info) => {
+            commands.entity(info.ghost).despawn();
             current_placement.status = PlacementStatus::Idle;
         }
+        PlacementStatus::Completed(info, spawn_data) => {
+            spawn_event_writer.send(ObjectSpawnEvent(spawn_data));
+            // requests.request(ObjectType::Building, current_placement.data.clone().unwrap().id.clone(), current_placement.spawn_data.clone().unwrap(), Some(e));
+            if let Ok(mut x) = queueses.get_mut(info.constructor) {
+                x.queues.get_mut(&info.queue).unwrap().remove_from_buffer(&info.data);
+            }
+            commands.entity(info.ghost).despawn_recursive();
+            current_placement.status = PlacementStatus::Idle;
+        },
         _ => { }
     }
 }

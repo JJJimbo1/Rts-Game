@@ -11,8 +11,6 @@ pub fn match_loading_state_on_enter_system_set() -> SystemSet {
 pub fn match_loading_state_on_update_system_set() -> SystemSet {
     SystemSet::on_update(GameState::MatchLoadingState)
         .with_system(match_loading_update)
-
-        // .with_system(client_object_spawn)
 }
 
 pub fn match_loading_state_on_exit_system_set() -> SystemSet {

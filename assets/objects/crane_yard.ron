@@ -16,7 +16,7 @@
     ),
     queues: (
         objects: [
-            ResourceNode,
+            // ResourceNode,
             Factory,
         ],
     ),

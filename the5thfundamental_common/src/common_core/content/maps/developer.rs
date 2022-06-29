@@ -1,11 +1,11 @@
-use bevy::{prelude::*, utils::HashMap};
-use bevy_pathfinding::{PathFinder, Path};
+use bevy::prelude::*;
 use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
 
 use crate::*;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize)]
 #[derive(Component)]
 pub struct Developer;
 

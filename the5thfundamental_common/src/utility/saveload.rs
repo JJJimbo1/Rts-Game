@@ -3,10 +3,9 @@ use std::{fmt, fs::{File, OpenOptions}, io::Write, path::Path};
 
 use bevy::{prelude::*, ecs::schedule::ShouldRun};
 use bevy_rapier3d::prelude::Velocity;
-use qloader::QLoader;
-use ron::{de::from_reader, extensions::Extensions, ser::{PrettyConfig,}};
+use ron::{de::from_reader, extensions::Extensions, ser::{PrettyConfig, to_string_pretty,}};
 use serde::{Serialize, Deserialize};
-use bevy_pathfinding::{PathFinder, Path as FPath, d2::{GridMap, GridCell}};
+use bevy_pathfinding::{Path as FPath, d2::{GridMap, GridCell}, GridSpace};
 use crate::*;
 
 #[derive(Debug, Clone, Copy)]
@@ -58,9 +57,9 @@ pub struct SaveFile {
 }
 
 pub type SerdeCraneYardQuery<'a> = (&'a Snowflake, &'a Health, &'a Queues, &'a TeamPlayer, &'a Transform);
-pub type SerdeResourceNodeQuery<'a> = (&'a Snowflake, &'a Health, &'a TeamPlayer, &'a Transform);
+pub type SerdeResourceNodeQuery<'a> = (&'a ResourceNode, &'a Snowflake, &'a TeamPlayer, &'a Transform);
 pub type SerdeFactoryQuery<'a> = (&'a Snowflake, &'a Health, &'a Queues, &'a TeamPlayer, &'a Transform);
-pub type SerdeTankQuery<'a> = (&'a Snowflake, &'a Health, &'a PathFinder, &'a FPath, &'a MobileObject, &'a WeaponSet, &'a Velocity, &'a TeamPlayer, &'a Transform);
+pub type SerdeTankQuery<'a> = (&'a Snowflake, &'a Health, &'a GroundPathFinder, &'a FPath, &'a MobileObject, &'a WeaponSet, &'a Velocity, &'a TeamPlayer, &'a Transform);
 
 pub fn save_game(
     mut save_event_reader: EventReader<SaveEvent>,
@@ -74,6 +73,7 @@ pub fn save_game(
     ),
 ) {
     for event in save_event_reader.iter() {
+        println!("SAVE");
         let crane_yards = object.0.iter().map(|object| SerdeCraneYard::from(object)).collect();
         let resource_nodes = object.1.iter().map(|object| SerdeResourceNode::from(object)).collect();
         let factories = object.2.iter().map(|object| SerdeFactory::from(object)).collect();
@@ -123,6 +123,7 @@ pub fn load_game(
                 .precomputed()
             }
         );
+        commands.insert_resource(GridSpace::new(bounds.0.x as usize, bounds.0.y as usize));
 
         for object in save_file.objects.crane_yards { commands.spawn_bundle(CraneYardBundle::from((object, &object_prefabs.crane_yard_prefab))); }
         for object in save_file.objects.resource_nodes { commands.spawn_bundle(ResourceNodeBundle::from((object, &object_prefabs.resource_node_prefab))); }
@@ -168,16 +169,16 @@ pub fn save_to_file<S : Serialize, P : AsRef<Path>>(item : &S, path : P) -> Resu
                 let pretty = PrettyConfig::new()
                     .depth_limit(usize::MAX)
                     .extensions(Extensions::IMPLICIT_SOME);
-                // let s = to_string_pretty(item, pretty).expect("Serialization failed");
+                let s = to_string_pretty(item, pretty).expect("Serialization failed");
 
-                // match x.write(s.as_bytes()) {
-                match bincode::serialize(item) {
+                match x.write(s.as_bytes()) {
+                // match bincode::serialize(item) {
                     Ok(i) => {
-                        // return Ok(())
-                        match x.write(&i) {
-                            Ok(_) => { return Ok(()); },
-                            Err(e) => { log::error!("{}", e); return Err(SaveLoadError::FileWriteError); }
-                        }
+                        return Ok(())
+                        // match x.write(&i) {
+                        //     Ok(_) => { return Ok(()); },
+                        //     Err(e) => { log::error!("{}", e); return Err(SaveLoadError::FileWriteError); }
+                        // }
                     },
                     Err(e) => {
                         log::error!("{}", e);

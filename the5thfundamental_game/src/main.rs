@@ -92,7 +92,7 @@ fn play_game() {
         .insert_resource(WindowDescriptor {
             width: 1920.0,
             height: 1080.0,
-            title: "The 5th Fundamental".to_string(),
+            title: "untitled rts game".to_string(),
             ..Default::default()
         })
         .insert_resource(ClearColor(CLEAR_COLOR))
@@ -105,17 +105,15 @@ fn play_game() {
 
         .add_plugins(DefaultPlugins)
 
-        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
-        .add_plugin(RapierDebugRenderPlugin::default())
+        .add_plugin(CommonPlugin)
         .add_plugin(PhysicsPlugin)
+        .add_plugin(DebugPlugin)
 
-        .add_plugin(DiagnosticsPlugin::default())
         .add_plugin(NinePatchPlugin::<()>::default())
-        .add_plugin(DebugLinesPlugin::with_depth_test(false))
-        .add_plugin(PathFindingPlugin::<DefaultPather>::default())
         .add_plugin(SavePlugin)
 
         .add_event::<SelectionEvent>()
+        .add_event::<ActivationEvent>()
 
         .add_event::<TopMenuButtons>()
         .add_event::<CampaignButtons>()
@@ -124,10 +122,10 @@ fn play_game() {
 
         .add_event::<ObjectSpawnEvent>()
 
-        .add_event::<MoveCommand>()
-        .add_event::<AttackCommand>()
+        .add_event::<UnitCommand>()
+        .add_event::<ObjectKilled>()
+        // .add_event::<AttackCommand>()
 
-        //TODO: fix physics.
         .insert_resource(Random::<WichmannHill>::seeded(123.456))
         .insert_resource(Identifiers::default())
         .insert_resource(DirtyEntities::default())
@@ -154,35 +152,11 @@ fn play_game() {
         .add_system_set(camera_setup_system_set(SystemSet::on_enter(GameState::SingleplayerGame)))
         .add_system(ui_hit_detection_system.label("ui_hit"))
         .add_system_set(camera_system_set(SystemSet::on_update(GameState::SingleplayerGame).after("ui_hit")))
-        .add_system_set(misc_system_set(SystemSet::on_update(GameState::SingleplayerGame)))
 
-        .add_system_set(combat_system_set(SystemSet::on_update(GameState::SingleplayerGame)))
-        .add_system_set(command_system_set(SystemSet::on_update(GameState::SingleplayerGame)))
-        .add_system_set(economy_system_set(SystemSet::on_update(GameState::SingleplayerGame)))
-        // .add_system_set(object_spawn_system_set())
         .add_state(GameState::Loading)
-
-        // .add_startup_system(setup)
-        // .add_system(update)
 
     .run();
 }
-
-// fn setup(
-//     mut commands : Commands,
-// ) {
-//     commands.spawn_bundle(PerspectiveCameraBundle {
-//         transform : Transform::from_translation(Vec3::new(0.0, 5.0, 5.0)).looking_at(Vec3::default(), Vec3::Y),
-//         ..Default::default()
-//     });
-// }
-
-
-// fn update(
-//     mut debug : ResMut<DebugLines>,
-// ) {
-//     debug.line_colored(Vec3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 100.0, 0.0), 0.0, Color::Rgba { red: 1.0, green: 0.2, blue: 0.2, alpha: 1.0 });
-// }
 
 fn end_log() {
     let path = PathBuf::from(format!("{}/log.txt", *PROJECT_ROOT_DIRECTORY));
@@ -208,10 +182,10 @@ fn crash() {
 #[test]
 fn atest() {
     Command::new("D:/dev/rust/tools/gltf_to_collider").args([
-        "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/crane_yard_collider.glb",
-        "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/resource_node_collider.glb",
-        "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/factory_collider.glb",
-        "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/tank_collider.glb",
+        // "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/crane_yard_collider.glb",
+        "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/resource_platform_collider.glb",
+        // "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/factory_collider.glb",
+        // "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/tank_collider.glb",
     ]).spawn().unwrap();
 }
 

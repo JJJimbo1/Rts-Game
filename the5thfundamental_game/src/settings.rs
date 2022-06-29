@@ -49,8 +49,8 @@ mod settings {
 
     impl CameraSettings {
         pub fn default_direction_and_distance(&self) -> (Vec3, f32) {
-            (Vec3::new(0.0, D1::normalize_from_01(self.default_zoom, self.offset_y.0, self.offset_y.1),
-            D1::normalize_from_01(self.default_zoom, self.offset_z.0, self.offset_z.1)).normalize_or_zero(),
+            (Vec3::new(0.0, D1::normalize_from_01(self.default_zoom, self.min_zoom().y, self.max_zoom().y),
+            D1::normalize_from_01(self.default_zoom, self.min_zoom().z, self.max_zoom().z)).normalize_or_zero(),
             D1::normalize_from_01(self.default_zoom, self.min_zoom, self.max_zoom))
         }
 

@@ -13,10 +13,6 @@ mod constants {
         pub static ref PROJECT_ROOT_DIRECTORY : String = std::env::current_dir().unwrap().to_string_lossy().to_string();
         #[derive(Debug, Copy, Clone)]
         pub static ref ASSET_DIRECTORY : String = format!("{}", *PROJECT_ROOT_DIRECTORY);
-        // #[derive(Debug, Copy, Clone)]
-        // pub static ref CONTROL_CONFIG : &'static [u8] = include_bytes!("../../config/controls.ron");
-        // #[derive(Debug, Copy, Clone)]
-        // pub static ref DISPLAY_CONFIG : &'static [u8] = include_bytes!("../../config/display.ron");
     }
 
     pub static CLEAR_COLOR : Color = Color::rgba_linear(0.0, 0.2, 0.7, 1.0);

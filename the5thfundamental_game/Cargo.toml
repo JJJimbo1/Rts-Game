@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 bevy = "0.7.0"
-bevy_rapier3d = { version = "0.13.2"}
+bevy_rapier3d = { version = "0.14.1"}
 bevy_ninepatch = "0.7.0"
 bevy_prototype_debug_lines = { version = "0.7.0", features = ["3d"]}
 ron = "0.7.0"

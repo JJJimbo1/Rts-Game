@@ -83,7 +83,18 @@
                     scale : (1., 1., 1.,),
                 ),
                 team_player : (
-                    team : 1,
+                    team : 0,
+                    player : 0,
+                ),
+            ),
+            (
+                transform : (
+                    translation : (-50., 0., 160.,),
+                    rotation : (0., 1., 0., 0.),
+                    scale : (1., 1., 1.,),
+                ),
+                team_player : (
+                    team : 0,
                     player : 0,
                 ),
             ),

@@ -1,8 +1,10 @@
-use bevy_pathfinding::{PathFinder, Path};
+use bevy_pathfinding::Path;
 use serde::{Serialize, Deserialize};
-use bevy::{prelude::{Transform, Component}, math::{Vec3, Quat}};
+use bevy::{prelude::Transform, math::{Vec3, Quat}};
 use bevy_rapier3d::prelude::Velocity;
 use approx::*;
+
+use crate::GroundPathFinder;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct SerdeTransform {
@@ -84,7 +86,7 @@ pub trait SerdeComponent: Sized {
 
 
 
-impl SerdeComponent for PathFinder {
+impl SerdeComponent for GroundPathFinder {
     fn saved(&self) -> Option<Self> {
         if abs_diff_eq!(self.start.x, 0.0, epsilon = f32::EPSILON)
         && abs_diff_eq!(self.start.y, 0.0, epsilon = f32::EPSILON)
@@ -99,7 +101,7 @@ impl SerdeComponent for PathFinder {
 
 impl SerdeComponent for Path {
     fn saved(&self) -> Option<Self> {
-        if self.0.as_ref().map_or(true, |p| p.len() == 0) {
+        if self.0.len() == 0 {
             None
         } else {
             Some(self.clone())

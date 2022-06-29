@@ -1,21 +1,12 @@
 use the5thfundamental_common::*;
 use crate::*;
 
-// #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
-// enum GameSystems {
-//     OnStart,
-//     CombatStartup,
-// }
-
 pub fn singleplayer_game_state_on_enter_system_set() -> SystemSet {
     SystemSet::on_enter(GameState::SingleplayerGame)
         .with_system(singleplayer_game_on_enter)
-        .with_system(combat_startup_system)
         .with_system(create_debug_menu)
         .with_system(create_gameplay_ui)
-        // .with_system(load_save_file.after(GameSystems::OnStart))
         .with_system(create_context_menu)
-        // .with_system(testing_start_up)
 }
 
 pub fn singleplayer_game_state_on_update_system_set() -> SystemSet {
@@ -29,10 +20,15 @@ pub fn singleplayer_game_state_on_update_system_set() -> SystemSet {
         .with_system(context_menu_update_system)
         .with_system(context_menu_event_writer_system)
         .with_system(context_menu_event_reader_system)
+        .with_system(health_bar_update_system)
+        .with_system(health_bar_cleanup_system)
 
-        .with_system(spawn_object)
-        .with_system(client_object_spawn.after(spawn_object))
-        .with_system(clear_buffer.after(spawn_object))
+        .with_system(spawn_standard_objects)
+        .with_system(resource_node_spawn)
+        .with_system(patch_grid_map)
+        .with_system(resource_platform_unclaimed_on_activation)
+        .with_system(resource_platform_claimed_on_killed)
+        .with_system(client_object_spawn.after(spawn_standard_objects))
 
         .with_system(save_game)
 }

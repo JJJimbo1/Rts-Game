@@ -22,6 +22,10 @@ mod economy {
             self.resources
         }
 
+        pub fn can_afford(&self, cost: f64) -> bool {
+            self.resources() > cost
+        }
+
         pub fn add_resources(&mut self, stat : (u32, f64)) {
 
             let amount = {

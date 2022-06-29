@@ -1,5 +1,4 @@
 use bevy::{prelude::*, utils::HashMap};
-use bevy_pathfinding::{PathFinder, Path};
 use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
 

@@ -4,7 +4,9 @@ pub mod objects;
 pub use maps::*;
 pub use objects::*;
 
-use bevy::prelude::Component;
+use bevy::prelude::{Component, Entity};
+
+use crate::TeamPlayer;
 
 
 
@@ -27,4 +29,11 @@ impl AssetId for AssetType {
             AssetType::Object(object) => object.id(),
         }
     }
+}
+
+
+#[derive(Debug, Clone, Copy)]
+pub struct ActivationEvent {
+    pub entity: Entity,
+    pub player: TeamPlayer,
 }

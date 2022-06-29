@@ -41,7 +41,7 @@ pub mod main_menu_state {
     pub fn main_menu_on_enter(
         mut commands : Commands
     ) {
-        commands.spawn_bundle(UiCameraBundle::default());
+        commands.spawn_bundle(UiCameraBundle::default()).insert(DontDeleteOnStateChange);
     }
 
     pub fn main_menu_update(
@@ -105,26 +105,4 @@ pub mod main_menu_state {
 
     }
 
-    // fn setup_save_file(
-    //     save_file : &SaveFile,
-    //     maps : &QLoader<Map, ()>,
-    //     commands : &mut Commands
-    // ) -> Result<(), ()> {
-    //     if let Some(x) = maps.get(&save_file.map) {
-    //         commands.insert_resource(SaveMap(save_file.map.clone()));
-    //         commands.insert_resource(x.clone());
-    //         commands.insert_resource({
-    //             // TODO: Map analyzation.
-    //             GridMap::new(x.bounds.0 as usize, x.bounds.1 as usize)
-    //                 .with_cells(|x, z| GridCell::new(x, z, false ))
-    //                 .precomputed()
-    //             });
-    //         commands.insert_resource(Player(TeamPlayer::new(1, 0)));
-    //     } else {
-    //         return Err(());
-    //     }
-    //     commands.insert_resource(save_file.actors.clone());
-
-    //     Ok(())
-    // }
 }

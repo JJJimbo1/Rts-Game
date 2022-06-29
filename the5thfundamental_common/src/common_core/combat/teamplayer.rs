@@ -48,13 +48,13 @@ mod teamplayer {
         }
     }
 
-    #[derive(Default)]
+    #[derive(Debug, Default, Clone)]
     pub struct TeamPlayerWorld {
         pub layers : HashMap<TeamPlayer, QuadTree<Entity>>
     }
 
     impl TeamPlayerWorld {
-        pub fn new(actors : Res<Actors> , map : Res<MapBounds>) -> Self {
+        pub fn new(actors : &Actors , map : &MapBounds) -> Self {
             let mut tpw = Self {
                 layers : HashMap::new(),
             };
@@ -160,55 +160,16 @@ mod teamplayer {
             }
         }
 
-        pub fn search_targets(&self, id : TeamPlayer, position : &Vec3, weapon : &Weapon) -> Vec<Entity> {
-            let mut results : Vec<Entity> = Vec::new();
+        pub fn search_targets(&self, id : TeamPlayer, position : Vec3, weapon : &Weapon) -> Vec<Entity> {
+            let pos = Vec2::new(position.x, position.z);
             match weapon.target_force {
-                TargetForce::Mine => {
-                    let pos = Vec2::new(position.x, position.z);
-                    let mine = self.search_mine(id, pos, weapon.range);
-                    for (e, pos) in mine.iter() {
-                        if mathfu::Dx::distance_between(
-                            vec![position.x, position.z],
-                            vec![pos.x, pos.y]) <= weapon.range + 0.5 {
-                            results.push(*e);
-                        }
-                    }
-                },
-                TargetForce::Ally => {
-                    let pos = Vec2::new(position.x, position.z);
-                    let allies = self.search_allies(id, pos, weapon.range);
-                    for (e, pos) in allies.iter() {
-                        if mathfu::Dx::distance_between(
-                            vec![position.x, position.z],
-                            vec![pos.x, pos.y]) <= weapon.range + 0.5 {
-                            results.push(*e);
-                        }
-                    }
-                },
-                TargetForce::MineOrAlly => {
-                    let pos = Vec2::new(position.x, position.z);
-                    let mineorallies = self.search_mine_or_allies(id, pos, weapon.range);
-                    for (e, pos) in mineorallies.iter() {
-                        if mathfu::Dx::distance_between(
-                            vec![position.x, position.z],
-                            vec![pos.x, pos.y]) <= weapon.range + 0.5 {
-                            results.push(*e);
-                        }
-                    }
-                },
-                TargetForce::Enemy => {
-                    let pos = Vec2::new(position.x, position.z);
-                    let enemies = self.search_enemies(id, pos, weapon.range);
-                    for (e, pos) in enemies.iter() {
-                        if mathfu::Dx::distance_between(
-                            vec![position.x, position.z],
-                            vec![pos.x, pos.y]) <= weapon.range + 0.5 {
-                            results.push(*e);
-                        }
-                    }
-                },
-            }
-            results
+                TargetForce::Mine => { self.search_mine(id, pos, weapon.range) },
+                TargetForce::Ally => { self.search_allies(id, pos, weapon.range) },
+                TargetForce::MineOrAlly => { self.search_mine_or_allies(id, pos, weapon.range) },
+                TargetForce::Enemy => { self.search_enemies(id, pos, weapon.range) },
+            }.iter().filter_map(|(e, pos)| if mathfu::D2::distance_magnitude((position.x, position.z), (pos.x, pos.y)) <= weapon.range.powi(2) { Some(*e) } else { None}).collect()
+
+            // results
         }
 
         pub fn search_mine(&self, id : TeamPlayer, position : Vec2, range : f32) -> Vec<(Entity, Vec2)> {

@@ -1,6 +1,6 @@
 (
     offset_y: (0.5, 1.0),
-    offset_z: (0.75, 1.0),
+    offset_z: (0.65, 1.0),
     curve_power: (1.5, 1.5),
 
     max_rotation_speed: 5.0,

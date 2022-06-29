@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use bevy::prelude::*;
-use bevy_rapier3d::prelude::Collider;
+use bevy_rapier3d::{prelude::Collider, plugin::{RapierPhysicsPlugin, NoUserData}};
 use qloader::*;
 
 
@@ -13,7 +13,9 @@ impl Plugin for PhysicsPlugin {
     fn build(&self, app: &mut App) {
         app
 
-            .add_system(bound_system)
+            .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
+
+            .add_system_to_stage(CoreStage::PostUpdate, bound_system)
 
         ;
     }
@@ -33,9 +35,9 @@ fn bound_system(
     mut bounded_query : Query<(&mut Transform, &LocalBounds)>,
 ) {
     bounded_query.for_each_mut(|(mut tran, lob)| {
-            tran.translation.x = tran.translation.x.clamp(lob.x.x, lob.x.y);
-            tran.translation.y = tran.translation.y.clamp(lob.y.x, lob.y.y);
-            tran.translation.z = tran.translation.z.clamp(lob.z.x, lob.z.y);
+        tran.translation.x = tran.translation.x.clamp(lob.x.x, lob.x.y);
+        tran.translation.y = tran.translation.y.clamp(lob.y.x, lob.y.y);
+        tran.translation.z = tran.translation.z.clamp(lob.z.x, lob.z.y);
     });
 }
 

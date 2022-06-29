@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 bevy = "0.7.0"
-bevy_rapier3d = { version = "0.13.2", features = []}
+bevy_rapier3d = { version = "0.14.1", features = []}
 bevy_prototype_debug_lines = { version = "0.7.0", features = ["3d"]}
 bevy-debug-text-overlay = "2.0.0"
 ron = "0.7.0"

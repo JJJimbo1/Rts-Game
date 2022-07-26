@@ -1,8 +1,8 @@
-use std::{ops::{Index, IndexMut}, time::Duration};
-use bevy::{prelude::Component, utils::{HashSet, HashMap}};
+use std::time::Duration;
+use bevy::{prelude::Component, utils::HashMap};
 use serde::{Serialize, Deserialize,};
 use zipqueue::ZipQueue;
-use crate::{StackData, ObjectType, SerdeComponent};
+use crate::{ObjectType, SerdeComponent};
 
 
 
@@ -24,7 +24,7 @@ pub enum ActiveQueue {
 pub struct Queue {
     pub timer : f64,
     pub zip_queue: ZipQueue<StackData>,
-    pub buffer : HashSet<StackData>,
+    pub buffer : ZipQueue<StackData>,
 }
 
 impl Default for Queue {
@@ -32,7 +32,7 @@ impl Default for Queue {
         Self {
             timer: 0.0,
             zip_queue: ZipQueue::new(),
-            buffer: HashSet::default(),
+            buffer: ZipQueue::new(),
         }
     }
 }
@@ -72,11 +72,14 @@ impl Queue {
     }
 
     pub fn push_to_buffer(&mut self, stack_data: StackData) {
-        self.buffer.insert(stack_data);
+        if !self.buffer.contains_stack(&stack_data) {
+            self.buffer.push_stack(stack_data.clone());
+        }
+        self.buffer.raise_stack(stack_data, 1);
     }
 
     pub fn remove_from_buffer(&mut self, stack_data: &StackData) {
-        self.buffer.remove(stack_data);
+        self.buffer.lower_stack(stack_data, 1);
     }
 }
 
@@ -111,6 +114,27 @@ impl Queues {
 
 }
 
+impl SerdeComponent for Queues {
+    fn saved(&self) -> Option<Self> {
+        if self.is_empty() {
+            None
+        } else {
+            Some(self.clone())
+        }
+    }
+}
+
+
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
+pub struct StackData {
+    // pub id : String,
+    pub object_type : ObjectType,
+    pub time_to_build : Duration,
+    pub cost : u128,
+    // pub buffered : bool,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueueObject {
@@ -123,14 +147,4 @@ pub struct QueueObject {
 #[derive(Serialize, Deserialize)]
 pub struct PrefabQueues {
     pub objects: Vec<ObjectType>
-}
-
-impl SerdeComponent for Queues {
-    fn saved(&self) -> Option<Self> {
-        if self.is_empty() {
-            None
-        } else {
-            Some(self.clone())
-        }
-    }
 }

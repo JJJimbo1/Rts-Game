@@ -42,8 +42,9 @@ pub struct SaveLoaded;
 #[derive(Serialize, Deserialize)]
 pub struct SaveObjects {
     crane_yards: Vec<SerdeCraneYard>,
-    resource_nodes: Vec<SerdeResourceNode>,
     factories: Vec<SerdeFactory>,
+    marine_squads: Vec<SerdeMarineSquad>,
+    resource_nodes: Vec<SerdeResourceNode>,
     tanks: Vec<SerdeTank>,
 }
 
@@ -57,9 +58,10 @@ pub struct SaveFile {
 }
 
 pub type SerdeCraneYardQuery<'a> = (&'a Snowflake, &'a Health, &'a Queues, &'a TeamPlayer, &'a Transform);
-pub type SerdeResourceNodeQuery<'a> = (&'a ResourceNode, &'a Snowflake, &'a TeamPlayer, &'a Transform);
 pub type SerdeFactoryQuery<'a> = (&'a Snowflake, &'a Health, &'a Queues, &'a TeamPlayer, &'a Transform);
-pub type SerdeTankQuery<'a> = (&'a Snowflake, &'a Health, &'a GroundPathFinder, &'a FPath, &'a MobileObject, &'a WeaponSet, &'a Velocity, &'a TeamPlayer, &'a Transform);
+pub type SerdeMarineSquadQuery<'a> = (&'a Snowflake, &'a MarineSquad, &'a Health, &'a GroundPathFinder, &'a FPath, &'a Controller, &'a WeaponSet, &'a Velocity, &'a TeamPlayer, &'a Transform);
+pub type SerdeResourceNodeQuery<'a> = (&'a Snowflake, &'a ResourceNode, &'a TeamPlayer, &'a Transform);
+pub type SerdeTankQuery<'a> = (&'a Snowflake, &'a Health, &'a GroundPathFinder, &'a FPath, &'a Controller, &'a WeaponSet, &'a Velocity, &'a TeamPlayer, &'a Transform);
 
 pub fn save_game(
     mut save_event_reader: EventReader<SaveEvent>,
@@ -67,22 +69,25 @@ pub fn save_game(
     map: Res<SerdeMap>,
     object: (
         Query<SerdeCraneYardQuery, With<CraneYard>>,
-        Query<SerdeResourceNodeQuery, With<ResourceNode>>,
         Query<SerdeFactoryQuery, With<Factory>>,
+        Query<SerdeMarineSquadQuery, With<MarineSquad>>,
+        Query<SerdeResourceNodeQuery, With<ResourceNode>>,
         Query<SerdeTankQuery, With<Tank>>,
     ),
 ) {
     for event in save_event_reader.iter() {
         println!("SAVE");
         let crane_yards = object.0.iter().map(|object| SerdeCraneYard::from(object)).collect();
-        let resource_nodes = object.1.iter().map(|object| SerdeResourceNode::from(object)).collect();
-        let factories = object.2.iter().map(|object| SerdeFactory::from(object)).collect();
-        let tanks = object.3.iter().map(|object| SerdeTank::from(object)).collect();
+        let factories = object.1.iter().map(|object| SerdeFactory::from(object)).collect();
+        let marine_squads = object.2.iter().map(|object| SerdeMarineSquad::from(object)).collect();
+        let resource_nodes = object.3.iter().map(|object| SerdeResourceNode::from(object)).collect();
+        let tanks = object.4.iter().map(|object| SerdeTank::from(object)).collect();
 
         let objects = SaveObjects {
             crane_yards,
-            resource_nodes,
             factories,
+            marine_squads,
+            resource_nodes,
             tanks,
         };
 
@@ -126,8 +131,9 @@ pub fn load_game(
         commands.insert_resource(GridSpace::new(bounds.0.x as usize, bounds.0.y as usize));
 
         for object in save_file.objects.crane_yards { commands.spawn_bundle(CraneYardBundle::from((object, &object_prefabs.crane_yard_prefab))); }
-        for object in save_file.objects.resource_nodes { commands.spawn_bundle(ResourceNodeBundle::from((object, &object_prefabs.resource_node_prefab))); }
         for object in save_file.objects.factories { commands.spawn_bundle(FactoryBundle::from((object, &object_prefabs.factory_prefab))); }
+        for object in save_file.objects.marine_squads { commands.spawn_bundle(MarineSquadBundle::from((object, &object_prefabs.marine_squad_prefab))); }
+        for object in save_file.objects.resource_nodes { commands.spawn_bundle(ResourceNodeBundle::from((object, &object_prefabs.resource_node_prefab))); }
         for object in save_file.objects.tanks { commands.spawn_bundle(TankBundle::from((object, &object_prefabs.tank_prefab))); }
         loaded_event_writer.send(SaveLoaded);
     }
@@ -198,24 +204,24 @@ pub fn load_from_file<D, P : AsRef<Path>>(path : P) -> Result<D, SaveLoadError> 
             Ok(x) => {
                 match from_reader::<File, D>(x) {
                     Ok(d) => { return Ok(d); }
-                    Err(e) => {
-                        // println!();
-                        // error!("{}", std::any::type_name::<D>());
-                        // error!("{}", path.as_ref().display());
-                        // error!("{}", e);
-                        // println!();
+                    Err(_e) => {
+                        println!();
+                        error!("{}", std::any::type_name::<D>());
+                        error!("{}", path.as_ref().display());
+                        error!("{}", _e);
+                        println!();
                     }
                 }
                 // if let Ok(d) = from_reader::<File, D>(x) {
                 //     return Ok(d);
                 // }
             },
-            Err(e) => {
-                // println!();
-                // error!("{}", std::any::type_name::<D>());
-                // error!("{}", path.as_ref().display());
-                // error!("{}", e);
-                // println!()
+            Err(_e) => {
+                println!();
+                error!("{}", std::any::type_name::<D>());
+                error!("{}", path.as_ref().display());
+                error!("{}", _e);
+                println!()
             }
     };
     match OpenOptions::new()
@@ -227,7 +233,13 @@ pub fn load_from_file<D, P : AsRef<Path>>(path : P) -> Result<D, SaveLoadError> 
                     return Ok(d);
                 }
             },
-            Err(_) => { }
+            Err(_e) => {
+                println!();
+                error!("{}", std::any::type_name::<D>());
+                error!("{}", path.as_ref().display());
+                error!("{}", _e);
+                println!()
+            }
     };
     return Err(SaveLoadError::FileReadError);
 }

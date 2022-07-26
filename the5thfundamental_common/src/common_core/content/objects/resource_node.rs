@@ -76,10 +76,10 @@ impl From<ResourceNodePrefab> for ResourceNodeBundle {
 impl From<(SerdeResourceNode, &ResourceNodePrefab)> for ResourceNodeBundle {
     fn from((save, prefab): (SerdeResourceNode, &ResourceNodePrefab)) -> Self {
         Self {
-            resource_node: save.resource_node.unwrap_or(ResourceNode::default()),
             object_type: ResourceNode::default().into(),
             asset_type: ResourceNode::default().into(),
             snowflake: save.snowflake.unwrap_or_else(|| Snowflake::new()),
+            resource_node: save.resource_node.unwrap_or_else(|| ResourceNode::default()),
             team_player: save.team_player,
             collider: prefab.real_collider.clone().unwrap(),
             transform: save.transform.into(),
@@ -108,8 +108,8 @@ impl ResourceNodePrefab {
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 pub struct SerdeResourceNode {
-    pub resource_node: Option<ResourceNode>,
     pub snowflake: Option<Snowflake>,
+    pub resource_node: Option<ResourceNode>,
     pub team_player: TeamPlayer,
     pub transform: SerdeTransform,
 }
@@ -117,8 +117,8 @@ pub struct SerdeResourceNode {
 impl<'a> From<SerdeResourceNodeQuery<'a>> for SerdeResourceNode {
     fn from(object: SerdeResourceNodeQuery) -> Self {
         Self {
-            resource_node: object.0.saved(),
-            snowflake: object.1.saved(),
+            snowflake: object.0.saved(),
+            resource_node: object.1.saved(),
             team_player: *object.2,
             transform: (*object.3).into(),
         }

@@ -66,6 +66,7 @@ pub mod loading_state {
             vec!["glb", "gltf"]
         }
         fn load_with<S : AsRef<Path>>(path : S, server : &AssetServer) -> Result<Self, QLoaderError> {
+            // println!("{}", path.as_ref().display());
             let handle = server.load(path.as_ref().to_path_buf());
             Ok(Self(handle))
         }
@@ -79,6 +80,7 @@ pub mod loading_state {
             vec!["png"]
         }
         fn load_with<S : AsRef<Path>>(path : S, server : &AssetServer) -> Result<Self, QLoaderError> {
+            // println!("{}", path.as_ref().display());
             // println!("{}", &path.as_ref().display());
             let handle = server.load(path.as_ref().to_path_buf());
             Ok(Self(handle))
@@ -93,6 +95,7 @@ pub mod loading_state {
             vec!["ttf"]
         }
         fn load_with<S : AsRef<Path>>(path : S, server : &AssetServer) -> Result<Self, QLoaderError> {
+            // println!("{}", path.as_ref().display());
             let handle = server.load(path.as_ref().to_path_buf());
             Ok(Self(handle))
         }

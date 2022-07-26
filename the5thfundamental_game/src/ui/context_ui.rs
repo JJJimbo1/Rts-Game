@@ -56,8 +56,8 @@ impl ContextMenu {
         entity : Entity,
         queue : &Queue,
         mut texts : Query<&mut Text>,
-        mut colors : Query<&mut UiColor>,
-        mut ctx_buttons : Query<&mut ContextMenuButtons>,
+        mut ui_colors : Query<&mut UiColor>,
+        mut context_menu_buttons : Query<&mut ContextMenuButtonsEvent>,
         mut visible_query: Query<&mut Visibility>,
         children_query: Query<&Children>,
     ) {
@@ -66,20 +66,20 @@ impl ContextMenu {
         let count = stacks.len().clamp(0, 9);
         // println!("{}", count);
         for i in 0..count {
-            let stack = stacks[i];
+            let stack_data = stacks[i];
             set_visible_recursive(true, self.list_icons[i], &mut visible_query, &children_query);
 
-            if let (Ok(children), Ok(mut but)) = (children_query.get(self.list_icons[i]), ctx_buttons.get_mut(self.list_icons[i])) {
-                let empty = queue.buffer.iter().filter(|f| *f == stack).count() == 0;
-                if stack.buffered && !empty {
-                    *but = ContextMenuButtons::BeginPlaceBufferedButton(Some((entity, *stack)));
+            if let (Ok(children), Ok(mut but)) = (children_query.get(self.list_icons[i]), context_menu_buttons.get_mut(self.list_icons[i])) {
+                let empty = queue.buffer.height(&stack_data) == 0;
+                if !empty {
+                    *but = ContextMenuButtonsEvent::BeginPlaceBufferedButton(Some((entity, *stack_data)));
                 } else {
-                    *but = ContextMenuButtons::BeginButton(Some((entity, self.active_tab.unwrap(), *stack)));
+                    *but = ContextMenuButtonsEvent::BeginButton(Some((entity, self.active_tab.unwrap(), *stack_data)));
                 }
                 for child in children.iter() {
                     if let Ok(mut text) = texts.get_mut(*child) {
-                        text.sections[0].value = format!("{}: {}", stack.object_type.id().to_string(), queue.zip_queue.height(stack));
-                    } else if let Ok(mut texture) = colors.get_mut(*child) {
+                        text.sections[0].value = format!("{}: {}", stack_data.object_type.id().to_string(), queue.zip_queue.height(stack_data));
+                    } else if let Ok(mut texture) = ui_colors.get_mut(*child) {
                         if empty {
                             *texture = BLACK.into();
                         } else {
@@ -148,14 +148,14 @@ pub fn create_context_menu(
     let mut list_entity = None;
     // let mut unit_list_entity = None;
     entity_commands.with_children(|parent| {
-        structures_tab = Some(create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtons::StructuresTab)); y_value += 40.0;
-        support_structures_tab = Some(create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtons::SupportStructuresTab)); x_value += 72.5; y_value -= 40.0;
-        infantry_tab = Some(create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtons::InfantryTab)); y_value += 40.0;
-        vehicle_tab = Some(create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtons::VehiclesTab)); x_value += 72.5; y_value -= 40.0;
-        aircraft_tab = Some(create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtons::AircraftTab)); y_value += 40.0;
-        watercraft_tab = Some(create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtons::WatercraftTab)); x_value += 72.5; y_value -= 40.0;
-        technology_tab = Some(create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtons::TechnologyTab)); y_value += 40.0;
-        transformation_entity = Some(create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtons::TranformationTab)); y_value += 40.0;
+        structures_tab = Some(create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtonsEvent::StructuresTab)); y_value += 40.0;
+        support_structures_tab = Some(create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtonsEvent::SupportStructuresTab)); x_value += 72.5; y_value -= 40.0;
+        infantry_tab = Some(create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtonsEvent::InfantryTab)); y_value += 40.0;
+        vehicle_tab = Some(create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtonsEvent::VehiclesTab)); x_value += 72.5; y_value -= 40.0;
+        aircraft_tab = Some(create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtonsEvent::AircraftTab)); y_value += 40.0;
+        watercraft_tab = Some(create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtonsEvent::WatercraftTab)); x_value += 72.5; y_value -= 40.0;
+        technology_tab = Some(create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtonsEvent::TechnologyTab)); y_value += 40.0;
+        transformation_entity = Some(create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtonsEvent::TranformationTab)); y_value += 40.0;
         list_entity = Some(create_list(parent, &mut materials, y_value));
     });
 
@@ -183,7 +183,7 @@ pub fn create_context_menu(
                 color : UiColor(BLACK.into()),
                 visibility : Visibility { is_visible : true, },
                 ..Default::default()
-            }).insert(ContextMenuButtons::BeginButton(None)).insert(BlocksRaycast)
+            }).insert(ContextMenuButtonsEvent::BeginButton(None)).insert(BlocksRaycast)
             .with_children(|parent| {
                 parent.spawn_bundle(NinePatchBundle {
                     style : Style {
@@ -245,7 +245,7 @@ fn create_tab(
     materials : &mut Assets<ColorMaterial>,
     x : f32,
     y : f32,
-    button : ContextMenuButtons,
+    button : ContextMenuButtonsEvent,
 ) -> Entity {
     let tab = parent.spawn_bundle(ButtonBundle {
         style: Style {
@@ -288,14 +288,14 @@ fn create_list(
     }).insert(BlocksRaycast).id()
 }
 
-pub fn context_menu_update_system(
+pub fn context_menu_update(
     menu : Res<ContextMenu>,
     focus : Res<ContextFocus>,
     queueses : Query<&Queues>,
 
     texts : Query<&mut Text>,
     colors : Query<&mut UiColor>,
-    ctx_buttons : Query<&mut ContextMenuButtons>,
+    ctx_buttons : Query<&mut ContextMenuButtonsEvent>,
 
     mut visible_query: Query<&mut Visibility>,
     children_query: Query<&Children>,
@@ -317,11 +317,11 @@ pub fn context_menu_update_system(
     }
 }
 
-pub fn context_menu_event_writer_system(
+pub fn context_menu_event_writer(
     // mut menu : ResMut<ContextMenu>,
-    mut context_menu_events : EventWriter<ContextMenuButtons>,
+    mut context_menu_events : EventWriter<ContextMenuButtonsEvent>,
     interaction_query: Query<
-        (&Interaction, &ContextMenuButtons, &Visibility),
+        (&Interaction, &ContextMenuButtonsEvent, &Visibility),
         (Changed<Interaction>, With<Button>)
     >,
 ) {
@@ -337,24 +337,24 @@ pub fn context_menu_event_writer_system(
     });
 }
 
-pub fn context_menu_event_reader_system(
+pub fn context_menu_event_reader(
     // master_queues : Res<MasterQueue>,
-    mut context_menu_events : EventReader<ContextMenuButtons>,
+    mut context_menu_events : EventReader<ContextMenuButtonsEvent>,
     mut menu : ResMut<ContextMenu>,
     mut current_placement : ResMut<CurrentPlacement<CLICK_BUFFER>>,
     mut queueses : Query<&mut Queues>,
 ) {
     for event in context_menu_events.iter() {
         match event.clone() {
-            ContextMenuButtons::StructuresTab => { menu.active_tab = ActiveQueue::Structures.into(); }
-            ContextMenuButtons::SupportStructuresTab => { menu.active_tab = ActiveQueue::SupportStructures.into(); }
-            ContextMenuButtons::InfantryTab => { menu.active_tab = ActiveQueue::Infantry.into(); }
-            ContextMenuButtons::VehiclesTab => { menu.active_tab = ActiveQueue::Vehicles.into(); }
-            ContextMenuButtons::AircraftTab => { menu.active_tab = ActiveQueue::Aircraft.into(); }
-            ContextMenuButtons::WatercraftTab => { menu.active_tab = ActiveQueue::Watercraft.into(); }
-            ContextMenuButtons::TechnologyTab => { menu.active_tab = ActiveQueue::Technology.into(); }
-            ContextMenuButtons::TranformationTab => { menu.active_tab = ActiveQueue::Transformation.into(); }
-            ContextMenuButtons::BeginButton(id) => {
+            ContextMenuButtonsEvent::StructuresTab => { menu.active_tab = ActiveQueue::Structures.into(); }
+            ContextMenuButtonsEvent::SupportStructuresTab => { menu.active_tab = ActiveQueue::SupportStructures.into(); }
+            ContextMenuButtonsEvent::InfantryTab => { menu.active_tab = ActiveQueue::Infantry.into(); }
+            ContextMenuButtonsEvent::VehiclesTab => { menu.active_tab = ActiveQueue::Vehicles.into(); }
+            ContextMenuButtonsEvent::AircraftTab => { menu.active_tab = ActiveQueue::Aircraft.into(); }
+            ContextMenuButtonsEvent::WatercraftTab => { menu.active_tab = ActiveQueue::Watercraft.into(); }
+            ContextMenuButtonsEvent::TechnologyTab => { menu.active_tab = ActiveQueue::Technology.into(); }
+            ContextMenuButtonsEvent::TranformationTab => { menu.active_tab = ActiveQueue::Transformation.into(); }
+            ContextMenuButtonsEvent::BeginButton(id) => {
                 if let Some((entity, tab, stack_data)) = id {
                     if let Ok(mut queues) = queueses.get_mut(entity) {
                         if let Some(queue) = queues.queues.get_mut(&tab) {
@@ -363,7 +363,7 @@ pub fn context_menu_event_reader_system(
                     }
                 }
             },
-            ContextMenuButtons::BeginPlaceBufferedButton(id) => {
+            ContextMenuButtonsEvent::BeginPlaceBufferedButton(id) => {
                 if let Some((entity, stack_data)) = id {
                     if !current_placement.placing() {
                         // current_placement.constructor = Some(entity);

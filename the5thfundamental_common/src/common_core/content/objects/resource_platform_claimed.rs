@@ -99,7 +99,7 @@ impl ResourcePlatformClaimedPrefab {
 }
 
 pub fn resource_platform_claimed_on_killed(
-    mut activation_events: EventReader<ObjectKilled>,
+    mut activation_events: EventReader<ObjectKilledEvent>,
     prefabs: Res<ObjectPrefabs>,
     mut resource_nodes: Query<&mut ResourceNode>,
     resource_platforms_unclaimed: Query<(&GlobalTransform, &ResourcePlatformClaimed, &Snowflake)>,

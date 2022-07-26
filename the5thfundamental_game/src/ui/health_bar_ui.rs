@@ -185,7 +185,7 @@ pub fn health_bar_update_system(
 }
 
 pub fn health_bar_cleanup_system(
-    mut object_killed_reader : EventReader<ObjectKilled>,
+    mut object_killed_reader : EventReader<ObjectKilledEvent>,
     query : Query<&HealthBar>,
     mut commands : Commands
 ) {

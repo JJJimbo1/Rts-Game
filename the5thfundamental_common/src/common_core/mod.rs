@@ -1,15 +1,9 @@
-pub mod combat;
-pub mod command;
-pub mod production;
-pub mod physics;
+pub mod components;
 pub mod content;
-pub mod contentt;
-pub mod common_plugin;
+pub mod plugins;
+pub mod resources;
 
-pub use combat::*;
-pub use command::*;
-pub use production::*;
-pub use physics::*;
+pub use components::*;
 pub use content::*;
-pub use contentt::*;
-pub use common_plugin::*;
+pub use plugins::*;
+pub use resources::*;

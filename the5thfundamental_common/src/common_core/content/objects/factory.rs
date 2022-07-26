@@ -138,3 +138,29 @@ impl<'a> From<SerdeFactoryQuery<'a>> for SerdeFactory {
         }
     }
 }
+
+pub fn factory_system(
+    mut spawn_events: EventWriter<ObjectSpawnEvent>,
+    mut queues: Query<(&Transform, &TeamPlayer, &mut Queues), With<Factory>>
+) {
+    queues.for_each_mut(|(transform, teamplayer, mut queues)| {
+
+        for data in queues.queues[&ActiveQueue::Infantry].buffer.spine() {
+            let mut transform = *transform;
+            transform.translation += transform.forward() * 20.0;
+            let spawn_data = ObjectSpawnEventData { snowflake: Snowflake::new(), object_type: data.object_type, team_player: *teamplayer, transform};
+            spawn_events.send(ObjectSpawnEvent(spawn_data));
+        }
+        for data in queues.queues[&ActiveQueue::Vehicles].buffer.spine() {
+            let mut transform = *transform;
+            transform.translation += transform.forward() * 20.0;
+            let spawn_data = ObjectSpawnEventData { snowflake: Snowflake::new(), object_type: data.object_type, team_player: *teamplayer, transform};
+            spawn_events.send(ObjectSpawnEvent(spawn_data));
+        }
+
+        queues.queues.get_mut(&ActiveQueue::Infantry).unwrap().buffer.clear();
+        queues.queues.get_mut(&ActiveQueue::Vehicles).unwrap().buffer.clear();
+
+
+    });
+}

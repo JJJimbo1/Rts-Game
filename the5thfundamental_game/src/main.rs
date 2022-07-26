@@ -11,11 +11,8 @@ use std::{
     process::Command,
 };
 
-use bevy::{diagnostic::DiagnosticsPlugin, prelude::*};
+use bevy::prelude::*;
 use bevy_ninepatch::*;
-use bevy_pathfinding::{PathFindingPlugin, DefaultPather};
-use bevy_prototype_debug_lines::{DebugLines, DebugLinesPlugin};
-use bevy_rapier3d::{plugin::{RapierPhysicsPlugin, NoUserData}, prelude::RapierDebugRenderPlugin};
 use chrono::Local;
 use the5thfundamental_common::*;
 use simple_random::*;
@@ -104,8 +101,9 @@ fn play_game() {
         })
 
         .add_plugins(DefaultPlugins)
+        .add_plugins(CommonPlugins)
 
-        .add_plugin(CommonPlugin)
+        // .add_plugin(CommonPlugin)
         .add_plugin(PhysicsPlugin)
         .add_plugin(DebugPlugin)
 
@@ -115,20 +113,19 @@ fn play_game() {
         .add_event::<SelectionEvent>()
         .add_event::<ActivationEvent>()
 
-        .add_event::<TopMenuButtons>()
-        .add_event::<CampaignButtons>()
-        .add_event::<SkirmishButtons>()
-        .add_event::<ContextMenuButtons>()
+        .add_event::<TopMenuButtonsEvent>()
+        .add_event::<CampaignButtonsEvent>()
+        .add_event::<SkirmishButtonsEvent>()
+        .add_event::<ContextMenuButtonsEvent>()
 
         .add_event::<ObjectSpawnEvent>()
-
-        .add_event::<UnitCommand>()
-        .add_event::<ObjectKilled>()
+        .add_event::<UnitCommandEvent>()
+        .add_event::<ObjectKilledEvent>()
         // .add_event::<AttackCommand>()
 
         .insert_resource(Random::<WichmannHill>::seeded(123.456))
         .insert_resource(Identifiers::default())
-        .insert_resource(DirtyEntities::default())
+        // .insert_resource(DirtyEntities::default())
         // .insert_resource(InitRequests::default())
         .insert_resource(Manifest::default())
         // .insert_resource(PhysicsWorld::default())
@@ -183,8 +180,9 @@ fn crash() {
 fn atest() {
     Command::new("D:/dev/rust/tools/gltf_to_collider").args([
         // "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/crane_yard_collider.glb",
-        "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/resource_platform_collider.glb",
         // "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/factory_collider.glb",
+        "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/marine_squad_collider.glb",
+        // "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/resource_platform_collider.glb",
         // "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/tank_collider.glb",
     ]).spawn().unwrap();
 }

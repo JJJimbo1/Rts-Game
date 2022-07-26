@@ -2,6 +2,7 @@ use std::f32::{NEG_INFINITY, INFINITY,};
 
 use bevy::{gltf::{Gltf}, input::mouse::MouseWheel, prelude::*, render::camera::Camera, math::Vec3Swizzles};
 use bevy_ninepatch::*;
+use bevy_prototype_debug_lines::DebugLines;
 use bevy_rapier3d::{prelude::InteractionGroups, plugin::RapierContext};
 use mathfu::D1;
 use the5thfundamental_common::*;
@@ -592,7 +593,7 @@ pub fn camera_context_focus_system(
 
 pub fn selection_highlighter(
     cast : Res<CameraRaycast>,
-    mut debug_lines : ResMut<DebugLines>,
+    // mut debug_lines : ResMut<DebugLines>,
 
     query : Query<(&GlobalTransform, &Selectable)>,
 ) {
@@ -600,22 +601,22 @@ pub fn selection_highlighter(
         .and_then(|c| query.get(c.entity)
             .map_or(None, |x| Some(x))
     ) {
-        debug_lines.line_colored(
-            glt.translation,
-            glt.translation + Vec3::Y * 10.0,
-            0.0,
-            Color::rgba(0.1, 0.35, 0.45, 1.0),
-        );
+        // debug_lines.line_colored(
+        //     glt.translation,
+        //     glt.translation + Vec3::Y * 10.0,
+        //     0.0,
+        //     Color::rgba(0.1, 0.35, 0.45, 1.0),
+        // );
     }
 
     query.for_each(|(glt, sel)| {
         if sel.selected {
-            debug_lines.line_colored(
-                glt.translation,
-                glt.translation + Vec3::Y * 3.0,
-                0.0,
-                Color::rgba(0.1, 0.35, 0.45, 1.0),
-            );
+            // debug_lines.line_colored(
+            //     glt.translation,
+            //     glt.translation + Vec3::Y * 3.0,
+            //     0.0,
+            //     Color::rgba(0.1, 0.35, 0.45, 1.0),
+            // );
         }
     });
 }
@@ -629,7 +630,7 @@ pub fn command_system(
     units : Query<(Entity, &Selectable), With<GroundPathFinder>>,
     team_players : Query<&TeamPlayer>,
     teamplayer_world : Res<TeamPlayerWorld>,
-    mut unit_commands : EventWriter<UnitCommand>,
+    mut unit_commands : EventWriter<UnitCommandEvent>,
 ) {
     if current_placement.placing() { return; }
     if input.just_released(MouseButton::Right) {
@@ -637,13 +638,13 @@ pub fn command_system(
             // if idents.get_entity(ray_cast.entity)
                 if teamplayer_world.is_enemy(ray_cast.entity, player.0, &team_players)
                     .map_or(false, |t| t) {
-                let command = UnitCommand{
+                let command = UnitCommandEvent{
                     units : units.iter().filter_map(|(id, sel)| if sel.selected { Some(id) } else { None }).collect(),
                     command_type: UnitCommandType::Attack(ray_cast.entity),
                 };
                 unit_commands.send(command);
             } else {
-                unit_commands.send(UnitCommand {
+                unit_commands.send(UnitCommandEvent {
                     units : units.iter().filter_map(|(id, sel)| if sel.selected { Some(id) } else { None }).collect(),
                     command_type: UnitCommandType::Move(ray_cast.point.xz()),
                 });

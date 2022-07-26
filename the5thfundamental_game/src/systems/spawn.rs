@@ -26,7 +26,9 @@ pub fn client_object_spawn(
     });
 
     objects.for_each(|(entity, snowflake, object)| {
+        // println!("{:?}", object);
         if let Some(gltf) = gltf_assets.get(object.id()).and_then(|handle| gltfs.get(handle.0.clone())) {
+            // println!("Spawning: {:?}", object);
             commands.entity(entity).with_children(|parent| {
                 parent.spawn_scene(gltf.scenes[0].clone());
             });

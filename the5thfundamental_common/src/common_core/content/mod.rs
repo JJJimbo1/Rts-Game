@@ -1,10 +1,12 @@
+pub mod levels;
 pub mod maps;
 pub mod objects;
 
+pub use levels::*;
 pub use maps::*;
 pub use objects::*;
 
-use bevy::prelude::{Component, Entity};
+use bevy::{prelude::{Component, Entity}, utils::HashSet, math::Vec2};
 
 use crate::TeamPlayer;
 
@@ -36,4 +38,16 @@ impl AssetId for AssetType {
 pub struct ActivationEvent {
     pub entity: Entity,
     pub player: TeamPlayer,
+}
+
+#[derive(Debug, Clone)]
+pub struct UnitCommandEvent {
+    pub units: HashSet<Entity>,
+    pub command_type: UnitCommandType,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum UnitCommandType {
+    Move(Vec2),
+    Attack(Entity),
 }

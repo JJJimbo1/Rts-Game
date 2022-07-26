@@ -75,6 +75,12 @@
                 ),
             ),
         ],
+        factories: [
+
+        ],
+        marine_squads: [
+
+        ],
         resource_nodes: [
             (
                 transform : (
@@ -98,9 +104,6 @@
                     player : 0,
                 ),
             ),
-        ],
-        factories: [
-
         ],
         tanks: [
             (

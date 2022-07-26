@@ -1,12 +1,20 @@
-pub mod actor;
-pub mod commands;
+pub mod controller;
+pub mod health;
+pub mod queue;
+pub mod resource;
 pub mod select;
+pub mod teamplayer;
+pub mod weapon;
 
-pub use actor::*;
-pub use commands::*;
+pub use controller::*;
+pub use health::*;
+pub use queue::*;
+pub use resource::*;
 pub use select::*;
+pub use teamplayer::*;
+pub use weapon::*;
 
-use bevy::{math::Vec2, prelude::Component};
+use bevy::prelude::{Component, Vec2};
 use bevy_pathfinding::PathFinder;
 
 #[derive(Debug, Default, Clone, Copy)]

@@ -1,15 +1,19 @@
 pub mod crane_yard;
+pub mod factory;
+pub mod marine_squad;
+pub mod marine;
 pub mod resource_node;
 pub mod resource_platform_unclaimed;
 pub mod resource_platform_claimed;
-pub mod factory;
 pub mod tank;
 
 pub use crane_yard::*;
+pub use factory::*;
+pub use marine_squad::*;
+pub use marine::*;
 pub use resource_node::*;
 pub use resource_platform_unclaimed::*;
 pub use resource_platform_claimed::*;
-pub use factory::*;
 pub use tank::*;
 
 use bevy_pathfinding::{d2::GridMap, GridSpace};
@@ -18,16 +22,14 @@ use bevy::{prelude::*, utils::HashMap, math::Vec3Swizzles};
 use serde::{Serialize, Deserialize};
 use crate::*;
 
-#[derive(Debug, Clone, Copy)]
-pub struct ObjectKilled(pub Entity);
-
 #[derive(Clone)]
 pub struct ObjectPrefabs {
     pub crane_yard_prefab: CraneYardPrefab,
+    pub factory_prefab: FactoryPrefab,
+    pub marine_squad_prefab: MarineSquadPrefab,
     pub resource_node_prefab: ResourceNodePrefab,
     pub resource_platform_unclaimed_prefab: ResourcePlatformUnclaimedPrefab,
     pub resource_platform_claimed_prefab: ResourcePlatformClaimedPrefab,
-    pub factory_prefab: FactoryPrefab,
     pub tank_prefab: TankPrefab,
 }
 
@@ -42,30 +44,34 @@ pub fn load_object_prefabs(
     let mut stacks : HashMap<ObjectType, (ActiveQueue, StackData)> = HashMap::new();
 
     let crane_yard_prefab : CraneYardPrefab = load_from_file(format!("{}crane_yard.ron", objects)).unwrap();
+    let factory_prefab : FactoryPrefab = load_from_file(format!("{}factory.ron", objects)).unwrap();
+    let marine_squad_prefab : MarineSquadPrefab = load_from_file(format!("{}marine_squad.ron", objects)).unwrap();
     let resource_node_prefab : ResourceNodePrefab = load_from_file(format!("{}resource_node.ron", objects)).unwrap();
     let resource_platform_unclaimed_prefab : ResourcePlatformUnclaimedPrefab = load_from_file(format!("{}resource_platform_unclaimed.ron", objects)).unwrap();
     let resource_platform_claimed_prefab : ResourcePlatformClaimedPrefab = load_from_file(format!("{}resource_platform_claimed.ron", objects)).unwrap();
-    let factory_prefab : FactoryPrefab = load_from_file(format!("{}factory.ron", objects)).unwrap();
     let tank_prefab : TankPrefab = load_from_file(format!("{}tank.ron", objects)).unwrap();
 
     // stacks.insert(ObjectType::CraneYard, crane_yard_prefab.stack);
-    stacks.insert(ObjectType::ResourceNode, resource_node_prefab.stack);
     stacks.insert(ObjectType::Factory, factory_prefab.stack);
+    stacks.insert(ObjectType::MarineSquad, marine_squad_prefab.stack);
+    stacks.insert(ObjectType::ResourceNode, resource_node_prefab.stack);
     stacks.insert(ObjectType::Tank, tank_prefab.stack);
 
     let crane_yard_collider = decode(crane_yard_prefab.collider_string.clone()).map_or(None, |(v, i)| Some(Collider::trimesh(v, i))).unwrap();
+    let factory_collider = decode(factory_prefab.collider_string.clone()).map_or(None, |(v, i)| Some(Collider::trimesh(v, i))).unwrap();
+    let marine_squad_collider = decode(marine_squad_prefab.collider_string.clone()).map_or(None, |(v, i)| Some(Collider::trimesh(v, i))).unwrap();
     let resource_node_collider = decode(resource_node_prefab.collider_string.clone()).map_or(None, |(v, i)| Some(Collider::trimesh(v, i))).unwrap();
     let resource_platform_unclaimed_collider = decode(resource_platform_unclaimed_prefab.collider_string.clone()).map_or(None, |(v, i)| Some(Collider::trimesh(v, i))).unwrap();
     let resource_platform_claimed_collider = decode(resource_platform_claimed_prefab.collider_string.clone()).map_or(None, |(v, i)| Some(Collider::trimesh(v, i))).unwrap();
-    let factory_collider = decode(factory_prefab.collider_string.clone()).map_or(None, |(v, i)| Some(Collider::trimesh(v, i))).unwrap();
     let tank_collider = decode(tank_prefab.collider_string.clone()).map_or(None, |(v, i)| Some(Collider::trimesh(v, i))).unwrap();
 
     let prefabs = ObjectPrefabs {
         crane_yard_prefab: crane_yard_prefab.with_real_queues(&stacks).with_real_collider(crane_yard_collider),
+        factory_prefab: factory_prefab.with_real_queues(&stacks).with_real_collider(factory_collider),
+        marine_squad_prefab: marine_squad_prefab.with_real_collider(marine_squad_collider),
         resource_node_prefab: resource_node_prefab.with_real_collider(resource_node_collider),
         resource_platform_unclaimed_prefab: resource_platform_unclaimed_prefab.with_real_collider(resource_platform_unclaimed_collider),
         resource_platform_claimed_prefab: resource_platform_claimed_prefab.with_real_collider(resource_platform_claimed_collider),
-        factory_prefab: factory_prefab.with_real_queues(&stacks).with_real_collider(factory_collider),
         tank_prefab: tank_prefab.with_real_collider(tank_collider),
     };
 
@@ -78,10 +84,12 @@ pub fn load_object_prefabs(
 
 pub enum ObjectType {
     CraneYard,
+    Factory,
+    MarineSquad,
+    Marine,
     ResourceNode,
     ResourcePlatformUnclaimed,
     ResourcePlatformClaimed,
-    Factory,
     Tank,
 }
 
@@ -95,13 +103,24 @@ impl AssetId for ObjectType {
     fn id(&self) -> &'static str {
         match self {
             Self::CraneYard => { "crane_yard" },
+            Self::Factory => { "factory" },
+            Self::MarineSquad => { "marine_squad" },
+            Self::Marine => { "marine" },
             Self::ResourceNode => { "resource_node" },
             Self::ResourcePlatformUnclaimed => { "resource_platform_unclaimed" },
             Self::ResourcePlatformClaimed => { "resource_platform_claimed" },
-            Self::Factory => { "factory" },
             Self::Tank => { "tank" }
         }
     }
+}
+
+#[derive(Debug, Default, Clone)]
+#[derive(Serialize, Deserialize)]
+#[derive(Component)]
+pub struct Squad {
+    max_members: u8,
+    members: u8,
+    member_ids: Vec<Entity>,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -130,10 +149,12 @@ pub fn spawn_standard_objects(
         let mut entity = None;
         match event.0.object_type {
             ObjectType::CraneYard => { entity = Some(commands.spawn_bundle( CraneYardBundle::from(prefabs.crane_yard_prefab.clone()).with_spawn_data(event.0)).id()); }
+            ObjectType::Factory => { entity = Some(commands.spawn_bundle( FactoryBundle::from(prefabs.factory_prefab.clone()).with_spawn_data(event.0)).id()); }
+            ObjectType::MarineSquad => { entity = Some(commands.spawn_bundle( MarineSquadBundle::from(prefabs.marine_squad_prefab.clone()).with_spawn_data(event.0)).id()); },
+            ObjectType::Marine => { /*entity = Some(commands.spawn_bundle( MarineSquadBundle::from(prefabs.marine_squad_prefab.clone()).with_spawn_data(event.0)).id());*/ }
             ObjectType::ResourceNode => { entity = Some(commands.spawn_bundle( ResourceNodeBundle::from(prefabs.resource_node_prefab.clone()).with_spawn_data(event.0)).id()); }
             ObjectType::ResourcePlatformUnclaimed => { /*entity = Some(commands.spawn_bundle( ResourcePlatformUnclaimedBundle::from(prefabs.resource_platform_unclaimed_prefab.clone()).with_spawn_data(event.0)).id())*/ }
             ObjectType::ResourcePlatformClaimed => { /*entity = Some(commands.spawn_bundle( ResourcePlatformClaimedBundle::from(prefabs.resource_platform_claimed_prefab.clone()).with_spawn_data(event.0)).id());*/ }
-            ObjectType::Factory => { entity = Some(commands.spawn_bundle( FactoryBundle::from(prefabs.factory_prefab.clone()).with_spawn_data(event.0)).id()); }
             ObjectType::Tank => { entity = Some(commands.spawn_bundle( TankBundle::from(prefabs.tank_prefab.clone()).with_spawn_data(event.0)).id()); },
             // _ => { }
         }

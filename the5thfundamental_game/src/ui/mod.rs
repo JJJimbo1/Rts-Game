@@ -154,13 +154,13 @@ pub fn ui_hit_detection_system(
 #[derive(Debug, Clone, Copy)]
 #[derive(Component)]
 pub enum MainMenuButtons {
-    TopMenu(TopMenuButtons),
-    Campaign(CampaignButtons),
-    Skirmish(SkirmishButtons),
+    TopMenu(TopMenuButtonsEvent),
+    Campaign(CampaignButtonsEvent),
+    Skirmish(SkirmishButtonsEvent),
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum TopMenuButtons {
+pub enum TopMenuButtonsEvent {
     Campaign,
     Skirmish,
     Options,
@@ -168,7 +168,7 @@ pub enum TopMenuButtons {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum CampaignButtons {
+pub enum CampaignButtonsEvent {
     Continue,
     LevelSelect,
     LoadGame,
@@ -177,7 +177,7 @@ pub enum CampaignButtons {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum SkirmishButtons {
+pub enum SkirmishButtonsEvent {
     Continue,
     NewGame,
     LoadGame,
@@ -186,7 +186,7 @@ pub enum SkirmishButtons {
 
 #[derive(Debug, Clone)]
 #[derive(Component)]
-pub enum ContextMenuButtons {
+pub enum ContextMenuButtonsEvent {
     StructuresTab,
     SupportStructuresTab,
     InfantryTab,

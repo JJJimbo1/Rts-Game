@@ -5,36 +5,47 @@ use serde::{Serialize, Deserialize};
 
 use crate::*;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[derive(Component)]
-pub struct Tank;
+pub struct MarineSquad(Squad);
 
-impl AssetId for Tank {
+impl AssetId for MarineSquad {
     fn id(&self) -> &'static str {
-        ObjectType::from(*self).id()
+        ObjectType::from(self.clone()).id()
     }
 }
 
-impl From<Tank> for ObjectType {
-    fn from(_: Tank) -> Self {
-        ObjectType::Tank
+impl From<MarineSquad> for ObjectType {
+    fn from(_: MarineSquad) -> Self {
+        ObjectType::MarineSquad
     }
 }
 
-impl From<Tank> for AssetType {
-    fn from(_: Tank) -> Self {
-        Self::Object(ObjectType::Tank)
+impl From<MarineSquad> for AssetType {
+    fn from(_: MarineSquad) -> Self {
+        Self::Object(ObjectType::MarineSquad)
     }
 }
+
+impl SerdeComponent for MarineSquad {
+    fn saved(&self) -> Option<Self> {
+        if self.0.members == self.0.max_members {
+            None
+        } else {
+            Some(self.clone())
+        }
+    }
+}
+
 
 #[derive(Clone)]
 #[derive(Bundle)]
-pub struct TankBundle {
-    pub tank: Tank,
+pub struct MarineSquadBundle {
+    pub marine_squad: MarineSquad,
     pub object_type: ObjectType,
     pub asset_type: AssetType,
-    pub health: Health,
     pub snowflake: Snowflake,
+    pub health: Health,
     pub path_finder: GroundPathFinder,
     pub path: Path,
     pub controller: Controller,
@@ -48,7 +59,7 @@ pub struct TankBundle {
     pub global_transform: GlobalTransform,
 }
 
-impl TankBundle {
+impl MarineSquadBundle {
     pub fn with_spawn_data(mut self, spawn_data: ObjectSpawnEventData) -> Self {
         self.team_player = spawn_data.team_player;
         self.transform = spawn_data.transform;
@@ -56,12 +67,12 @@ impl TankBundle {
     }
 }
 
-impl From<TankPrefab> for TankBundle {
-    fn from(prefab: TankPrefab) -> Self {
+impl From<MarineSquadPrefab> for MarineSquadBundle {
+    fn from(prefab: MarineSquadPrefab) -> Self {
         Self {
-            tank: Tank,
-            object_type: Tank.into(),
-            asset_type: Tank.into(),
+            marine_squad: prefab.marine_squad,
+            object_type: MarineSquad::default().into(),
+            asset_type: MarineSquad::default().into(),
             snowflake: Snowflake::new(),
             health: prefab.health,
             path_finder: GroundPathFinder::default(),
@@ -79,12 +90,12 @@ impl From<TankPrefab> for TankBundle {
     }
 }
 
-impl From<(SerdeTank, &TankPrefab)> for TankBundle {
-    fn from((save, prefab): (SerdeTank, &TankPrefab)) -> Self {
+impl From<(SerdeMarineSquad, &MarineSquadPrefab)> for MarineSquadBundle {
+    fn from((save, prefab): (SerdeMarineSquad, &MarineSquadPrefab)) -> Self {
         Self {
-            tank: Tank,
-            object_type: Tank.into(),
-            asset_type: Tank.into(),
+            marine_squad: save.marine_squad.unwrap_or_else(|| prefab.marine_squad.clone()),
+            object_type: MarineSquad::default().into(),
+            asset_type: MarineSquad::default().into(),
             snowflake: save.snowflake.unwrap_or_else(|| Snowflake::new()),
             health: save.health.unwrap_or(prefab.health),
             path_finder: save.path_finder.unwrap_or_default(),
@@ -105,8 +116,9 @@ impl From<(SerdeTank, &TankPrefab)> for TankBundle {
 
 #[derive(Clone)]
 #[derive(Serialize, Deserialize)]
-pub struct TankPrefab {
+pub struct MarineSquadPrefab {
     pub stack: (ActiveQueue, StackData),
+    pub marine_squad: MarineSquad,
     pub health: Health,
     pub controller: Controller,
     pub weapon_set: WeaponSet,
@@ -115,7 +127,7 @@ pub struct TankPrefab {
     pub real_collider: Option<Collider>,
 }
 
-impl TankPrefab {
+impl MarineSquadPrefab {
     pub fn with_real_collider(mut self, collider: Collider) -> Self {
         self.real_collider = Some(collider);
         self
@@ -124,8 +136,9 @@ impl TankPrefab {
 
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
-pub struct SerdeTank {
+pub struct SerdeMarineSquad {
     pub snowflake: Option<Snowflake>,
+    pub marine_squad: Option<MarineSquad>,
     pub health: Option<Health>,
     pub path_finder: Option<GroundPathFinder>,
     pub path: Option<Path>,
@@ -136,18 +149,44 @@ pub struct SerdeTank {
     pub transform: SerdeTransform,
 }
 
-impl<'a> From<SerdeTankQuery<'a>> for SerdeTank {
-    fn from(object: SerdeTankQuery) -> Self {
+impl<'a> From<SerdeMarineSquadQuery<'a>> for SerdeMarineSquad {
+    fn from(object: SerdeMarineSquadQuery) -> Self {
         Self {
             snowflake: Some(*object.0),
-            health: object.1.saved(),
-            path_finder: object.2.saved(),
-            path: object.3.saved(),
-            controller: object.4.saved(),
-            weapon_set: object.5.saved(),
-            velocity: SerdeVelocity::from(*object.6).saved(),
-            team_player: *object.7,
-            transform: (*object.8).into(),
+            marine_squad: object.1.saved(),
+            health: object.2.saved(),
+            path_finder: object.3.saved(),
+            path: object.4.saved(),
+            controller: object.5.saved(),
+            weapon_set: object.6.saved(),
+            velocity: SerdeVelocity::from(*object.7).saved(),
+            team_player: *object.8,
+            transform: (*object.9).into(),
         }
     }
+}
+
+pub fn marine_squad_spawn(
+    mut resource_nodes: Query<(Entity, &TeamPlayer, &MarineSquad), Added<MarineSquad>>,
+    mut commands: Commands,
+) {
+    resource_nodes.for_each_mut(|(entity, teamplayer, marine_squads)| {
+        let mut offset: f32 = 0.0;
+        for _ in marine_squads.0.member_ids.len()..marine_squads.0.members as usize {
+
+
+
+            let marine_transform = Transform::from_xyz(offset, 0.0, 0.0);
+            let spawn_data = ObjectSpawnEventData {
+                snowflake: Snowflake::new(),
+                object_type: ObjectType::ResourcePlatformUnclaimed,
+                team_player: *teamplayer,
+                transform: marine_transform,
+            };
+            commands.entity(entity).with_children(|child_builder| {
+                child_builder.spawn_bundle(MarineBundle::default().with_spawn_data(spawn_data));
+            });
+            offset += 0.75
+        }
+    });
 }

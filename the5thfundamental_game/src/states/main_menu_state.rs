@@ -45,9 +45,9 @@ pub mod main_menu_state {
     }
 
     pub fn main_menu_update(
-        mut main_menu_button_event_reader : EventReader<TopMenuButtons>,
-        mut campaign_button_event_reader : EventReader<CampaignButtons>,
-        mut skirmish_button_event_reader : EventReader<SkirmishButtons>,
+        mut main_menu_button_event_reader : EventReader<TopMenuButtonsEvent>,
+        mut campaign_button_event_reader : EventReader<CampaignButtonsEvent>,
+        mut skirmish_button_event_reader : EventReader<SkirmishButtonsEvent>,
         mut state: ResMut<State<GameState>>,
         mut quit_app : EventWriter<AppExit>,
         main_menu : Res<MainMenuUi>,
@@ -57,15 +57,15 @@ pub mod main_menu_state {
     ) {
         for event in main_menu_button_event_reader.iter() {
             match *event {
-                TopMenuButtons::Campaign => {
+                TopMenuButtonsEvent::Campaign => {
                     main_menu.skirmish.close(&mut visible_query, &children_query);
                     main_menu.campaign.toggle(&mut visible_query, &children_query);
                 },
-                TopMenuButtons::Skirmish => {
+                TopMenuButtonsEvent::Skirmish => {
                     main_menu.campaign.close(&mut visible_query, &children_query);
                     main_menu.skirmish.toggle(&mut visible_query, &children_query);
                 }
-                TopMenuButtons::Quit => {
+                TopMenuButtonsEvent::Quit => {
                     quit_app.send(AppExit);
                 },
                 _ => { }
@@ -74,15 +74,15 @@ pub mod main_menu_state {
 
         for event in campaign_button_event_reader.iter() {
             match *event {
-                CampaignButtons::Continue => {
+                CampaignButtonsEvent::Continue => {
                     commands.insert_resource(ChosenSaveFile("/assets/saves/developer.ron".to_string()));
                     state.overwrite_replace(GameState::MatchLoadingState).unwrap();
                 },
-                CampaignButtons::LevelSelect => {
+                CampaignButtonsEvent::LevelSelect => {
                     commands.insert_resource(ChosenSaveFile("/assets/levels/developer.ron".to_string()));
                     state.overwrite_replace(GameState::MatchLoadingState).unwrap();
                 }
-                CampaignButtons::Back => {
+                CampaignButtonsEvent::Back => {
                     main_menu.campaign.close(&mut visible_query, &children_query);
                 }
                 _ => { }
@@ -91,7 +91,7 @@ pub mod main_menu_state {
 
         for event in skirmish_button_event_reader.iter() {
             match *event {
-                SkirmishButtons::Back => {
+                SkirmishButtonsEvent::Back => {
                     main_menu.skirmish.close(&mut visible_query, &children_query);
                 },
                 _ => { }

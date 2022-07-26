@@ -117,3 +117,13 @@ impl AssetId for SerdeMap {
 //         }
 //     }
 // }
+
+#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize)]
+pub struct MapBounds(pub Vec2);
+
+impl Default for MapBounds {
+    fn default() -> Self {
+        Self(Vec2::new(1000.0, 1000.0))
+    }
+}

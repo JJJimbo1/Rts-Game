@@ -12,7 +12,7 @@ mod teamplayer {
 
     use crate::{Actors, MapBounds, TargetForce, Weapon};
 
-    #[derive(Debug, Default, Copy, Clone, Hash, Eq)]
+    #[derive(Debug, Default, Clone, Copy, Hash, Eq)]
     #[derive(Serialize, Deserialize)]
     #[derive(Component)]
     pub struct TeamPlayer {

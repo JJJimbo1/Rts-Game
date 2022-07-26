@@ -60,7 +60,7 @@ impl MainMenuUi {
                 },
                 color : UiColor(EMPTY_COLOR.into()),
                 ..Default::default()
-            }).insert(MainMenuButtons::TopMenu(TopMenuButtons::Campaign))
+            }).insert(MainMenuButtons::TopMenu(TopMenuButtonsEvent::Campaign))
             .with_children(|parent| {
                 parent.spawn_bundle(TextBundle {
                     text: Text::with_section(
@@ -93,7 +93,7 @@ impl MainMenuUi {
                 },
                 color : UiColor(EMPTY_COLOR.into()),
                 ..Default::default()
-            }).insert(MainMenuButtons::TopMenu(TopMenuButtons::Skirmish))
+            }).insert(MainMenuButtons::TopMenu(TopMenuButtonsEvent::Skirmish))
             .with_children(|parent| {
                 parent.spawn_bundle(TextBundle {
                     text: Text::with_section(
@@ -126,7 +126,7 @@ impl MainMenuUi {
                 },
                 color : UiColor(EMPTY_COLOR.into()),
                 ..Default::default()
-            }).insert(MainMenuButtons::TopMenu(TopMenuButtons::Options))
+            }).insert(MainMenuButtons::TopMenu(TopMenuButtonsEvent::Options))
             .insert(InactiveButton)
             .with_children(|parent| {
                 parent.spawn_bundle(TextBundle {
@@ -160,7 +160,7 @@ impl MainMenuUi {
                 },
                 color : UiColor(EMPTY_COLOR.into()),
                 ..Default::default()
-            }).insert(MainMenuButtons::TopMenu(TopMenuButtons::Quit))
+            }).insert(MainMenuButtons::TopMenu(TopMenuButtonsEvent::Quit))
             .with_children(|parent| {
                 parent.spawn_bundle(TextBundle {
                     text: Text::with_section(
@@ -247,7 +247,7 @@ impl CampaignUi {
                 color : UiColor(EMPTY_COLOR.into()),
                 visibility : Visibility { is_visible : false},
                 ..Default::default()
-            }).insert(MainMenuButtons::Campaign(CampaignButtons::Continue))
+            }).insert(MainMenuButtons::Campaign(CampaignButtonsEvent::Continue))
             .with_children(|parent| {
                 parent.spawn_bundle(TextBundle {
                     text: Text::with_section(
@@ -282,7 +282,7 @@ impl CampaignUi {
                 color : UiColor(EMPTY_COLOR.into()),
                 visibility : Visibility { is_visible : false},
                 ..Default::default()
-            }).insert(MainMenuButtons::Campaign(CampaignButtons::LevelSelect))
+            }).insert(MainMenuButtons::Campaign(CampaignButtonsEvent::LevelSelect))
             //.insert(InactiveButton)
             .with_children(|parent| {
                 parent.spawn_bundle(TextBundle {
@@ -315,7 +315,7 @@ impl CampaignUi {
                 color : UiColor(EMPTY_COLOR.into()),
                 visibility : Visibility { is_visible : false},
                 ..Default::default()
-            }).insert(MainMenuButtons::Campaign(CampaignButtons::LoadGame))
+            }).insert(MainMenuButtons::Campaign(CampaignButtonsEvent::LoadGame))
             .insert(InactiveButton)
             .with_children(|parent| {
                 parent.spawn_bundle(TextBundle {
@@ -348,7 +348,7 @@ impl CampaignUi {
                 color : UiColor(EMPTY_COLOR.into()),
                 visibility : Visibility { is_visible : false},
                 ..Default::default()
-            }).insert(MainMenuButtons::Campaign(CampaignButtons::CustomGame))
+            }).insert(MainMenuButtons::Campaign(CampaignButtonsEvent::CustomGame))
             .insert(InactiveButton)
             .with_children(|parent| {
                 parent.spawn_bundle(TextBundle {
@@ -381,7 +381,7 @@ impl CampaignUi {
                 color : UiColor(EMPTY_COLOR.into()),
                 visibility : Visibility { is_visible : false},
                 ..Default::default()
-            }).insert(MainMenuButtons::Campaign(CampaignButtons::Back))
+            }).insert(MainMenuButtons::Campaign(CampaignButtonsEvent::Back))
             .with_children(|parent| {
                 parent.spawn_bundle(TextBundle {
                     text: Text::with_section(
@@ -462,7 +462,7 @@ impl SkirmishUi {
                 color : UiColor(EMPTY_COLOR.into()),
                 visibility : Visibility { is_visible : false},
                 ..Default::default()
-            }).insert(MainMenuButtons::Skirmish(SkirmishButtons::Continue))
+            }).insert(MainMenuButtons::Skirmish(SkirmishButtonsEvent::Continue))
             .insert(InactiveButton)
             .with_children(|parent| {
                 parent.spawn_bundle(TextBundle {
@@ -495,7 +495,7 @@ impl SkirmishUi {
                 color : UiColor(EMPTY_COLOR.into()),
                 visibility : Visibility { is_visible : false},
                 ..Default::default()
-            }).insert(MainMenuButtons::Skirmish(SkirmishButtons::NewGame))
+            }).insert(MainMenuButtons::Skirmish(SkirmishButtonsEvent::NewGame))
             .insert(InactiveButton)
             .with_children(|parent| {
                 parent.spawn_bundle(TextBundle {
@@ -528,7 +528,7 @@ impl SkirmishUi {
                 color : UiColor(EMPTY_COLOR.into()),
                 visibility : Visibility { is_visible : false},
                 ..Default::default()
-            }).insert(MainMenuButtons::Skirmish(SkirmishButtons::LoadGame))
+            }).insert(MainMenuButtons::Skirmish(SkirmishButtonsEvent::LoadGame))
             .insert(InactiveButton)
             .with_children(|parent| {
                 parent.spawn_bundle(TextBundle {
@@ -561,7 +561,7 @@ impl SkirmishUi {
                 color : UiColor(EMPTY_COLOR.into()),
                 visibility : Visibility { is_visible : false},
                 ..Default::default()
-            }).insert(MainMenuButtons::Skirmish(SkirmishButtons::Back))
+            }).insert(MainMenuButtons::Skirmish(SkirmishButtonsEvent::Back))
             .with_children(|parent| {
                 parent.spawn_bundle(TextBundle {
                     text: Text::with_section(
@@ -592,9 +592,9 @@ impl Menu for SkirmishUi {
 }
 
 pub fn main_menu_button_event_writer_system(
-    mut main_menu_button_events : EventWriter<TopMenuButtons>,
-    mut campaign_button_events : EventWriter<CampaignButtons>,
-    mut skirmish_button_events : EventWriter<SkirmishButtons>,
+    mut main_menu_button_events : EventWriter<TopMenuButtonsEvent>,
+    mut campaign_button_events : EventWriter<CampaignButtonsEvent>,
+    mut skirmish_button_events : EventWriter<SkirmishButtonsEvent>,
     interaction_query: Query<
     (&Interaction, &MainMenuButtons, &Visibility),
     (Changed<Interaction>, With<Button>)>

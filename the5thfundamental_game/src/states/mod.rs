@@ -7,7 +7,7 @@ pub mod singleplayer_game;
 
 
 pub use self::loading_state::loading_state::*;
-pub use self::main_menu_state::main_menu_state::*;
+pub use self::main_menu_state::*;
 pub use match_loading_state::*;
 pub use self::singleplayer_game::*;
 // pub use multiplayer_state::multiplayer_state::*;

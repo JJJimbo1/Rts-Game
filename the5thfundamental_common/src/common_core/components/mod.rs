@@ -3,7 +3,9 @@ pub mod health;
 pub mod queue;
 pub mod resource;
 pub mod select;
+pub mod squad;
 pub mod teamplayer;
+pub mod relative;
 pub mod weapon;
 
 pub use controller::*;
@@ -11,7 +13,9 @@ pub use health::*;
 pub use queue::*;
 pub use resource::*;
 pub use select::*;
+pub use squad::*;
 pub use teamplayer::*;
+pub use relative::*;
 pub use weapon::*;
 
 use bevy::prelude::{Component, Vec2};

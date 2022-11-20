@@ -13,10 +13,10 @@ use bevy::prelude::PluginGroup;
 pub struct CommonPlugins;
 
 impl PluginGroup for CommonPlugins {
-    fn build(&mut self, group: &mut bevy::app::PluginGroupBuilder) {
+    fn build(self) -> bevy::app::PluginGroupBuilder {
+        let mut group = bevy::app::PluginGroupBuilder::start::<CommonPlugins>();
         group
             .add(ProductionPlugin)
             .add(CombatPlugin)
-        ;
     }
 }

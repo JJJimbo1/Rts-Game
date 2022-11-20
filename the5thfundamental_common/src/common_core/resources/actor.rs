@@ -1,5 +1,6 @@
 
 use std::collections::HashMap;
+use bevy::prelude::Resource;
 use serde::{Serialize, Deserialize};
 
 
@@ -8,6 +9,7 @@ use crate::*;
 
 #[derive(Debug, Default, Clone)]
 #[derive(Serialize, Deserialize)]
+#[derive(Resource)]
 pub struct Actors {
     pub actors : HashMap<TeamPlayer, Actor>,
 }
@@ -19,7 +21,7 @@ impl Actors {
             //     }
             // }
             
-            pub fn reset_ratings(&mut self) {
+    pub fn reset_ratings(&mut self) {
         for a in self.actors.values_mut() {
             a.rating.reset();
         }

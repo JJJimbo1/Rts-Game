@@ -6,3 +6,6 @@ members = [
     "the5thfundamental_game",
     # "the5thfundamental_server",
 ]
+
+[profile.dev.package."*"]
+opt-level = 3

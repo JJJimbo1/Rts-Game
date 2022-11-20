@@ -1,4 +1,4 @@
-use bevy::ecs::entity::Entity;
+use bevy::{ecs::entity::Entity, prelude::Resource};
 use bimap::BiMap;
 
 use crate::Snowflake;
@@ -6,6 +6,7 @@ use crate::Snowflake;
 pub const SEPARATOR : &str = "||SS||";
 
 #[derive(Debug, Default)]
+#[derive(Resource)]
 pub struct Identifiers {
     identifiers : BiMap<Snowflake, Entity>,
 }

@@ -1,5 +1,6 @@
 use crate::*;
 
+#[derive(Resource)]
 pub struct ChosenSaveFile(pub String);
 
 

@@ -1,4 +1,4 @@
-use bevy::{math::{Vec2, Vec3, Mat4}, prelude::{GlobalTransform, Entity}, render::camera::Camera, window::Windows};
+use bevy::{math::{Vec2, Vec3, Mat4}, prelude::{GlobalTransform, Entity, Resource}, render::camera::Camera, window::Windows};
 
 // use crate::Snowflake;
 
@@ -9,7 +9,8 @@ pub struct RayCastResult {
     pub len : f32,
 }
 
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(Debug, Default, Copy, Clone)]
+#[derive(Resource)]
 pub struct CameraRaycast {
     pub last_valid_cast : Option<RayCastResult>,
     pub current_cast : Option<RayCastResult>,
@@ -23,7 +24,7 @@ pub fn ray(cursor_pos_screen: Vec2,
     let camera_position = camera_transform.compute_matrix();
     let window = windows.get_primary().unwrap();
     let screen_size = Vec2::from([window.width() as f32, window.height() as f32]);
-    let projection_matrix = camera.projection_matrix;
+    let projection_matrix = camera.projection_matrix();
 
     let cursor_ndc = (cursor_pos_screen / screen_size) * 2.0 - Vec2::from([1.0, 1.0]);
     let cursor_pos_ndc_near: Vec3 = cursor_ndc.extend(-1.0);

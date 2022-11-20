@@ -15,7 +15,7 @@ use bevy::prelude::*;
 use bevy_ninepatch::*;
 use chrono::Local;
 use the5thfundamental_common::*;
-use simple_random::*;
+use simple_random::prelude::*;
 
 mod ui;
 mod resources;
@@ -46,6 +46,8 @@ pub enum SystemSets {
     Camera,
 }
 
+#[derive(Debug, Clone)]
+#[derive(Resource)]
 pub struct FPSCounter{
     pub timer : Timer,
     pub frames : u32,
@@ -86,21 +88,23 @@ fn begin_log() {
 fn play_game() {
     App::new()
         .insert_resource(Msaa { samples: 4 })
-        .insert_resource(WindowDescriptor {
-            width: 1920.0,
-            height: 1080.0,
-            title: "untitled rts game".to_string(),
-            ..Default::default()
-        })
         .insert_resource(ClearColor(CLEAR_COLOR))
         .insert_resource(UiHit::<CLICK_BUFFER>{ hitting : [false; CLICK_BUFFER], holding : false, })
         .insert_resource(FPSCounter{
-            timer : Timer::from_seconds(0.25, true),
+            timer : Timer::from_seconds(0.25, TimerMode::Repeating),
             frames : 0,
             frames_total : 0,
         })
 
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            window: WindowDescriptor {
+                width: 1920.0,
+                height: 1080.0,
+                title: "untitled rts game".to_string(),
+                ..default()
+            },
+            ..default()
+        }))
         .add_plugins(CommonPlugins)
 
         // .add_plugin(CommonPlugin)
@@ -109,6 +113,7 @@ fn play_game() {
 
         .add_plugin(NinePatchPlugin::<()>::default())
         .add_plugin(SavePlugin)
+        .add_plugin(HealthBarPlugin)
 
         .add_event::<SelectionEvent>()
         .add_event::<ActivationEvent>()
@@ -152,6 +157,7 @@ fn play_game() {
 
         .add_state(GameState::Loading)
 
+        // .add_startup_system(setup)
     .run();
 }
 
@@ -175,16 +181,78 @@ fn crash() {
     match std::io::stdin().read_line(&mut s) { _ => { } }
 }
 
-
-#[test]
-fn atest() {
-    Command::new("D:/dev/rust/tools/gltf_to_collider").args([
-        // "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/crane_yard_collider.glb",
-        // "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/factory_collider.glb",
-        "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/marine_squad_collider.glb",
-        // "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/resource_platform_collider.glb",
-        // "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/tank_collider.glb",
-    ]).spawn().unwrap();
+#[allow(unused)]
+pub fn setup(
+    mut commands: Commands
+) {
+    commands.spawn(Camera3dBundle{
+        ..default()
+    });
 }
+
+
+// #[test]
+// fn atest() {
+//     Command::new("D:/dev/rust/tools/gltf_to_collider").args([
+//         // "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/crane_yard_collider.glb",
+//         // "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/factory_collider.glb",
+//         // "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/marine_squad_collider.glb",
+//         // "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/resource_platform_collider.glb",
+//         // "D:/dev/rust/projects/the5thfundamental_bevy/assets/colliders/tank_collider.glb",
+//     ]).spawn().unwrap();
+// }
+
+
+
+// mod tests {
+
+//     use std::any::Any;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//     pub struct EventGroup {
+//         types: Vec<Box<dyn Any>>
+//     }
+
+//     impl EventGroup {
+//         pub fn send(&mut self, yes: impl Any) {
+//             self.types.push(Box::new(yes));
+//         }
+//     }
+
+
+
+
+
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

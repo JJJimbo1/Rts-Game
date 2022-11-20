@@ -1,6 +1,6 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, ecs::schedule::ShouldRun};
 use qloader::*;
-use crate::*;
+use crate::{*, utility::assets::ImageAsset};
 
 const SIZE : u32 = 16;
 
@@ -12,22 +12,32 @@ pub struct HealthBar {
 }
 
 impl HealthBar {
-    pub fn new(segments : u32, textures : &QLoader<ImageAsset, AssetServer>, materials: &mut Assets<ColorMaterial>, commands : &mut Commands) -> Self {
-        let start = textures.get("health_bar_start").unwrap();
-        let middle = textures.get("health_bar_middle").unwrap();
-        let end = textures.get("health_bar_end").unwrap();
-        let green = textures.get("health_bar_green").unwrap();
+    pub fn new(
+        segments : u32,
+        asset_server: &mut AssetServer,
+        commands : &mut Commands
+    ) -> Self{
+
+        let start = asset_server.load(ImageAsset::HealthBarStart);
+        let middle = asset_server.load(ImageAsset::HealthBarMiddle);
+        let end = asset_server.load(ImageAsset::HealthBarEnd);
+        let green = asset_server.load(ImageAsset::HealthBarGreen);
+
+        // let start = textures.get("health_bar_start").unwrap();
+        // let middle = textures.get("health_bar_middle").unwrap();
+        // let end = textures.get("health_bar_end").unwrap();
+        // let green = textures.get("health_bar_green").unwrap();
 
         let size = SIZE;
         let sizef = size as f32;
         // let mut green_entity = commands.spawn().id();
 
-        let mut entity_commands = commands.spawn_bundle(NodeBundle {
+        let mut entity_commands = commands.spawn(NodeBundle {
             style: Style {
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::FlexStart,
                 position_type : PositionType::Absolute,
-                position : Rect {
+                position : UiRect {
                     left : Val::Px(0.0),
                     bottom : Val::Px(-sizef * 2.0),
                     ..Default::default()
@@ -35,7 +45,7 @@ impl HealthBar {
                 size: Size::new(Val::Px((segments * size + size * 2) as f32), Val::Px(sizef)),
                 ..Default::default()
             },
-            color : UiColor(EMPTY_COLOR.into()),
+            background_color : EMPTY_COLOR.into(),
             ..Default::default()
         });
 
@@ -44,63 +54,63 @@ impl HealthBar {
         let mut green_entity : Option<Entity> = None;
 
         entity_commands.with_children(|parent| {
-            green_entity = Some(parent.spawn_bundle(ImageBundle {
+            green_entity = Some(parent.spawn(ImageBundle {
                 style : Style {
                     position_type : PositionType::Absolute,
-                    position : Rect {
+                    position : UiRect {
                         left : Val::Px(sizef),
                         ..Default::default()
                     },
                     size: Size::new(Val::Px((segments * size) as f32), Val::Px(sizef / 2.0)),
                     ..Default::default()
                 },
-                image : UiImage(green.0.clone()),
+                image : green.into(),
                 ..Default::default()
             }).id());
         });
 
         entity_commands.with_children(|parent| {
-            parent.spawn_bundle(ImageBundle {
+            parent.spawn(ImageBundle {
                 style : Style {
                     position_type : PositionType::Absolute,
                     size: Size::new(Val::Px(sizef), Val::Px(sizef)),
                     ..Default::default()
                 },
-                image : UiImage(start.0.clone()),
+                image : start.into(),
                 ..Default::default()
             });
         });
 
         for s in 0..segments {
             entity_commands.with_children(|parent| {
-                parent.spawn_bundle(ImageBundle {
+                parent.spawn(ImageBundle {
                     style : Style {
                         position_type : PositionType::Absolute,
-                        position : Rect {
+                        position : UiRect {
                             left : Val::Px((s * size + size) as f32),
                             ..Default::default()
                         },
                         size: Size::new(Val::Px(sizef), Val::Px(sizef)),
                         ..Default::default()
                     },
-                    image : UiImage(middle.0.clone()),
+                    image : middle.clone().into(),
                     ..Default::default()
                 });
             });
         }
 
         entity_commands.with_children(|parent| {
-            parent.spawn_bundle(ImageBundle {
+            parent.spawn(ImageBundle {
                 style : Style {
                     position_type : PositionType::Absolute,
-                    position : Rect {
+                    position : UiRect {
                         left : Val::Px((segments * size + size) as f32),
                         ..Default::default()
                     },
                     size: Size::new(Val::Px(sizef), Val::Px(sizef)),
                     ..Default::default()
                 },
-                image : UiImage(end.0.clone()),
+                image : end.into(),
                 ..Default::default()
             });
         });
@@ -113,8 +123,7 @@ impl HealthBar {
     }
 
     pub fn offset(&self) -> Vec2 {
-        Vec2::new(-((SIZE * self.segments + SIZE * 2) as f32) / 2.0,
-        -((SIZE / 2) as f32))
+        Vec2::new(-((SIZE * self.segments + SIZE * 2) as f32) / 2.0, -((SIZE / 2) as f32))
     }
 
     pub fn adjust_bar_percent(&self, percent : f32, query : &mut Query<&mut Style>) {
@@ -134,41 +143,53 @@ impl Menu for HealthBar {
     }
 }
 
-pub fn health_bar_update_system(
-    textures : Res<QLoader<ImageAsset, AssetServer>>,
-    mut materials : ResMut<Assets<ColorMaterial>>,
-    windows : Res<Windows>,
-    images : Res<Assets<Image>>,
-    camera : Res<CameraController>,
+pub struct HealthBarPlugin;
 
-    mut commands : Commands,
+impl Plugin for HealthBarPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_system_set(SystemSet::new()
+            .with_run_criteria(should_update_health_bars)
+            .with_system(create_health_bars)
+            .with_system(update_health_bars.after(create_health_bars))
+            .with_system(cleanup_health_bars.after(update_health_bars))
+        );
+    }
+}
 
+pub fn should_update_health_bars(
+    camera_controller: Option<Res<CameraController>>,
+) -> ShouldRun {
+    camera_controller.is_some().into()
+}
+
+pub fn create_health_bars(
+    mut asset_server: ResMut<AssetServer>,
     add_health_bars : Query<(Entity, &Health), Without<HealthBar>>,
+    mut commands: Commands,
+) {
+    add_health_bars
+        .iter()
+        .map(|(entity, health)| (entity, (health.max_health() / 250.0).ceil() as u32))
+        .for_each(|(entity, segments)| {
+            let health_bar = HealthBar::new(segments, &mut asset_server, &mut commands);
+            commands.entity(entity).insert(health_bar);
+    });
+}
+
+pub fn update_health_bars(
+    camera : Res<CameraController>,
     health_bars : Query<(&Transform, &Health, &HealthBar)>,
     mut styles : Query<&mut Style>,
     mut visibles : Query<&mut Visibility>,
-    children : Query<&Children>,
     cameras : Query<(&Camera, &GlobalTransform)>,
 ) {
-    let mut ents_to_add : Vec<(Entity, u32)> = Vec::new();
-
-    add_health_bars.for_each(|(ent, hel)| {
-        ents_to_add.push((ent, (hel.max_health() / 250.0).ceil() as u32));
-    });
-
-    // println!("{}", ents_to_add.len());
-    for (e, s) in ents_to_add.iter() {
-        let health_bar = HealthBar::new(*s, &textures, &mut materials, &mut commands);
-        commands.entity(*e).insert(health_bar);
-    }
-
-    let cam = cameras.get(camera.camera).unwrap();
+    let (camera, camera_transform) = cameras.get(camera.camera).unwrap();
     health_bars.for_each(|(tran, hel, bar)| {
         if hel.is_full_health() {
-            bar.close(&mut visibles, &children);
+            bar.open(&mut visibles);
         } else {
-            bar.open(&mut visibles, &children);
-            match cam.0.world_to_screen(&windows, &images, cam.1, tran.translation) {
+            bar.open(&mut visibles);
+            match camera.world_to_viewport(camera_transform, tran.translation) {
                 Some(point) => {
                     if let Ok(mut s) = styles.get_mut(bar.main_container()) {
                         let point = point + bar.offset();
@@ -184,17 +205,16 @@ pub fn health_bar_update_system(
     });
 }
 
-pub fn health_bar_cleanup_system(
+pub fn cleanup_health_bars(
     mut object_killed_reader : EventReader<ObjectKilledEvent>,
     query : Query<&HealthBar>,
     mut commands : Commands
 ) {
     for event in object_killed_reader.iter() {
-        // println!("deleting{:?}", e);
         commands.get_or_spawn(event.0).despawn_recursive();
         // commands.entity(*e).despawn_recursive();
-        if let Ok(x) = query.get(event.0) {
-            commands.get_or_spawn(x.main_container()).despawn_recursive();
+        if let Some(x) = query.get(event.0).ok().and_then(|x| { commands.get_entity(x.main_container())}) {
+            x.despawn_recursive();
         }
     }
 }

@@ -9,7 +9,7 @@ use crate::*;
 pub struct Marine;
 
 impl AssetId for Marine {
-    fn id(&self) -> &'static str {
+    fn id(&self) -> Option<&'static str> {
         ObjectType::from(*self).id()
     }
 }
@@ -44,13 +44,15 @@ pub struct MarineBundle {
     // pub velocity: Velocity,
     // pub rigid_body: RigidBody,
     // pub collider: Collider,
+    pub visibility: Visibility,
+    pub computed_visibility: ComputedVisibility,
     pub transform: Transform,
     pub global_transform: GlobalTransform,
 }
 
 impl MarineBundle {
     pub fn with_spawn_data(mut self, spawn_data: ObjectSpawnEventData) -> Self {
-        self.team_player = spawn_data.team_player;
+        self.team_player = spawn_data.teamplayer;
         self.transform = spawn_data.transform;
         self
     }
@@ -73,6 +75,8 @@ impl Default for MarineBundle {
             // velocity: Velocity::default(),
             // rigid_body: RigidBody::KinematicVelocityBased,
             // collider: prefab.real_collider.clone().unwrap(),
+            visibility: Visibility::default(),
+            computed_visibility: ComputedVisibility::default(),
             transform: Transform::default(),
             global_transform: GlobalTransform::default(),
         }

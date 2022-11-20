@@ -8,8 +8,9 @@ use crate::*;
 pub struct ResourcePlatformUnclaimed(pub Option<(Entity, usize)>);
 
 impl AssetId for ResourcePlatformUnclaimed {
-    fn id(&self) -> &'static str {
-        "resource_platform"
+    fn id(&self) -> Option<&'static str> {
+        // "resource_platform"
+        ObjectType::ResourcePlatformUnclaimed.id()
     }
 }
 
@@ -40,6 +41,8 @@ pub struct ResourcePlatformUnclaimedBundle {
     pub team_player: TeamPlayer,
     pub selectable: Selectable,
     pub collider: Collider,
+    pub visibility: Visibility,
+    pub computed_visibility: ComputedVisibility,
     pub transform: Transform,
     pub global_transform: GlobalTransform,
 }
@@ -51,7 +54,7 @@ impl ResourcePlatformUnclaimedBundle {
     }
     pub fn with_spawn_data(mut self, spawn_data: ObjectSpawnEventData) -> Self {
         self.snowflake = spawn_data.snowflake;
-        self.team_player = spawn_data.team_player;
+        self.team_player = spawn_data.teamplayer;
         self.transform = spawn_data.transform;
         self
     }
@@ -66,6 +69,8 @@ impl From<ResourcePlatformUnclaimedPrefab> for ResourcePlatformUnclaimedBundle {
             team_player: TeamPlayer::default(),
             selectable: Selectable::single(),
             collider: prefab.real_collider.clone().unwrap(),
+            visibility: Visibility::default(),
+            computed_visibility: ComputedVisibility::default(),
             transform: Transform::default(),
             global_transform: GlobalTransform::default(),
         }
@@ -101,15 +106,15 @@ pub fn resource_platform_unclaimed_on_activation(
         if let Ok((global_transform, platform, snowflake)) = resource_platforms_unclaimed.get(event.entity) {
             if actors.actors.get_mut(&event.player).map_or(false, |actor| actor.economy.remove_resources(prefabs.resource_platform_claimed_prefab.cost)) {
                 let spawn_data = ObjectSpawnEventData {
-                    snowflake: *snowflake,
                     object_type: ObjectType::ResourcePlatformClaimed,
-                    team_player: event.player,
+                    snowflake: *snowflake,
+                    teamplayer: event.player,
                     transform: Transform::from(*global_transform),
                 };
                 if let Ok(mut node) = resource_nodes.get_mut(platform.0.unwrap().0) {
                     node.0[platform.0.unwrap().1] = ResourcePlatform::Claimed(*snowflake, event.player);
                 }
-                commands.spawn_bundle(ResourcePlatformClaimedBundle::from(prefabs.resource_platform_claimed_prefab.clone()).with_platform((*platform).into()).with_spawn_data(spawn_data));
+                commands.spawn(ResourcePlatformClaimedBundle::from(prefabs.resource_platform_claimed_prefab.clone()).with_platform((*platform).into()).with_spawn_data(spawn_data));
                 commands.entity(event.entity).despawn_recursive();
             }
         }

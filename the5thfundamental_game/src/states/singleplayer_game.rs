@@ -14,19 +14,22 @@ pub fn singleplayer_game_state_on_update_system_set() -> SystemSet {
         .with_system(singleplayer_game_on_update)
         .with_system(debug_menu_update)
         .with_system(gameplay_ui_update)
-        .with_system(health_bar_update_system)
-        .with_system(health_bar_cleanup_system)
+        // .with_system(health_bar_update_system)
+        // .with_system(health_bar_cleanup_system)
         .with_system(button_updater_system)
         .with_system(context_menu_update)
         .with_system(context_menu_event_writer)
         .with_system(context_menu_event_reader)
-        .with_system(health_bar_update_system)
-        .with_system(health_bar_cleanup_system)
+        // .with_system(health_bar_update_system)
+        // .with_system(health_bar_cleanup_system)
 
         .with_system(spawn_standard_objects)
         .with_system(patch_grid_map)
         .with_system(resource_node_spawn)
-        .with_system(marine_squad_spawn)
+        .with_system(spawn_marine_squad)
+        .with_system(TankPlugin::spawn_tank)
+        .with_system(TankPlugin::aim_tank_gun)
+        // .with_system(tank_gun_spawn)
         .with_system(resource_platform_unclaimed_on_activation)
         .with_system(resource_platform_claimed_on_killed)
         .with_system(factory_system.before(context_menu_update))
@@ -44,7 +47,7 @@ pub fn singleplayer_game_state_on_exit_system_set() -> SystemSet {
 pub fn singleplayer_game_on_enter(
     mut commands : Commands
 ) {
-    commands.spawn_bundle(DirectionalLightBundle  {
+    commands.spawn(DirectionalLightBundle  {
         directional_light : DirectionalLight {
             // shadows_enabled : true,
             ..Default::default()

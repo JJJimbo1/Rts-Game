@@ -9,7 +9,7 @@ use crate::*;
 pub struct CraneYard;
 
 impl AssetId for CraneYard {
-    fn id(&self) -> &'static str {
+    fn id(&self) -> Option<&'static str> {
         ObjectType::from(*self).id()
     }
 }
@@ -38,13 +38,15 @@ pub struct CraneYardBundle {
     pub team_player: TeamPlayer,
     pub selectable: Selectable,
     pub collider: Collider,
+    pub visibility: Visibility,
+    pub computed_visibility: ComputedVisibility,
     pub transform: Transform,
     pub global_transform: GlobalTransform,
 }
 
 impl CraneYardBundle {
     pub fn with_spawn_data(mut self, spawn_data: ObjectSpawnEventData) -> Self {
-        self.team_player = spawn_data.team_player;
+        self.team_player = spawn_data.teamplayer;
         self.transform = spawn_data.transform;
         self
     }
@@ -62,6 +64,8 @@ impl From<CraneYardPrefab> for CraneYardBundle {
             team_player: TeamPlayer::default(),
             selectable: Selectable::single(),
             collider: prefab.real_collider.clone().unwrap(),
+            visibility: Visibility::default(),
+            computed_visibility: ComputedVisibility::default(),
             transform: Transform::default(),
             global_transform: GlobalTransform::default(),
         }
@@ -80,6 +84,8 @@ impl From<(SerdeCraneYard, &CraneYardPrefab)> for CraneYardBundle {
             team_player: save.team_player,
             selectable: Selectable::single(),
             collider: prefab.real_collider.clone().unwrap(),
+            visibility: Visibility::default(),
+            computed_visibility: ComputedVisibility::default(),
             transform: save.transform.into(),
             global_transform: GlobalTransform::default(),
         }
@@ -90,7 +96,7 @@ impl From<(SerdeCraneYard, &CraneYardPrefab)> for CraneYardBundle {
 #[derive(Serialize, Deserialize)]
 pub struct CraneYardPrefab {
     pub health: Health,
-    pub queues: PrefabQueues,
+    pub prefab_queues: PrefabQueues,
     #[serde(skip)]
     pub real_queues: Option<Queues>,
     pub collider_string: String,
@@ -101,7 +107,7 @@ pub struct CraneYardPrefab {
 impl CraneYardPrefab {
     pub fn with_real_queues(mut self, stacks: &HashMap<ObjectType, (ActiveQueue, StackData)>) -> Self {
         let mut queues = Queues::new();
-        for s in self.queues.objects.iter() {
+        for s in self.prefab_queues.objects.iter() {
             let (active, data) = stacks[s];
             queues.push_data_to_queue(active, data);
         }

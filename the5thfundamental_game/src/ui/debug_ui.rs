@@ -1,13 +1,19 @@
 use bevy::prelude::*;
 use qloader::*;
-use crate::*;
+use crate::{*, utility::assets::FontAsset};
 
-pub fn create_debug_menu(settings : Res<MenuSettings>, textures : Res<QLoader<ImageAsset, AssetServer>>, fonts : Res<QLoader<FontAsset, AssetServer>>, mut commands : Commands, mut materials: ResMut<Assets<ColorMaterial>>) {
-    let debug_menu = DebugMenu::new(settings, textures, fonts, &mut commands, materials);
+pub fn create_debug_menu(
+    settings : Res<MenuSettings>,
+    mut asset_server: ResMut<AssetServer>,
+    mut commands : Commands,
+    mut materials: ResMut<Assets<ColorMaterial>>
+) {
+    let debug_menu = DebugMenu::new(&settings, &mut asset_server, &mut commands);
     commands.insert_resource(debug_menu);
 }
 
 #[derive(Copy, Clone)]
+#[derive(Resource)]
 pub struct DebugMenu {
     container : Entity,
     fps_counter : Entity,
@@ -16,20 +22,19 @@ pub struct DebugMenu {
 
 impl DebugMenu {
     pub fn new(
-        settings : Res<MenuSettings>,
-        _textures : Res<QLoader<ImageAsset, AssetServer>>,
-        fonts : Res<QLoader<FontAsset, AssetServer>>,
+        settings : &MenuSettings,
+        asset_server: &mut AssetServer,
         commands : &mut Commands,
-        mut materials: ResMut<Assets<ColorMaterial>>
+        // mut materials: &mut Assets<ColorMaterial>
     ) -> Self {
-        let font = fonts.get("square").unwrap().0.clone();
+        let font = asset_server.load(FontAsset::Roboto);
 
         let font_size = FONT_SIZE_SMALL * settings.font_size;
 
-        let mut entity_commands = commands.spawn_bundle(NodeBundle {
+        let mut entity_commands = commands.spawn(NodeBundle {
             style: Style {
                 position_type : PositionType::Absolute,
-                position: Rect {
+                position: UiRect {
                     top : Val::Px(10.0),
                     left: Val::Px(10.0),
                     ..Default::default()
@@ -37,7 +42,7 @@ impl DebugMenu {
                 size: Size::new(Val::Px(200.0), Val::Px(400.0)),
                 ..Default::default()
             },
-            color : UiColor(DARK_BACKGROUND_COLOR.into()),
+            background_color : DARK_BACKGROUND_COLOR.into(),
             visibility : Visibility { is_visible : false},
             ..Default::default()
         });
@@ -46,24 +51,23 @@ impl DebugMenu {
         let mut fps_counter_entity = None;
 
         let entity_commands = entity_commands.with_children(|parent| {
-            fps_counter_entity = Some(parent.spawn_bundle(TextBundle {
+            fps_counter_entity = Some(parent.spawn(TextBundle {
                 style: Style {
                     position_type : PositionType::Absolute,
-                    position: Rect {
+                    position: UiRect {
                         top : Val::Px(10.0),
                         left: Val::Px(10.0),
                         ..Default::default()
                     },
                     ..Default::default()
                 },
-                text: Text::with_section(
+                text: Text::from_section(
                     "FPS : 0",
                     TextStyle {
                         font : font.clone(),
                         font_size,
                         color: Color::WHITE,
                     },
-                    Default::default(),
                 ),
                 visibility : Visibility { is_visible : false},
                 ..Default::default()
@@ -74,26 +78,25 @@ impl DebugMenu {
 
         entity_commands.with_children(|parent| {
             // text
-            frame_number_entity = Some(parent.spawn_bundle(TextBundle {
+            frame_number_entity = Some(parent.spawn(TextBundle {
                 style: Style {
                     position_type : PositionType::Absolute,
-                    position: Rect {
+                    position: UiRect {
                         top : Val::Px(font_size + 20.0),
                         left: Val::Px(10.0),
                         // top: Val::Px(0.0),
                         ..Default::default()
                     },
-                    //margin: Rect::all(Val::Px(5.0)),
+                    //margin: UiRect::all(Val::Px(5.0)),
                     ..Default::default()
                 },
-                text: Text::with_section(
+                text: Text::from_section(
                     "FRAME# : 0",
                     TextStyle {
                         font : font.clone(),
                         font_size,
                         color: Color::WHITE,
                     },
-                    Default::default(),
                 ),
                 visibility : Visibility { is_visible : false},
                 ..Default::default()
@@ -114,7 +117,6 @@ pub fn debug_menu_update(
     input : Res<Input<KeyCode>>,
     time : Res<Time>,
     mut fps_counter : ResMut<FPSCounter>,
-    children : Query<&Children>,
     mut visibles : Query<&mut Visibility>,
     mut texts : Query<&mut Text>,
 ) {
@@ -123,12 +125,12 @@ pub fn debug_menu_update(
     fps_counter.frames += 1;
     fps_counter.frames_total += 1;
     if input.just_pressed(KeyCode::F3) {
-        menu.toggle(&mut visibles, &children);
+        menu.toggle(&mut visibles);
     }
 
     if let Ok(mut text) = texts.get_mut(menu.fps_counter) {
         if fps_counter.timer.finished() {
-            text.sections[0].value = format!("FPS: {:.*}", 1, fps_counter.frames as f32 / (fps_counter.timer.elapsed_secs() + fps_counter.timer.times_finished() as f32 * fps_counter.timer.duration().as_secs_f32()));
+            text.sections[0].value = format!("FPS: {:.*}", 1, fps_counter.frames as f32 / (fps_counter.timer.elapsed_secs() + fps_counter.timer.times_finished_this_tick() as f32 * fps_counter.timer.duration().as_secs_f32()));
             fps_counter.timer.reset();
             fps_counter.frames = 0;
         }

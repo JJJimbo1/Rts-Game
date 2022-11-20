@@ -4,7 +4,7 @@ use serde::{Serialize, Deserialize};
 use the5thfundamental_common::*;
 use qloader::*;
 
-use crate::*;
+use crate::{*, utility::assets::{FontAsset, ImageAsset}};
 
 #[derive(Debug, Clone, Copy)]
 pub enum ActiveTab {
@@ -39,9 +39,11 @@ pub struct UiInfo {
 
 
 #[derive(Debug, Clone, Copy)]
+#[derive(Resource)]
 pub struct ContextFocus(pub Option<Entity>);
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
+#[derive(Resource)]
 pub struct ContextMenu {
     container : Entity,
     // building_tab : Entity,
@@ -56,18 +58,18 @@ impl ContextMenu {
         entity : Entity,
         queue : &Queue,
         mut texts : Query<&mut Text>,
-        mut ui_colors : Query<&mut UiColor>,
+        mut ui_colors : Query<&mut BackgroundColor>,
         mut context_menu_buttons : Query<&mut ContextMenuButtonsEvent>,
         mut visible_query: Query<&mut Visibility>,
         children_query: Query<&Children>,
     ) {
-        set_visible_recursive(true, self.list_container, &mut visible_query, &children_query);
+        set_visible(true, self.list_container, &mut visible_query);
         let stacks = queue.zip_queue.stacks();
         let count = stacks.len().clamp(0, 9);
         // println!("{}", count);
         for i in 0..count {
             let stack_data = stacks[i];
-            set_visible_recursive(true, self.list_icons[i], &mut visible_query, &children_query);
+            set_visible(true, self.list_icons[i], &mut visible_query);
 
             if let (Ok(children), Ok(mut but)) = (children_query.get(self.list_icons[i]), context_menu_buttons.get_mut(self.list_icons[i])) {
                 let empty = queue.buffer.height(&stack_data) == 0;
@@ -78,7 +80,7 @@ impl ContextMenu {
                 }
                 for child in children.iter() {
                     if let Ok(mut text) = texts.get_mut(*child) {
-                        text.sections[0].value = format!("{}: {}", stack_data.object_type.id().to_string(), queue.zip_queue.height(stack_data));
+                        text.sections[0].value = format!("{}: {}", stack_data.object_type.id().map_or("".to_string(), |s| s.to_string()), queue.zip_queue.height(stack_data));
                     } else if let Ok(mut texture) = ui_colors.get_mut(*child) {
                         if empty {
                             *texture = BLACK.into();
@@ -92,7 +94,7 @@ impl ContextMenu {
             // else { println!("2"); }
         }
         for i in count..9 {
-            set_visible_recursive(false, self.list_icons[i], &mut visible_query, &children_query);
+            set_visible(false, self.list_icons[i], &mut visible_query);
         }
     }
 }
@@ -105,19 +107,18 @@ impl Menu for ContextMenu {
 
 pub fn create_context_menu(
     settings : Res<MenuSettings>,
-    textures : Res<QLoader<ImageAsset, AssetServer>>,
-    fonts : Res<QLoader<FontAsset, AssetServer>>,
+    mut asset_server: ResMut<AssetServer>,
     mut nine_patches : ResMut<Assets<NinePatchBuilder<()>>>,
     mut materials : ResMut<Assets<ColorMaterial>>,
     mut commands : Commands,
 ) {
-    let font = fonts.get("square").unwrap().0.clone();
+    let font = asset_server.load(FontAsset::Roboto);
     let font_size = FONT_SIZE_SMALL * settings.font_size / 1.5;
 
-    let mut entity_commands = commands.spawn_bundle(NodeBundle {
+    let mut entity_commands = commands.spawn(NodeBundle {
         style : Style {
             position_type : PositionType::Absolute,
-            position : Rect {
+            position : UiRect {
                 top : Val::Px(50.0),
                 right : Val::Px(50.0),
                 ..Default::default()
@@ -126,7 +127,7 @@ pub fn create_context_menu(
             justify_content : JustifyContent::Center,
             ..Default::default()
         },
-        color : UiColor(DARK_BACKGROUND_COLOR.into()),
+        background_color : DARK_BACKGROUND_COLOR.into(),
         visibility : Visibility { is_visible : true},
         ..Default::default()
     });
@@ -167,10 +168,10 @@ pub fn create_context_menu(
 
     for _ in 0..9 {
         commands.entity(list_entity.unwrap()).with_children(|parent| {
-            let icon = parent.spawn_bundle(ButtonBundle {
+            let icon = parent.spawn(ButtonBundle {
                 style : Style {
                     position_type : PositionType::Absolute,
-                    position : Rect {
+                    position : UiRect {
                         left : Val::Px(x),
                         top : Val::Px(y),
                         ..Default::default()
@@ -180,37 +181,36 @@ pub fn create_context_menu(
                     align_items : AlignItems::Center,
                     ..Default::default()
                 },
-                color : UiColor(BLACK.into()),
+                background_color : BLACK.into(),
                 visibility : Visibility { is_visible : true, },
                 ..Default::default()
             }).insert(ContextMenuButtonsEvent::BeginButton(None)).insert(BlocksRaycast)
             .with_children(|parent| {
-                parent.spawn_bundle(NinePatchBundle {
+                parent.spawn(NinePatchBundle {
                     style : Style {
                         position_type : PositionType::Absolute,
                         size : Size { width: Val::Percent(100.0), height: Val::Percent(100.0) },
                         ..Default::default()
                     },
                     nine_patch_data : NinePatchData {
-                        texture : textures.get("white_box").unwrap().0.clone(),
+                        texture : asset_server.load(ImageAsset::WhiteBox),
                         nine_patch : nine_patches.add(NinePatchBuilder::by_margins(2, 2, 2, 2)),
                         ..Default::default()
                     },
                     ..Default::default()
                 }).insert(BlocksRaycast);
-                parent.spawn_bundle(TextBundle {
+                parent.spawn(TextBundle {
                     style : Style {
                         position_type : PositionType::Absolute,
                         ..Default::default()
                     },
-                    text : Text::with_section(
+                    text : Text::from_section(
                         "",
                         TextStyle {
                             font : font.clone(),
                             font_size,
                             color : TEXT_COLOR_NORMAL,
                         },
-                        Default::default()
                     ),
                     visibility : Visibility { is_visible : true, },
                     ..Default::default()
@@ -247,10 +247,10 @@ fn create_tab(
     y : f32,
     button : ContextMenuButtonsEvent,
 ) -> Entity {
-    let tab = parent.spawn_bundle(ButtonBundle {
+    let tab = parent.spawn(ButtonBundle {
         style: Style {
             position_type : PositionType::Absolute,
-            position: Rect {
+            position: UiRect {
                 left : Val::Px(x),
                 top : Val::Px(y),
                 ..Default::default()
@@ -258,7 +258,7 @@ fn create_tab(
             size: Size::new(Val::Px(62.5), Val::Px(30.0)),
             ..Default::default()
         },
-        color : UiColor(LIGHT_BACKGROUND_COLOR.into()),
+        background_color : LIGHT_BACKGROUND_COLOR.into(),
         ..Default::default()
     }).insert(button).insert(BlocksRaycast).id();
     // *x += 72.5;
@@ -270,10 +270,10 @@ fn create_list(
     materials : &mut Assets<ColorMaterial>,
     y : f32
 ) -> Entity {
-    parent.spawn_bundle(NodeBundle {
+    parent.spawn(NodeBundle {
         style: Style {
             position_type : PositionType::Absolute,
-            position: Rect {
+            position: UiRect {
                 left : Val::Px(10.0),
                 top : Val::Px(y),
                 ..Default::default()
@@ -283,7 +283,7 @@ fn create_list(
             align_items: AlignItems::Center,
             ..Default::default()
         },
-        color : UiColor(LIGHT_BACKGROUND_COLOR.into()),
+        background_color : LIGHT_BACKGROUND_COLOR.into(),
         ..Default::default()
     }).insert(BlocksRaycast).id()
 }
@@ -294,7 +294,7 @@ pub fn context_menu_update(
     queueses : Query<&Queues>,
 
     texts : Query<&mut Text>,
-    colors : Query<&mut UiColor>,
+    colors : Query<&mut BackgroundColor>,
     ctx_buttons : Query<&mut ContextMenuButtonsEvent>,
 
     mut visible_query: Query<&mut Visibility>,
@@ -302,18 +302,18 @@ pub fn context_menu_update(
 ) {
 
     if let Some((entity, queues)) = focus.0.and_then(|e| queueses.get(e).map_or(None, |q| Some((e, q)))) {
-        menu.open(&mut visible_query, &children_query);
+        menu.open(&mut visible_query);
         // println!("{}", queues.count());
         match get_queue(queues, menu.active_tab) {
             Some(x) => {
                 menu.show_items(entity, x, texts, colors, ctx_buttons, visible_query, children_query);
             },
             None => {
-                set_visible_recursive(false, menu.list_container, &mut visible_query, &children_query);
+                set_visible(false, menu.list_container, &mut visible_query);
             }
         }
     } else {
-        menu.close(&mut visible_query, &children_query);
+        menu.close(&mut visible_query);
     }
 }
 

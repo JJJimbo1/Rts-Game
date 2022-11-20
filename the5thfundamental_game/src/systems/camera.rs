@@ -2,12 +2,11 @@ use std::f32::{NEG_INFINITY, INFINITY,};
 
 use bevy::{gltf::{Gltf}, input::mouse::MouseWheel, prelude::*, render::camera::Camera, math::Vec3Swizzles};
 use bevy_ninepatch::*;
-use bevy_prototype_debug_lines::DebugLines;
 use bevy_rapier3d::{prelude::InteractionGroups, plugin::RapierContext};
 use mathfu::D1;
 use the5thfundamental_common::*;
 use qloader::*;
-use crate::*;
+use crate::{*, utility::assets::{ImageAsset, GltfAsset}};
 
 pub const CLICK_BUFFER : usize = 8;
 
@@ -31,6 +30,8 @@ pub fn camera_system_set(set : SystemSet) -> SystemSet {
         .with_system(command_system.after(camera_raycast_response_system))
 }
 
+#[derive(Debug)]
+#[derive(Resource)]
 pub struct CameraController {
     pub camera_root: Entity,
     pub camera: Entity,
@@ -58,21 +59,22 @@ pub fn create_camera(
     let mut transform = Transform::from_xyz(0.0, y, z);
     transform.look_at(Vec3::ZERO, Vec3::Y);
 
-    let root_entity = commands.spawn()
-        .insert(Transform::default())
-        .insert(GlobalTransform::default())
-        .insert(LocalBounds {
+    let root_entity = commands.spawn((
+        Transform::default(),
+        GlobalTransform::default(),
+        LocalBounds {
             x : Vec2::new(-map.0.x / 2.0, map.0.x / 2.0),
             y : Vec2::new(NEG_INFINITY, INFINITY),
             z : Vec2::new(-map.0.y / 2.0, map.0.y / 2.0)
-        }).id();
+        },
+    )).id();
 
-    let camera_entity = commands.spawn_bundle(PerspectiveCameraBundle {
+    let camera_entity = commands.spawn(Camera3dBundle {
         transform,
         ..Default::default()
-    })
-        .insert(Parent(root_entity))
-        .id();
+    }).id();
+
+    commands.entity(root_entity).add_child(camera_entity);
 
     commands.insert_resource(CameraController {
         camera_root : root_entity,
@@ -92,43 +94,44 @@ pub fn create_camera(
 //TODO: Abstract out key bindings.
 pub fn camera_control_system(
     settings : Res<CameraSettings>,
-    mut controller : ResMut<CameraController>,
-    mut scroll_evr: EventReader<MouseWheel>,
+    mut camera_controller : ResMut<CameraController>,
+    mut scroll_event_reader: EventReader<MouseWheel>,
     mouse_buttons : Res<Input<MouseButton>>,
     key_input : Res<Input<KeyCode>>,
     windows : Res<Windows>,
     time : Res<Time>,
     mut trans : Query<&mut Transform>,
 ) {
+    if windows.get_primary().is_none() { return; }
     let window = windows.get_primary().unwrap();
     let half_size = Vec2::new(window.width() / 2.0, window.height() / 2.0);
     if mouse_buttons.pressed(MouseButton::Left) {
-        controller.holding = true;
+        camera_controller.holding = true;
     }
 
     let real_mouse_pos = match window.cursor_position() {
         Some(pos) => {
-            if controller.outside_window {
-                controller.just_entered = true;
+            if camera_controller.outside_window {
+                camera_controller.just_entered = true;
             }
-            controller.outside_window = false;
+            camera_controller.outside_window = false;
             pos - half_size
         },
         None => {
-            controller.outside_window = true;
+            camera_controller.outside_window = true;
             Vec2::default()
         }
     };
 
     let adjusted_mouse_pos = window.cursor_position().map_or(Vec2::default(), |pos|
-        if !controller.outside_window && (!controller.just_entered || !settings.post_action_stall) && !controller.holding { pos - half_size } else { Vec2::default() });
+        if !camera_controller.outside_window && (!camera_controller.just_entered || !settings.post_action_stall) && !camera_controller.holding { pos - half_size } else { Vec2::default() });
 
     let threshholds : (f32, f32) = (
         mathfu::D1::normalize_from_01(settings.thresholds.0, 0., half_size.x),
         mathfu::D1::normalize_from_01(settings.thresholds.1, 0., half_size.y),
     );
 
-    let height = trans.get_mut(controller.camera).map_or(1.0, |x|{
+    let height = trans.get_mut(camera_controller.camera).map_or(1.0, |x|{
         mathfu::D1::clamp(mathfu::D1::normalize_from_to(x.translation.distance(Vec3::default()), settings.min_zoom().length(), settings.max_zoom().length(),
         settings.zoom_base, settings.zoom_base * settings.zoom_ratio), settings.zoom_base, settings.zoom_base * settings.zoom_ratio)
     });
@@ -171,87 +174,93 @@ pub fn camera_control_system(
         mathfu::D1::clamp((scroll_dir_z + vert) * slow.1 * settings.max_scroll_speed * height,
         -settings.max_scroll_speed * height, settings.max_scroll_speed * height),
     );
+    // let (x, z) = (
+    //     mathfu::D1::clamp(hor * slow.1 * settings.max_scroll_speed * height,
+    //     -settings.max_scroll_speed * height, settings.max_scroll_speed * height),
+    //     mathfu::D1::clamp(vert * slow.1 * settings.max_scroll_speed * height,
+    //     -settings.max_scroll_speed * height, settings.max_scroll_speed * height),
+    // );
 
     let delta = mathfu::D1::clamp(time.delta_seconds(), 0.0, 1.0 / settings.minimum_fps_for_deltatime as f32);
 
-    if let Ok(mut tran) = trans.get_mut(controller.camera_root) {
+    if let Ok(mut tran) = trans.get_mut(camera_controller.camera_root) {
         //*Rotation
         let mut dir = 0.;
         if key_input.pressed(KeyCode::Q) {
-            controller.rotation_velocity = mathfu::D1::clamp(controller.rotation_velocity, 0., INFINITY);
+            camera_controller.rotation_velocity = mathfu::D1::clamp(camera_controller.rotation_velocity, 0., INFINITY);
             dir += 0.01;
         }
 
         if key_input.pressed(KeyCode::E) {
-            controller.rotation_velocity = mathfu::D1::clamp(controller.rotation_velocity, NEG_INFINITY, 0.);
+            camera_controller.rotation_velocity = mathfu::D1::clamp(camera_controller.rotation_velocity, NEG_INFINITY, 0.);
             dir -= 0.01;
         }
 
         if dir != 0. {
-            controller.rotation_velocity = mathfu::D1::lerp(controller.rotation_velocity, dir * settings.max_rotation_speed * slow.0, mathfu::D1::clamp01(settings.rotation_acceleration * delta));
+            camera_controller.rotation_velocity = mathfu::D1::lerp(camera_controller.rotation_velocity, dir * settings.max_rotation_speed * slow.0, mathfu::D1::clamp01(settings.rotation_acceleration * delta));
         } else {
-            controller.rotation_velocity = mathfu::D1::lerp(controller.rotation_velocity, 0.0, mathfu::D1::clamp01(settings.rotation_deceleration * delta));
+            camera_controller.rotation_velocity = mathfu::D1::lerp(camera_controller.rotation_velocity, 0.0, mathfu::D1::clamp01(settings.rotation_deceleration * delta));
         }
-        tran.rotate(Quat::from_rotation_y(controller.rotation_velocity));
+        tran.rotate(Quat::from_rotation_y(camera_controller.rotation_velocity));
 
         //*Scrolling
         if x.is_normal() {
-            if mathfu::D1::same_sign(x, controller.root_velocity.x) {
-                if mathfu::D1::farther_from_zero(x, controller.root_velocity.x) {
-                    controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(controller.root_velocity.x, x, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
+            if mathfu::D1::same_sign(x, camera_controller.root_velocity.x) {
+                if mathfu::D1::farther_from_zero(x, camera_controller.root_velocity.x) {
+                    camera_controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
+                        mathfu::D1::lerp(camera_controller.root_velocity.x, x, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
                     );
                 } else {
-                    controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(controller.root_velocity.x, x, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
+                    camera_controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
+                        mathfu::D1::lerp(camera_controller.root_velocity.x, x, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
                     );
                 }
             } else {
-                if controller.root_velocity.x.abs() < settings.fast_decceleration_threshold {
-                    controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(controller.root_velocity.x, x, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
+                if camera_controller.root_velocity.x.abs() < settings.fast_decceleration_threshold {
+                    camera_controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
+                        mathfu::D1::lerp(camera_controller.root_velocity.x, x, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
                     );
                 } else {
-                    controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(controller.root_velocity.x, x, mathfu::D1::clamp01(settings.scroll_deceleration * settings.fast_decceleration_strength * delta))
+                    camera_controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
+                        mathfu::D1::lerp(camera_controller.root_velocity.x, x, mathfu::D1::clamp01(settings.scroll_deceleration * settings.fast_decceleration_strength * delta))
                     );
                 }
             }
         } else {
-            controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
-                mathfu::D1::lerp(controller.root_velocity.x, 0.0, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
+            camera_controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
+                mathfu::D1::lerp(camera_controller.root_velocity.x, 0.0, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
             );
         }
 
         if z.is_normal() {
-            if mathfu::D1::same_sign(z, controller.root_velocity.z) {
-                if mathfu::D1::farther_from_zero(z, controller.root_velocity.z) {
-                    controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(controller.root_velocity.z, z, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
+            if mathfu::D1::same_sign(z, camera_controller.root_velocity.z) {
+                if mathfu::D1::farther_from_zero(z, camera_controller.root_velocity.z) {
+                    camera_controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
+                        mathfu::D1::lerp(camera_controller.root_velocity.z, z, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
                     );
                 } else {
-                    controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(controller.root_velocity.z, z, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
+                    camera_controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
+                        mathfu::D1::lerp(camera_controller.root_velocity.z, z, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
                     );
                 }
             } else {
-                if controller.root_velocity.z.abs() < settings.fast_decceleration_threshold {
-                    controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(controller.root_velocity.z, z, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
+                if camera_controller.root_velocity.z.abs() < settings.fast_decceleration_threshold {
+                    camera_controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
+                        mathfu::D1::lerp(camera_controller.root_velocity.z, z, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
                     );
                 } else {
-                    controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(controller.root_velocity.z, z, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
+                    camera_controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
+                        mathfu::D1::lerp(camera_controller.root_velocity.z, z, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
                     );
                 }
             }
         } else {
-            controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
-                mathfu::D1::lerp(controller.root_velocity.z, 0.0, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
+            camera_controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
+                mathfu::D1::lerp(camera_controller.root_velocity.z, 0.0, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
             );
         }
 
-        let movement = tran.rotation * controller.root_velocity * delta;
+        let movement = tran.rotation * camera_controller.root_velocity * delta;
         tran.translation += movement;
 
         if key_input.just_pressed(KeyCode::Grave) {
@@ -259,9 +268,9 @@ pub fn camera_control_system(
         }
     }
 
-    if let Ok(mut tran) = trans.get_mut(controller.camera) {
+    if let Ok(mut tran) = trans.get_mut(camera_controller.camera) {
         let mut zoom_add = 0.0;
-        for ev in scroll_evr.iter() {
+        for ev in scroll_event_reader.iter() {
             zoom_add = -ev.y;
         }
 
@@ -272,30 +281,30 @@ pub fn camera_control_system(
         }
 
         if zoom_add != 0. {
-            controller.zoom_velocity = mathfu::D1::lerp(controller.zoom_velocity, zoom_add * height * settings.max_zoom_speed * slow.2, mathfu::D1::clamp01(settings.zoom_acceleration * delta));
+            camera_controller.zoom_velocity = mathfu::D1::lerp(camera_controller.zoom_velocity, zoom_add * height * settings.max_zoom_speed * slow.2, mathfu::D1::clamp01(settings.zoom_acceleration * delta));
         } else {
-            controller.zoom_velocity = mathfu::D1::lerp(controller.zoom_velocity, 0., mathfu::D1::clamp01(settings.zoom_deceleration * delta));
+            camera_controller.zoom_velocity = mathfu::D1::lerp(camera_controller.zoom_velocity, 0., mathfu::D1::clamp01(settings.zoom_deceleration * delta));
         }
 
-        controller.zoom_precentage = D1::clamp01(controller.zoom_precentage + controller.zoom_velocity * delta);
+        camera_controller.zoom_precentage = D1::clamp01(camera_controller.zoom_precentage + camera_controller.zoom_velocity * delta);
 
-        let direction = Vec3::new(0.0, D1::normalize_from_01(controller.zoom_precentage, settings.min_zoom().y, settings.max_zoom().y),
-            D1::normalize_from_01(controller.zoom_precentage, settings.min_zoom().z, settings.max_zoom().z)).normalize_or_zero();
-        let distance = D1::normalize_from_01(controller.zoom_precentage, settings.min_zoom, settings.max_zoom);
+        let direction = Vec3::new(0.0, D1::normalize_from_01(camera_controller.zoom_precentage, settings.min_zoom().y, settings.max_zoom().y),
+            D1::normalize_from_01(camera_controller.zoom_precentage, settings.min_zoom().z, settings.max_zoom().z)).normalize_or_zero();
+        let distance = D1::normalize_from_01(camera_controller.zoom_precentage, settings.min_zoom, settings.max_zoom);
         tran.translation = direction * distance;
 
         if key_input.just_pressed(KeyCode::Grave) {
             let (direction, distance) = settings.default_direction_and_distance();
             tran.translation = direction * distance;
-            controller.zoom_velocity = 0.0;
-            controller.zoom_precentage = settings.default_zoom;
+            camera_controller.zoom_velocity = 0.0;
+            camera_controller.zoom_precentage = settings.default_zoom;
         }
         tran.look_at(Vec3::ZERO, Vec3::Y);
     }
 
     if (real_mouse_pos.x.abs() < threshholds.0.abs() && real_mouse_pos.y.abs() < threshholds.1.abs()) || !settings.post_action_stall {
-        controller.just_entered = false;
-        controller.holding = false;
+        camera_controller.just_entered = false;
+        camera_controller.holding = false;
     }
 }
 
@@ -313,7 +322,7 @@ pub fn camera_raycast_system(
     if let Ok((gl_transform, camera)) = cameras.get(controller.camera) {
         if let Some(cursor) = windows.get_primary().and_then(|w| w.cursor_position()) {
             let (origin, direction) = ray(cursor, &windows, camera, gl_transform);
-            if let Some((entity, len)) = context.cast_ray(origin, direction, f32::MAX, true, InteractionGroups::all(), None) {
+            if let Some((entity, len)) = context.cast_ray(origin, direction, f32::MAX, true, InteractionGroups::all().into()) {
                 let point = origin + direction * len;
                 let cam_cast = RayCastResult { entity, point, len};
                 cast.last_valid_cast = Some(cam_cast);
@@ -323,11 +332,14 @@ pub fn camera_raycast_system(
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum BoxSelectStatus {
     Idle,
     Dragging,
 }
 
+#[derive(Debug, Clone, Copy)]
+#[derive(Resource)]
 pub struct CameraSelector {
     selection_box_entity : Entity,
     mouse_start_pos : Vec2,
@@ -383,13 +395,14 @@ pub fn camera_raycast_response_system(
 }
 
 pub fn create_selector(
-    textures : Res<QLoader<ImageAsset, AssetServer>>,
+    mut asset_server : ResMut<AssetServer>,
+    // textures : Res<QLoader<ImageAsset, AssetServer>>,
     mut nine_patches: ResMut<Assets<NinePatchBuilder<()>>>,
     mut commands : Commands
 ) {
-    let select = textures.get("selection_box").unwrap();
+    let select = asset_server.load(ImageAsset::SelectionBox);
     let nine_patch = nine_patches.add(NinePatchBuilder::by_margins(2, 2, 2, 2));
-    let mut entity_commands = commands.spawn_bundle(NinePatchBundle {
+    let mut entity_commands = commands.spawn(NinePatchBundle {
         style: Style {
             position_type : PositionType::Absolute,
             size: Size::new(Val::Px(0.0), Val::Percent(0.0)),
@@ -398,7 +411,7 @@ pub fn create_selector(
         },
         nine_patch_data : NinePatchData {
             nine_patch,
-            texture : select.0.clone(),
+            texture : select,
             ..Default::default()
         },
         ..Default::default()
@@ -432,7 +445,7 @@ pub fn show_selection_box(
     if placement.placing() { return; };
     match selector.status {
         BoxSelectStatus::Idle => {
-            selector.close(&mut visibles, &children);
+            selector.close(&mut visibles);
         },
         BoxSelectStatus::Dragging => {
             if let Ok(mut style) = styles.get_mut(selector.selection_box_entity) {
@@ -446,9 +459,9 @@ pub fn show_selection_box(
             }
 
             if selector.showing() {
-                selector.open(&mut visibles, &children);
+                selector.open(&mut visibles);
             } else {
-                selector.close(&mut visibles, &children);
+                selector.close(&mut visibles);
             }
         }
     }
@@ -466,9 +479,6 @@ pub fn camera_select(
     camera : Res<CameraController>,
     cast : Res<CameraRaycast>,
     player : Res<Player>,
-
-    windows : Res<Windows>,
-    images : Res<Assets<Image>>,
 
     key_input : Res<Input<KeyCode>>,
 
@@ -548,7 +558,7 @@ pub fn camera_select(
 
                     units.for_each(|(ent, gl_tran, _, tp)| {
                         if *tp == player.0 {
-                            if let Some(center) = camera.world_to_screen(&windows, &images, cam_tran, gl_tran.translation) {
+                            if let Some(center) = camera.world_to_viewport(cam_tran, gl_tran.translation()) {
                                 if center.x > min.x && center.x < max.x
                                 && center.y < min.y && center.y > max.y {
                                     ents.push(ent);
@@ -671,6 +681,7 @@ impl Default for PlacementStatus {
 }
 
 #[derive(Debug, Clone)]
+#[derive(Resource)]
 pub struct CurrentPlacement<const U : usize> {
     pub status : PlacementStatus,
     pub placing : [bool; U],
@@ -721,9 +732,8 @@ pub fn building_placement_startup_system(mut commands : Commands) {
 
 pub fn building_placement_system(
     mut spawn_event_writer: EventWriter<ObjectSpawnEvent>,
-    gltf_assets : Res<QLoader<GltfAsset, AssetServer>>,
-    gltfs : Res<Assets<Gltf>>,
-    // gltf_meshes : Res<Assets<GltfMesh>>,
+    mut asset_server : ResMut<AssetServer>,
+    
     cast : Res<CameraRaycast>,
     input : Res<Input<MouseButton>>,
 
@@ -749,16 +759,18 @@ pub fn building_placement_system(
     //Todo: Fix visibility. Bug with Bevy?
     match current_placement.status {
         PlacementStatus::Began(info) => {
-            let mut entity_builder = commands.spawn();
-            entity_builder.insert(Transform::from_xyz(0.0, -10000000000.0, 0.0))
-                .insert(GlobalTransform::default())
-                .insert(Visibility { is_visible: false});
+            let mut entity_builder = commands.spawn(SpatialBundle {
+                visibility: Visibility { is_visible: false },
+                ..default()
+            });
 
-            if let Some(gltf) = gltf_assets.get(info.data.object_type.id()).and_then(|handle| gltfs.get(handle.0.clone())) {
-                entity_builder.with_children(|parent| {
-                    parent.spawn_scene(gltf.scenes[0].clone());
+            let gltf = asset_server.load(GltfAsset::from(AssetType::from(info.data.object_type)));
+            entity_builder.with_children(|parent| {
+                parent.spawn(SceneBundle{
+                    scene: gltf,
+                    ..default()
                 });
-            }
+            });
             let ghost = entity_builder.id();
             current_placement.status = PlacementStatus::Placing((info, ghost).into());
         },
@@ -768,7 +780,7 @@ pub fn building_placement_system(
                     *t = Transform::from_xyz(cc.point.x, cc.point.y, cc.point.z);
                     v.is_visible = true;
                 } else {
-                    *t = Transform::from_xyz(0.0, -10000000000.0, 0.0);
+                    // *t = Transform::from_xyz(0.0, -10000000000.0, 0.0);
                     v.is_visible = false;
                 }
             }
@@ -798,8 +810,13 @@ pub fn building_placement_system(
             }
             if up {
                 if let Ok(teamplayer) = team_players.get(info.constructor) {
-                    let spawn_data = ObjectSpawnEventData{snowflake: Snowflake::new(), object_type: info.data.object_type, transform : tran.clone(), team_player : *teamplayer};
-                    current_placement.status = PlacementStatus::Completed(info, spawn_data);
+                    let spawn_data = ObjectSpawnEventData {
+                        object_type: info.data.object_type,
+                        snowflake: Snowflake::new(),
+                        transform : tran.clone(),
+                        teamplayer : *teamplayer
+                    };
+                    current_placement.status = PlacementStatus::Completed(info, spawn_data.clone());
                 }
             }
         },
@@ -811,7 +828,7 @@ pub fn building_placement_system(
             current_placement.status = PlacementStatus::Idle;
         }
         PlacementStatus::Completed(info, spawn_data) => {
-            spawn_event_writer.send(ObjectSpawnEvent(spawn_data));
+            spawn_event_writer.send(ObjectSpawnEvent(spawn_data.clone()));
             // requests.request(ObjectType::Building, current_placement.data.clone().unwrap().id.clone(), current_placement.spawn_data.clone().unwrap(), Some(e));
             if let Ok(mut x) = queueses.get_mut(info.constructor) {
                 x.queues.get_mut(&info.queue).unwrap().remove_from_buffer(&info.data);

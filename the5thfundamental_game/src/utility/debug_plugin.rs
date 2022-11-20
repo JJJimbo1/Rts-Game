@@ -12,7 +12,7 @@ impl Plugin for DebugPlugin {
         app
 
             // .add_plugin(RapierDebugRenderPlugin::default())
-            .add_plugin(DiagnosticsPlugin::default())
+            // .add_plugin(DiagnosticsPlugin::default())
             .add_plugin(DebugLinesPlugin::with_depth_test(false))
 
         ;

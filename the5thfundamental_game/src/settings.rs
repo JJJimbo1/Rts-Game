@@ -1,10 +1,11 @@
 pub use settings::*;
 mod settings {
-    use bevy::math::Vec3;
+    use bevy::{math::Vec3, prelude::Resource};
     use mathfu::D1;
     use serde::{Serialize, Deserialize};
 
     #[derive(Deserialize)]
+    #[derive(Resource)]
     pub struct CameraSettings {
         pub offset_y: (f32, f32),
         pub offset_z: (f32, f32),
@@ -105,6 +106,7 @@ mod settings {
         }
     }
 
+    #[derive(Resource)]
     pub struct MenuSettings {
         pub font_size: f32,
     }

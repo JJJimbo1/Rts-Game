@@ -9,7 +9,7 @@ use crate::*;
 pub struct Factory;
 
 impl AssetId for Factory {
-    fn id(&self) -> &'static str {
+    fn id(&self) -> Option<&'static str> {
         ObjectType::from(*self).id()
     }
 }
@@ -38,13 +38,15 @@ pub struct FactoryBundle {
     pub team_player: TeamPlayer,
     pub selectable: Selectable,
     pub collider: Collider,
+    pub visibility: Visibility,
+    pub computed_visibility: ComputedVisibility,
     pub transform: Transform,
     pub global_transform: GlobalTransform,
 }
 
 impl FactoryBundle {
     pub fn with_spawn_data(mut self, spawn_data: ObjectSpawnEventData) -> Self {
-        self.team_player = spawn_data.team_player;
+        self.team_player = spawn_data.teamplayer;
         self.transform = spawn_data.transform;
         self
     }
@@ -62,6 +64,8 @@ impl From<FactoryPrefab> for FactoryBundle {
             team_player: TeamPlayer::default(),
             selectable: Selectable::single(),
             collider: prefab.real_collider.clone().unwrap(),
+            visibility: Visibility::default(),
+            computed_visibility: ComputedVisibility::default(),
             transform: Transform::default(),
             global_transform: GlobalTransform::default(),
         }
@@ -80,6 +84,8 @@ impl From<(SerdeFactory, &FactoryPrefab)> for FactoryBundle {
             team_player: save.team_player,
             selectable: Selectable::single(),
             collider: prefab.real_collider.clone().unwrap(),
+            visibility: Visibility::default(),
+            computed_visibility: ComputedVisibility::default(),
             transform: save.transform.into(),
             global_transform: GlobalTransform::default(),
         }
@@ -91,7 +97,7 @@ impl From<(SerdeFactory, &FactoryPrefab)> for FactoryBundle {
 pub struct FactoryPrefab {
     pub stack: (ActiveQueue, StackData),
     pub health: Health,
-    pub queues: PrefabQueues,
+    pub prefab_queues: PrefabQueues,
     #[serde(skip)]
     pub real_queues: Option<Queues>,
     pub collider_string: String,
@@ -102,7 +108,7 @@ pub struct FactoryPrefab {
 impl FactoryPrefab {
     pub fn with_real_queues(mut self, stacks: &HashMap<ObjectType, (ActiveQueue, StackData)>) -> Self {
         let mut queues = Queues::new();
-        for s in self.queues.objects.iter() {
+        for s in self.prefab_queues.objects.iter() {
             let (active, data) = stacks[s];
             queues.push_data_to_queue(active, data);
         }
@@ -148,13 +154,23 @@ pub fn factory_system(
         for data in queues.queues[&ActiveQueue::Infantry].buffer.spine() {
             let mut transform = *transform;
             transform.translation += transform.forward() * 20.0;
-            let spawn_data = ObjectSpawnEventData { snowflake: Snowflake::new(), object_type: data.object_type, team_player: *teamplayer, transform};
+            let spawn_data = ObjectSpawnEventData {
+                object_type: data.object_type,
+                snowflake: Snowflake::new(),
+                teamplayer: *teamplayer,
+                transform
+            };
             spawn_events.send(ObjectSpawnEvent(spawn_data));
         }
         for data in queues.queues[&ActiveQueue::Vehicles].buffer.spine() {
             let mut transform = *transform;
             transform.translation += transform.forward() * 20.0;
-            let spawn_data = ObjectSpawnEventData { snowflake: Snowflake::new(), object_type: data.object_type, team_player: *teamplayer, transform};
+            let spawn_data = ObjectSpawnEventData {
+                object_type: data.object_type,
+                snowflake: Snowflake::new(),
+                teamplayer: *teamplayer,
+                transform
+            };
             spawn_events.send(ObjectSpawnEvent(spawn_data));
         }
 

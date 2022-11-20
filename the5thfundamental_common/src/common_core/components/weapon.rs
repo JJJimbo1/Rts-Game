@@ -3,7 +3,8 @@ use serde::{Serialize, Deserialize};
 use crate::SerdeComponent;
 
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
 pub enum Target {
     AutoTarget(Entity),
     ManualTarget(Entity),
@@ -71,21 +72,21 @@ pub struct WeaponSet {
 }
 
 impl WeaponSet {
-    pub fn max_range(&self) -> f32 {
-        self.weapons.iter().map(|w| w.range).fold(0.0, |m, v| v.max(m))
+    pub fn max_range(&self) -> Option<f32> {
+        self.weapons.iter().fold(None, |m, w| Some(m.unwrap_or(0.0).max(w.range)))
     }
-    pub fn min_range(&self) -> f32 {
-        if self.weapons.len() == 0 { return 0.0; }
-        self.weapons.iter().map(|w| w.range).fold(f32::MAX, |m, v| v.min(m))
+    pub fn min_range(&self) -> Option<f32> {
+        self.weapons.iter().fold(None, |m, w| Some(m.unwrap_or(f32::MAX).min(w.range)))
     }
-    pub fn no_targets(&self) -> bool {
-        for w in self.weapons.iter() {
-            match w.target {
-                Target::None => { },
-                _ => { return false; }
-            }
-        }
-        true
+    pub fn no_targets(&self) -> Option<bool> {
+        self.weapons.iter().fold(None, |t, w| Some(t.unwrap_or(true) & (w.target == Target::None)))
+        // for w in self.weapons.iter() {
+        //     match w.target {
+        //         Target::None => { },
+        //         _ => { return false; }
+        //     }
+        // }
+        // true
     }
 }
 
@@ -97,7 +98,7 @@ impl SerdeComponent for WeaponSet {
                 cooled = false;
             }
         }
-        if self.no_targets() && cooled {
+        if self.no_targets().unwrap_or(true) && cooled {
             None
         } else {
             Some(self.clone())

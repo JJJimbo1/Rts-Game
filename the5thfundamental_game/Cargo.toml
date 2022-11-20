@@ -5,11 +5,12 @@ authors = ["Alten Reeves"]
 edition = "2021"
 
 [dependencies]
-bevy = "0.7.0"
-bevy_rapier3d = { version = "0.14.1"}
-bevy_ninepatch = "0.7.0"
-bevy_prototype_debug_lines = { version = "0.7.0", features = ["3d"]}
-ron = "0.7.0"
+bevy = "0.9.0"
+bevy_rapier3d = { version = "0.19.0"}
+bevy_ninepatch = "0.9.1"
+bevy_prototype_debug_lines = { version = "0.9.0", features = ["3d"]}
+bevy-debug-text-overlay = "4.0.1"
+ron = { version = "0.8.0", features = ["integer128"] }
 serde = "1.0.115"
 log = "0.4.11"
 walkdir = "2.3.1"
@@ -26,4 +27,4 @@ qloader = { path = "../../../crates/qloader"}
 mathfu = { path = "../../../crates/math_fu"}
 ronfile = { path = "../../../crates/ronfile"}
 bevy_pathfinding = { path = "../../../crates/bevy_pathfinding", features = ["serde"]}
-simple_random =  { path = "../../../crates/simple_random"}
+simple_random =  { path = "../../../crates/simple_random", features = ["bevy_ecs"]}

@@ -12,7 +12,6 @@
             // buffered: false,
         )
     ),
-    marine_squad: ((max_members: 10, members: 10, member_ids: [])),
     health : (
         max_health : 400,
         health : 400,
@@ -26,6 +25,15 @@
             shock : 0.0,
             radioactivity : -0.7,
         )
+    ),
+    prefab_squad: (
+        members: [
+            Marine,
+            Marine,
+            Marine,
+            Marine,
+            Marine,
+        ],
     ),
     controller : (
         follow : false,

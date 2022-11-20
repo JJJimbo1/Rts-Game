@@ -8,7 +8,7 @@ use crate::*;
 pub struct ResourceNode(pub [ResourcePlatform; 6]);
 
 impl AssetId for ResourceNode {
-    fn id(&self) -> &'static str {
+    fn id(&self) -> Option<&'static str> {
         ObjectType::from(*self).id()
     }
 }
@@ -45,6 +45,8 @@ pub struct ResourceNodeBundle {
     pub snowflake: Snowflake,
     pub team_player: TeamPlayer,
     pub collider: Collider,
+    pub visibility: Visibility,
+    pub computed_visibility: ComputedVisibility,
     pub transform: Transform,
     pub global_transform: GlobalTransform,
 }
@@ -52,7 +54,7 @@ pub struct ResourceNodeBundle {
 impl ResourceNodeBundle {
     pub fn with_spawn_data(mut self, spawn_data: ObjectSpawnEventData) -> Self {
         self.snowflake = spawn_data.snowflake;
-        self.team_player = spawn_data.team_player;
+        self.team_player = spawn_data.teamplayer;
         self.transform = spawn_data.transform;
         self
     }
@@ -67,6 +69,8 @@ impl From<ResourceNodePrefab> for ResourceNodeBundle {
             snowflake: Snowflake::new(),
             team_player: TeamPlayer::default(),
             collider: prefab.real_collider.clone().unwrap(),
+            visibility: Visibility::default(),
+            computed_visibility: ComputedVisibility::default(),
             transform: Transform::default(),
             global_transform: GlobalTransform::default(),
         }
@@ -82,6 +86,8 @@ impl From<(SerdeResourceNode, &ResourceNodePrefab)> for ResourceNodeBundle {
             resource_node: save.resource_node.unwrap_or_else(|| ResourceNode::default()),
             team_player: save.team_player,
             collider: prefab.real_collider.clone().unwrap(),
+            visibility: Visibility::default(),
+            computed_visibility: ComputedVisibility::default(),
             transform: save.transform.into(),
             global_transform: GlobalTransform::default(),
         }
@@ -139,23 +145,23 @@ pub fn resource_node_spawn(
             match platform_type {
                 ResourcePlatform::Unclaimed => {
                     let spawn_data = ObjectSpawnEventData {
-                        snowflake: Snowflake::new(),
                         object_type: ObjectType::ResourcePlatformUnclaimed,
-                        team_player: TeamPlayer::default(),
+                        snowflake: Snowflake::new(),
+                        teamplayer: TeamPlayer::default(),
                         transform: platform_transform,
                     };
                     let platform = ResourcePlatformUnclaimed(Some((entity, i)));
-                    commands.spawn_bundle(ResourcePlatformUnclaimedBundle::from(prefabs.resource_platform_unclaimed_prefab.clone()).with_platform(platform).with_spawn_data(spawn_data));
+                    commands.spawn(ResourcePlatformUnclaimedBundle::from(prefabs.resource_platform_unclaimed_prefab.clone()).with_platform(platform).with_spawn_data(spawn_data));
                 }
                 ResourcePlatform::Claimed(snowflake, player) => {
                     let spawn_data = ObjectSpawnEventData {
-                        snowflake,
                         object_type: ObjectType::ResourcePlatformClaimed,
-                        team_player: player,
+                        snowflake,
+                        teamplayer: player,
                         transform: platform_transform,
                     };
                     let platform = ResourcePlatformClaimed(Some((entity, i)));
-                    commands.spawn_bundle(ResourcePlatformClaimedBundle::from(prefabs.resource_platform_claimed_prefab.clone()).with_platform(platform).with_spawn_data(spawn_data));
+                    commands.spawn(ResourcePlatformClaimedBundle::from(prefabs.resource_platform_claimed_prefab.clone()).with_platform(platform).with_spawn_data(spawn_data));
                 }
             }
         }

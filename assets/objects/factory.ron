@@ -26,9 +26,9 @@
             radioactivity : 0.9,
         )
     ),
-    queues: (
+    prefab_queues: (
         objects: [
-            Tank,
+            TankBase,
             MarineSquad,
         ],
     ),

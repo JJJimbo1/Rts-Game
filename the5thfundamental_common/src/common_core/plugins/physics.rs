@@ -21,9 +21,6 @@ impl Plugin for PhysicsPlugin {
     }
 }
 
-
-
-
 #[derive(Component)]
 pub struct LocalBounds {
     pub x : Vec2,

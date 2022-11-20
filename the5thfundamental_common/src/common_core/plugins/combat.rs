@@ -1,8 +1,8 @@
 use bevy::{math::Vec3Swizzles, prelude::*};
-use bevy_pathfinding::{Path, PathFindingSystems, PathFindingPlugin, d2::{GridMap, GridCell}, GridSpace, DefaultPather};
+use bevy_pathfinding::{Path, PathFindingSystems, PathFindingPlugin, d2::{GridMap, GridCell}, GridSpace, DefaultPather, OGrid};
 use bevy_prototype_debug_lines::DebugLines;
 use bevy_rapier3d::prelude::{Collider, Velocity};
-use simple_random::Random;
+use simple_random::prelude::Random;
 use xtrees::Quad;
 use crate::{Actors, Health, MapBounds, Target, TeamPlayer, TeamPlayerWorld, WeaponSet, Controller, UnitCommandEvent, UnitCommandType, ObjectKilledEvent, GroundPathFinder};
 
@@ -13,7 +13,7 @@ impl CombatPlugin {
     fn process_commands(
         mut command_reader: EventReader<UnitCommandEvent>,
         pathing_space: Res<GridSpace>,
-        grid_map: Res<GridMap>,
+        grid_map: Res<OGrid>,
         mut rand : ResMut<Random>,
         mut pathfinders: Query<(Entity, &Transform, &mut GroundPathFinder, &mut Controller)>,
     ) {
@@ -26,7 +26,7 @@ impl CombatPlugin {
                         pathfinder.start = transform.translation.xz();
                         let end = destination + Vec2::new(rand.range(-spread, spread), rand.range(-spread, spread));
                         let (end_x, end_y) = pathing_space.position_to_index(end);
-                        let end = grid_map.get_cell(end_x, end_y).and_then(|c| grid_map.closest_unblocked_cell(*c)).map_or(end, |c| pathing_space.index_to_position(c.index()));
+                        let end = grid_map.0.get_cell(end_x, end_y).and_then(|c| grid_map.0.closest_unblocked_cell(*c)).map_or(end, |c| pathing_space.index_to_position(c.index()));
                         pathfinder.end = end;
                         controller.follow = true;
                         controller.pursuant = None;
@@ -62,7 +62,7 @@ impl CombatPlugin {
 
     fn targeting_system(
         pathing_space: Res<GridSpace>,
-        grid_map: Res<GridMap>,
+        grid_map: Res<OGrid>,
         teamplayer_world: Res<TeamPlayerWorld>,
         transforms: Query<&Transform>,
         mut query: Query<(&Transform, &mut GroundPathFinder, &mut Controller, &mut WeaponSet, &TeamPlayer,)>,
@@ -79,7 +79,7 @@ impl CombatPlugin {
                         if mathfu::D2::distance_magnitude((transform.translation.x, transform.translation.z), (target_transform.translation.x, target_transform.translation.z)) > dir.length_squared() {
                             pathfinder.start = transform.translation.xz();
                             let (end_x, end_y) = pathing_space.position_to_index(target_transform.translation.xz() + dir);
-                            let end = grid_map.get_cell(end_x, end_y).and_then(|c| grid_map.closest_unblocked_cell(*c)).map_or(target_transform.translation.xz() + dir, |c| pathing_space.index_to_position(c.index()));
+                            let end = grid_map.0.get_cell(end_x, end_y).and_then(|c| grid_map.0.closest_unblocked_cell(*c)).map_or(target_transform.translation.xz() + dir, |c| pathing_space.index_to_position(c.index()));
                             pathfinder.end = end;
                             controller.follow = true;
                         } else {
@@ -216,7 +216,7 @@ impl Plugin for CombatPlugin {
         let bounds = app.world.get_resource_or_insert_with(|| MapBounds::default()).clone();
         app.world.get_resource_or_insert_with(|| TeamPlayerWorld::new(&actors, &bounds));
 
-        app.world.get_resource_or_insert_with(|| GridMap::new(0, 0).with_cells(|x, z| GridCell::new(x, z, false)));
+        app.world.get_resource_or_insert_with(|| OGrid(GridMap::new(0, 0).with_cells(|x, z| GridCell::new(x, z, false))));
         app.world.get_resource_or_insert_with(|| DefaultPather::default());
         app.world.get_resource_or_insert_with(|| GridSpace::default());
 

@@ -9,6 +9,7 @@ use serde::{Serialize, Deserialize};
 use crate::{load_from_file, Manifest, AssetId, AssetType, decode};
 
 #[derive(Clone)]
+#[derive(Resource)]
 pub struct MapPrefabs {
     pub developer_prefab: DeveloperPrefab,
     // pub direction_prefab: DirectionPrefab,
@@ -58,9 +59,9 @@ impl From<MapType> for AssetType {
 }
 
 impl AssetId for MapType {
-    fn id(&self) -> &'static str {
+    fn id(&self) -> Option<&'static str> {
         match self {
-            Self::Developer => { "developer" },
+            Self::Developer => { Some("developer") },
             // Self::Direction => { "direction" },
             // Self::Sandbox => { "sandbox" },
         }
@@ -69,6 +70,7 @@ impl AssetId for MapType {
 
 #[derive(Debug, Clone, Copy)]
 #[derive(Serialize, Deserialize)]
+#[derive(Resource)]
 pub enum SerdeMap {
     Developer(SerdeDeveloper),
 }
@@ -81,9 +83,9 @@ pub enum SerdeMap {
 // }
 
 impl AssetId for SerdeMap {
-    fn id(&self) -> &'static str {
+    fn id(&self) -> Option<&'static str> {
         match self {
-            Self::Developer(_) => { "developer" },
+            Self::Developer(_) => { Some("developer") },
             // Self::Direction => { "direction" },
             // Self::Sandbox => { "sandbox" },
         }
@@ -111,15 +113,16 @@ impl AssetId for SerdeMap {
 //     for event in spawn_events.iter() {
 //         let entity;
 //         match event.0.map_type {
-//             MapType::Developer => { entity = commands.spawn_bundle(DeveloperBundle::from(prefabs.developer_prefab.clone())).id(); }
-//             // MapType::Direction => { entity = commands.spawn_bundle(ResourceNodeBundle::from(prefabs.resource_node_prefab.clone())).id(); }
-//             // MapType::Sandbox => { entity = commands.spawn_bundle(FactoryBundle::from(prefabs.factory_prefab.clone())).id(); }
+//             MapType::Developer => { entity = commands.spawn(DeveloperBundle::from(prefabs.developer_prefab.clone())).id(); }
+//             // MapType::Direction => { entity = commands.spawn(ResourceNodeBundle::from(prefabs.resource_node_prefab.clone())).id(); }
+//             // MapType::Sandbox => { entity = commands.spawn(FactoryBundle::from(prefabs.factory_prefab.clone())).id(); }
 //         }
 //     }
 // }
 
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
+#[derive(Resource)]
 pub struct MapBounds(pub Vec2);
 
 impl Default for MapBounds {

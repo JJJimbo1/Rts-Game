@@ -3,7 +3,7 @@ mod teamplayer {
 
     use std::collections::HashMap;
 
-    use bevy::{ecs::component::Component, math::{Vec2, Vec3}, prelude::{Entity, Query, Res}};
+    use bevy::{ecs::component::Component, math::{Vec2, Vec3}, prelude::{Entity, Query, Res, Resource}};
 
     use serde::{
         Serialize, Deserialize,
@@ -49,6 +49,7 @@ mod teamplayer {
     }
 
     #[derive(Debug, Default, Clone)]
+    #[derive(Resource)]
     pub struct TeamPlayerWorld {
         pub layers : HashMap<TeamPlayer, QuadTree<Entity>>
     }

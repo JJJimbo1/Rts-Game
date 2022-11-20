@@ -10,7 +10,7 @@ use crate::*;
 pub struct Developer;
 
 impl AssetId for Developer {
-    fn id(&self) -> &'static str {
+    fn id(&self) -> Option<&'static str> {
         MapType::from(*self).id()
     }
 }
@@ -35,6 +35,8 @@ pub struct DeveloperBundle {
     pub asset_type: AssetType,
     pub snowflake: Snowflake,
     pub collider: Collider,
+    pub visibility: Visibility,
+    pub computed_visibility: ComputedVisibility,
     pub transform: Transform,
     pub global_transform: GlobalTransform,
 }
@@ -53,6 +55,8 @@ impl From<DeveloperPrefab> for DeveloperBundle {
             asset_type: Developer.into(),
             snowflake: Snowflake::new(),
             collider: prefab.real_collider.clone().unwrap(),
+            visibility: Visibility::default(),
+            computed_visibility: ComputedVisibility::default(),
             transform: Transform::default(),
             global_transform: GlobalTransform::default(),
         }
@@ -67,6 +71,8 @@ impl From<(SerdeDeveloper, &DeveloperPrefab)> for DeveloperBundle {
             asset_type: Developer.into(),
             snowflake: Snowflake::new(),
             collider: prefab.real_collider.clone().unwrap(),
+            visibility: Visibility::default(),
+            computed_visibility: ComputedVisibility::default(),
             transform: Transform::default(),
             global_transform: GlobalTransform::default(),
         }

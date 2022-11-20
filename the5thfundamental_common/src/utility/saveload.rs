@@ -5,7 +5,7 @@ use bevy::{prelude::*, ecs::schedule::ShouldRun};
 use bevy_rapier3d::prelude::Velocity;
 use ron::{de::from_reader, extensions::Extensions, ser::{PrettyConfig, to_string_pretty,}};
 use serde::{Serialize, Deserialize};
-use bevy_pathfinding::{Path as FPath, d2::{GridMap, GridCell}, GridSpace};
+use bevy_pathfinding::{Path as FPath, d2::{GridMap, GridCell}, GridSpace, OGrid};
 use crate::*;
 
 #[derive(Debug, Clone, Copy)]
@@ -59,9 +59,9 @@ pub struct SaveFile {
 
 pub type SerdeCraneYardQuery<'a> = (&'a Snowflake, &'a Health, &'a Queues, &'a TeamPlayer, &'a Transform);
 pub type SerdeFactoryQuery<'a> = (&'a Snowflake, &'a Health, &'a Queues, &'a TeamPlayer, &'a Transform);
-pub type SerdeMarineSquadQuery<'a> = (&'a Snowflake, &'a MarineSquad, &'a Health, &'a GroundPathFinder, &'a FPath, &'a Controller, &'a WeaponSet, &'a Velocity, &'a TeamPlayer, &'a Transform);
+pub type SerdeMarineSquadQuery<'a> = (&'a Snowflake, &'a MarineSquad, &'a Health, &'a Squad, &'a GroundPathFinder, &'a FPath, &'a Controller, &'a WeaponSet, &'a Velocity, &'a TeamPlayer, &'a Transform);
 pub type SerdeResourceNodeQuery<'a> = (&'a Snowflake, &'a ResourceNode, &'a TeamPlayer, &'a Transform);
-pub type SerdeTankQuery<'a> = (&'a Snowflake, &'a Health, &'a GroundPathFinder, &'a FPath, &'a Controller, &'a WeaponSet, &'a Velocity, &'a TeamPlayer, &'a Transform);
+pub type SerdeTankBaseQuery<'a> = (&'a Snowflake, &'a Health, &'a GroundPathFinder, &'a FPath, &'a Controller, &'a WeaponSet, &'a Relative, &'a Velocity, &'a TeamPlayer, &'a Transform);
 
 pub fn save_game(
     mut save_event_reader: EventReader<SaveEvent>,
@@ -72,7 +72,7 @@ pub fn save_game(
         Query<SerdeFactoryQuery, With<Factory>>,
         Query<SerdeMarineSquadQuery, With<MarineSquad>>,
         Query<SerdeResourceNodeQuery, With<ResourceNode>>,
-        Query<SerdeTankQuery, With<Tank>>,
+        Query<SerdeTankBaseQuery, With<TankBase>>,
     ),
 ) {
     for event in save_event_reader.iter() {
@@ -105,6 +105,7 @@ pub fn save_game(
 pub fn load_game(
     mut load_event_reader: EventReader<LoadEvent>,
     mut loaded_event_writer: EventWriter<SaveLoaded>,
+    mut spawn_events_writer: EventWriter<ObjectSpawnEvent>,
     object_prefabs: Res<ObjectPrefabs>,
     map_prefabs: Res<MapPrefabs>,
     mut commands: Commands
@@ -117,24 +118,30 @@ pub fn load_game(
         commands.insert_resource(save_file.map.clone());
 
         let bounds = match save_file.map {
-            SerdeMap::Developer(developer) => { commands.spawn_bundle(DeveloperBundle::from((developer, &map_prefabs.developer_prefab))); &map_prefabs.developer_prefab.bounds }
+            SerdeMap::Developer(developer) => { commands.spawn(DeveloperBundle::from((developer, &map_prefabs.developer_prefab))); &map_prefabs.developer_prefab.bounds }
         };
 
         commands.insert_resource(bounds.clone());
         commands.insert_resource({
             // TODO: Map analyzation.
-            GridMap::new(bounds.0.x as usize, bounds.0.y as usize)
+            OGrid(GridMap::new(bounds.0.x as usize, bounds.0.y as usize)
                 .with_cells(|x, z| GridCell::new(x, z, false ))
                 .precomputed()
-            }
+            )}
         );
         commands.insert_resource(GridSpace::new(bounds.0.x as usize, bounds.0.y as usize));
 
-        for object in save_file.objects.crane_yards { commands.spawn_bundle(CraneYardBundle::from((object, &object_prefabs.crane_yard_prefab))); }
-        for object in save_file.objects.factories { commands.spawn_bundle(FactoryBundle::from((object, &object_prefabs.factory_prefab))); }
-        for object in save_file.objects.marine_squads { commands.spawn_bundle(MarineSquadBundle::from((object, &object_prefabs.marine_squad_prefab))); }
-        for object in save_file.objects.resource_nodes { commands.spawn_bundle(ResourceNodeBundle::from((object, &object_prefabs.resource_node_prefab))); }
-        for object in save_file.objects.tanks { commands.spawn_bundle(TankBundle::from((object, &object_prefabs.tank_prefab))); }
+        // save_file.objects.crane_yards.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
+        // save_file.objects.resource_nodes.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
+        // save_file.objects.factories.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
+        // save_file.objects.marine_squads.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
+        // save_file.objects.tanks.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
+
+        for object in save_file.objects.crane_yards { spawn_events_writer.send(object.into()); }
+        for object in save_file.objects.resource_nodes { spawn_events_writer.send(object.into()); }
+        for object in save_file.objects.factories { spawn_events_writer.send(object.into()); }
+        for object in save_file.objects.marine_squads { spawn_events_writer.send(object.into()); }
+        for object in save_file.objects.tanks { spawn_events_writer.send(object.into()); }
         loaded_event_writer.send(SaveLoaded);
     }
 }

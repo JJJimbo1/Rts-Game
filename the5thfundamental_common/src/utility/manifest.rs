@@ -1,5 +1,8 @@
+use bevy::prelude::Resource;
+
 
 #[derive(Debug, Clone)]
+#[derive(Resource)]
 pub struct Manifest {
     pub saves_path: &'static str,
     pub maps_path: &'static str,

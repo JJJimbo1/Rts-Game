@@ -1,5 +1,5 @@
 use bevy::{prelude::*, utils::hashbrown::HashMap};
-use crate::{Actors, TeamPlayer, Queues, EconomicObject, ObjectSpawnEvent};
+use crate::{Actors, TeamPlayer, Queues, EconomicObject};
 
 #[derive(Default)]
 pub struct ProductionPlugin;

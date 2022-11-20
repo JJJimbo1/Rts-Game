@@ -14,7 +14,7 @@ use crate::TeamPlayer;
 
 
 pub trait AssetId {
-    fn id(&self) -> &'static str;
+    fn id(&self) -> Option<&'static str>;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -25,7 +25,7 @@ pub enum AssetType {
 }
 
 impl AssetId for AssetType {
-    fn id(&self) -> &'static str {
+    fn id(&self) -> Option<&'static str> {
         match self {
             AssetType::Map(map) => map.id(),
             AssetType::Object(object) => object.id(),

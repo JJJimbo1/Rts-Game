@@ -1,39 +1,58 @@
 
-use bevy::{gltf::Gltf, prelude::*};
-use bevy_rapier3d::prelude::Collider;
-use qloader::QLoader;
+use bevy::prelude::*;
 use the5thfundamental_common::*;
-use crate::*;
+use crate::{*, utility::assets::GltfAsset};
 
 
 
 pub fn client_object_spawn(
-    gltf_assets: Res<QLoader<GltfAsset, AssetServer>>,
-    gltfs: Res<Assets<Gltf>>,
+    mut asset_server: ResMut<AssetServer>,
     mut identifiers: ResMut<Identifiers>,
-    maps: Query<(Entity, &Snowflake, &MapType), (Added<MapType>, With<Collider>)>,
-    objects: Query<(Entity, &Snowflake, &ObjectType), Added<ObjectType>>,
+    assets: Query<(Entity, &Snowflake, &AssetType), Added<AssetType>>,
     mut commands: Commands,
 ) {
-    maps.for_each(|(entity, snowflake, object)| {
-        if let Some(gltf) = gltf_assets.get(object.id()).and_then(|handle| gltfs.get(handle.0.clone())) {
-            commands.entity(entity).with_children(|parent| {
-                parent.spawn_scene(gltf.scenes[0].clone());
-            });
-        }
 
-        identifiers.insert(*snowflake, entity);
+    assets.for_each(|(entity, snowflake, asset)| {
+        let scene = asset_server.load(GltfAsset::from(*asset));
+        commands.entity(entity).with_children(|parent| {
+            parent.spawn(
+                SceneBundle {
+                    scene,
+                    ..default()
+                }
+            );
+        });
     });
 
-    objects.for_each(|(entity, snowflake, object)| {
-        // println!("{:?}", object);
-        if let Some(gltf) = gltf_assets.get(object.id()).and_then(|handle| gltfs.get(handle.0.clone())) {
-            // println!("Spawning: {:?}", object);
-            commands.entity(entity).with_children(|parent| {
-                parent.spawn_scene(gltf.scenes[0].clone());
-            });
-        }
-        identifiers.insert(*snowflake, entity);
-        // commands.
-    });
+    // maps.for_each(|(entity, snowflake, object)| {
+    //     if let Some(gltf) = object.id().and_then(|id| gltf_assets.get(id)).and_then(|handle| gltfs.get(&handle.0.clone())) {
+    //         commands.entity(entity).with_children(|parent| {
+    //             parent.spawn(
+    //                 SceneBundle {
+    //                     scene: gltf.scenes[0].clone(),
+    //                     ..default()
+    //                 }
+    //             );
+    //         });
+    //     }
+
+    //     identifiers.insert(*snowflake, entity);
+    // });
+
+    // objects.for_each(|(entity, snowflake, object)| {
+    //     // println!("{:?}", object);
+    //     if let Some(gltf) = object.id().and_then(|id| gltf_assets.get(id)).and_then(|handle| gltfs.get(&handle.0.clone())) {
+    //         // println!("Spawning: {:?}", object);
+    //         commands.entity(entity).with_children(|parent| {
+    //             parent.spawn(
+    //                 SceneBundle {
+    //                     scene: gltf.scenes[0].clone(),
+    //                     ..default()
+    //                 }
+    //             );
+    //         });
+    //     }
+    //     identifiers.insert(*snowflake, entity);
+    //     // commands.
+    // });
 }

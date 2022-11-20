@@ -8,33 +8,33 @@ pub mod health_bar_ui;
 pub use context_ui::*;
 pub use main_menu_ui::*;
 pub use debug_ui::*;
-// pub use map_selection_ui::map_selection_ui::*;
+// pub use map_selection_ui::*;
 pub use gameplay_ui::*;
 pub use health_bar_ui::*;
 
-use bevy::{prelude::*, input::mouse::MouseButtonInput};
+use bevy::{prelude::*, input::{mouse::MouseButtonInput, ButtonState}};
 use the5thfundamental_common::{StackData, ActiveQueue};
 
 use crate::{utility::{TEXT_COLOR_PRESS, TEXT_COLOR_NORMAL, TEXT_COLOR_HOVER}, systems::camera::CLICK_BUFFER};
 pub trait Menu {
     fn main_container(&self) -> Entity;
-    fn open(&self, visible_query: &mut Query<&mut Visibility>, children_query: &Query<&Children>,) -> bool {
+    fn open(&self, visible_query: &mut Query<&mut Visibility>) -> bool {
         let close = !self.is_open(visible_query);
-        set_visible_recursive(true, self.main_container(), visible_query, children_query);
+        set_visible(true, self.main_container(), visible_query);
         close
     }
 
-    fn close(&self, visible_query: &mut Query<&mut Visibility>, children_query: &Query<&Children>,) -> bool {
+    fn close(&self, visible_query: &mut Query<&mut Visibility>) -> bool {
         let open = self.is_open(visible_query);
-        set_visible_recursive(false, self.main_container(), visible_query, children_query);
+        set_visible(false, self.main_container(), visible_query);
         open
     }
 
-    fn toggle(&self, visible_query: &mut Query<&mut Visibility>, children_query: &Query<&Children>,) {
+    fn toggle(&self, visible_query: &mut Query<&mut Visibility>) {
         if self.is_open(visible_query) {
-            self.close(visible_query, children_query);
+            self.close(visible_query);
         } else {
-            self.open(visible_query, children_query);
+            self.open(visible_query);
         }
     }
 
@@ -46,21 +46,20 @@ pub trait Menu {
     }
 }
 
-pub fn set_visible_recursive(
+pub fn set_visible(
     is_visible: bool,
     entity: Entity,
     visible_query: &mut Query<&mut Visibility>,
-    children_query: &Query<&Children>,
 ) {
     if let Ok(mut visible) = visible_query.get_mut(entity) {
         visible.is_visible = is_visible;
     }
 
-    if let Ok(children) = children_query.get(entity) {
-        for child in children.iter() {
-            set_visible_recursive(is_visible, *child, visible_query, children_query);
-        }
-    }
+    // if let Ok(children) = children_query.get(entity) {
+    //     for child in children.iter() {
+    //         set_visible_recursive(is_visible, *child, visible_query, children_query);
+    //     }
+    // }
 }
 
 pub fn button_updater_system(
@@ -94,6 +93,7 @@ pub fn button_updater_system(
 }
 
 #[derive(Debug, Clone, Copy)]
+#[derive(Resource)]
 pub struct UiHit<const U: usize> {
     pub hitting : [bool; U],
     pub holding : bool,
@@ -136,7 +136,7 @@ pub fn ui_hit_detection_system(
     });
     for event in input.iter() {
         match event.state {
-            bevy::input::ElementState::Released => {
+            ButtonState::Released => {
                 if event.button == MouseButton::Left {
                     if ui_hit.holding {
                         ui_hit.holding = false;
@@ -200,6 +200,8 @@ pub enum ContextMenuButtonsEvent {
     // BeginUnbufferedButton(Option<(Entity, ActiveTab, StackData)>),
 }
 
+#[derive(Debug, Clone)]
+#[derive(Resource)]
 pub struct ButtonMaterials {
     pub normal: Handle<ColorMaterial>,
     pub hovered: Handle<ColorMaterial>,

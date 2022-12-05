@@ -577,16 +577,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_pathfinding"
-version = "0.0.1"
-dependencies = [
- "bevy",
- "hashbrown 0.13.1",
- "pathing",
- "serde",
-]
-
-[[package]]
 name = "bevy_pbr"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -740,7 +730,7 @@ dependencies = [
  "bevy_render",
  "bevy_transform",
  "bevy_utils",
- "ron 0.8.0",
+ "ron",
  "serde",
  "thiserror",
  "uuid",
@@ -1035,13 +1025,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76a284da2e6fe2092f2353e51713435363112dfd60030e22add80be333fb928f"
 dependencies = [
  "jobserver",
-]
-
-[[package]]
-name = "centered_grid"
-version = "0.0.1"
-dependencies = [
- "serde",
 ]
 
 [[package]]
@@ -2321,13 +2304,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mathfu"
-version = "0.0.1"
-dependencies = [
- "num",
-]
-
-[[package]]
 name = "matrixmultiply"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2442,7 +2418,7 @@ dependencies = [
  "glam",
  "matrixmultiply",
  "nalgebra-macros",
- "num-complex 0.4.2",
+ "num-complex",
  "num-rational 0.4.1",
  "num-traits",
  "simba",
@@ -2627,40 +2603,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b7a8e9be5e039e2ff869df49155f1c06bd01ade2117ec783e56ab0932b67a8f"
-dependencies = [
- "num-bigint",
- "num-complex 0.3.1",
- "num-integer",
- "num-iter",
- "num-rational 0.3.2",
- "num-traits",
-]
-
-[[package]]
-name = "num-bigint"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f6f7833f2cbf2360a6cfd58cd41a53aa7a90bd4c202f5b1c7dd2ed73c57b2c3"
-dependencies = [
- "autocfg",
- "num-integer",
- "num-traits",
-]
-
-[[package]]
-name = "num-complex"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "747d632c0c558b87dbabbe6a82f3b4ae03720d0646ac5b7b4dae89394be5f2c5"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
 name = "num-complex"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2708,7 +2650,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12ac428b1cb17fce6f731001d307d351ec70a6d202fc2e60f7d4c5e42d8f4f07"
 dependencies = [
  "autocfg",
- "num-bigint",
  "num-integer",
  "num-traits",
 ]
@@ -2907,9 +2848,9 @@ checksum = "b1de2e551fb905ac83f73f7aedf2f0cb4a0da7e35efa24a202a936269f1f18e1"
 
 [[package]]
 name = "pathfinding"
-version = "3.0.14"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb45190a18e771c500291c549959777a3be38d30113a860930bc1f2119f0cc13"
+checksum = "09ba65132000a419ec9b12d1850a4f73896afd0e8575d4dae41097e17600048f"
 dependencies = [
  "fixedbitset",
  "indexmap",
@@ -2918,17 +2859,6 @@ dependencies = [
  "num-traits",
  "rustc-hash",
  "thiserror",
-]
-
-[[package]]
-name = "pathing"
-version = "0.0.1"
-dependencies = [
- "centered_grid",
- "hashbrown 0.13.1",
- "indexmap",
- "pathfinding",
- "serde",
 ]
 
 [[package]]
@@ -3049,14 +2979,6 @@ name = "profiling"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74605f360ce573babfe43964cbe520294dcb081afbf8c108fc6e23036b4da2df"
-
-[[package]]
-name = "qloader"
-version = "0.0.1"
-dependencies = [
- "log",
- "walkdir",
-]
 
 [[package]]
 name = "quote"
@@ -3212,31 +3134,12 @@ dependencies = [
 
 [[package]]
 name = "ron"
-version = "0.6.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86018df177b1beef6c7c8ef949969c4f7cb9a9344181b92486b23c79995bdaa4"
-dependencies = [
- "base64 0.13.1",
- "bitflags",
- "serde",
-]
-
-[[package]]
-name = "ron"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "300a51053b1cb55c80b7a9fde4120726ddf25ca241a1cbb926626f62fb136bff"
 dependencies = [
  "base64 0.13.1",
  "bitflags",
- "serde",
-]
-
-[[package]]
-name = "ronfile"
-version = "0.0.1"
-dependencies = [
- "ron 0.6.6",
  "serde",
 ]
 
@@ -3391,18 +3294,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f3fd720c48c53cace224ae62bef1bbff363a70c68c4802a78b5cc6159618176"
 dependencies = [
  "approx 0.5.1",
- "num-complex 0.4.2",
+ "num-complex",
  "num-traits",
  "paste",
  "wide",
-]
-
-[[package]]
-name = "simple_random"
-version = "0.0.1"
-dependencies = [
- "bevy_ecs",
- "mathfu",
 ]
 
 [[package]]
@@ -3580,24 +3475,21 @@ dependencies = [
  "approx 0.5.1",
  "base64 0.13.1",
  "bevy",
- "bevy_pathfinding",
  "bevy_prototype_debug_lines",
  "bevy_rapier3d",
  "bimap",
  "bincode",
  "easy-gltf",
+ "hashbrown 0.13.1",
+ "indexmap",
  "log",
- "mathfu",
  "obj",
- "qloader",
- "ron 0.8.0",
- "ronfile",
+ "pathfinding",
+ "ron",
  "serde",
- "simple_random",
  "snowflake",
  "walkdir",
  "xtrees",
- "zipqueue",
 ]
 
 [[package]]
@@ -3608,7 +3500,6 @@ dependencies = [
  "bevy",
  "bevy-debug-text-overlay",
  "bevy_ninepatch",
- "bevy_pathfinding",
  "bevy_prototype_debug_lines",
  "bevy_rapier3d",
  "bimap",
@@ -3617,16 +3508,11 @@ dependencies = [
  "easy-gltf",
  "lazy_static",
  "log",
- "mathfu",
- "qloader",
- "ron 0.8.0",
- "ronfile",
+ "ron",
  "serde",
- "simple_random",
  "snowflake",
  "the5thfundamental_common",
  "walkdir",
- "zipqueue",
 ]
 
 [[package]]
@@ -4282,11 +4168,4 @@ checksum = "a67300977d3dc3f8034dae89778f502b6ba20b269527b3223ba59c0cf393bb8a"
 [[package]]
 name = "xtrees"
 version = "0.0.1"
-
-[[package]]
-name = "zipqueue"
-version = "0.0.1"
-dependencies = [
- "indexmap",
- "serde",
-]
+source = "git+https://github.com/JJJimbo1/xtrees.git#6ce483df7c2118bcbaef58fd795d136598dd58b2"

@@ -41,12 +41,6 @@ pub struct DeveloperBundle {
     pub global_transform: GlobalTransform,
 }
 
-// impl DeveloperBundle {
-//     pub fn with_spawn_data(mut self, spawn_data: MapSpawnEventData) -> Self {
-//         self
-//     }
-// }
-
 impl From<DeveloperPrefab> for DeveloperBundle {
     fn from(prefab: DeveloperPrefab) -> Self {
         Self {
@@ -54,7 +48,7 @@ impl From<DeveloperPrefab> for DeveloperBundle {
             map_type: Developer.into(),
             asset_type: Developer.into(),
             snowflake: Snowflake::new(),
-            collider: prefab.real_collider.clone().unwrap(),
+            collider: prefab.collider.clone(),
             visibility: Visibility::default(),
             computed_visibility: ComputedVisibility::default(),
             transform: Transform::default(),
@@ -70,7 +64,7 @@ impl From<(SerdeDeveloper, &DeveloperPrefab)> for DeveloperBundle {
             map_type: Developer.into(),
             asset_type: Developer.into(),
             snowflake: Snowflake::new(),
-            collider: prefab.real_collider.clone().unwrap(),
+            collider: prefab.collider.clone(),
             visibility: Visibility::default(),
             computed_visibility: ComputedVisibility::default(),
             transform: Transform::default(),
@@ -80,17 +74,25 @@ impl From<(SerdeDeveloper, &DeveloperPrefab)> for DeveloperBundle {
 }
 
 #[derive(Clone)]
-#[derive(Serialize, Deserialize)]
 pub struct DeveloperPrefab {
     pub bounds: MapBounds,
-    pub collider_string: String,
-    #[serde(skip)]
-    pub real_collider: Option<Collider>,
-    // pub stack: (ActiveQueue, StackData),
-    // pub health: Health,
-    // pub queues: PrefabQueues,
-    // #[serde(skip)]
-    // pub real_queues: Option<Queues>,
+    pub collider: Collider,
+}
+
+impl TryFrom<&Map> for DeveloperPrefab {
+    type Error = ContentError;
+    fn try_from(map : &Map) -> Result<Self, ContentError> {
+        let Some(bounds) = map.bounds else { return Err(ContentError::MissingBounds); };
+        let Some(collider_string) = map.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
+        let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
+
+        let collider = Collider::trimesh(vertices, indices);
+
+        Ok(Self {
+            bounds,
+            collider,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

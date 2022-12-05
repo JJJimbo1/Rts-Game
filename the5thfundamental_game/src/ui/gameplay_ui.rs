@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use qloader::*;
 use crate::{*, utility::assets::FontAsset};
 
 pub fn create_gameplay_ui(

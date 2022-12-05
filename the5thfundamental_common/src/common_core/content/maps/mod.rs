@@ -3,44 +3,10 @@ pub mod developer;
 use bevy_rapier3d::prelude::Collider;
 pub use developer::*;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, reflect::TypeUuid, asset::{AssetLoader, LoadedAsset, AssetPath}};
 use serde::{Serialize, Deserialize};
 
-use crate::{load_from_file, Manifest, AssetId, AssetType, decode};
-
-#[derive(Clone)]
-#[derive(Resource)]
-pub struct MapPrefabs {
-    pub developer_prefab: DeveloperPrefab,
-    // pub direction_prefab: DirectionPrefab,
-    // pub sandbox_prefab: SandboxPrefab,
-}
-
-pub fn load_map_prefabs(
-    manifest : Res<Manifest>,
-    mut commands : Commands,
-) {
-
-    let root = std::env::current_dir().unwrap();
-    let maps = format!("{}{}", root.as_path().display(), manifest.maps_path);
-
-    // let mut stacks : HashMap<MapType, (ActiveQueue, StackData)> = HashMap::new();
-
-    let mut developer_prefab : DeveloperPrefab = load_from_file(format!("{}developer.ron", maps)).unwrap();
-    // let direction_prefab : ResourceNodePrefab = load_from_file(format!("{}direction.ron", objects)).unwrap();
-    // let sandbox_prefab : FactoryPrefab = load_from_file(format!("{}sandbox.ron", objects)).unwrap();
-
-    developer_prefab.real_collider = decode(developer_prefab.collider_string.clone()).map_or(None, |(v, i)| Some(Collider::trimesh(v, i)));
-
-
-    let prefabs = MapPrefabs {
-        developer_prefab,
-        // direction_prefab,
-        // sandbox_prefab,
-    };
-
-    commands.insert_resource(prefabs);
-}
+use crate::{AssetId, AssetType};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[derive(Serialize, Deserialize)]
@@ -75,52 +41,17 @@ pub enum SerdeMap {
     Developer(SerdeDeveloper),
 }
 
-// #[derive(Debug, Clone, Copy)]
-// #[derive(Serialize, Deserialize)]
-// pub struct SerdeMap {
-//     map_type: MapType,
-//     map: SerdeMapType,
-// }
-
-impl AssetId for SerdeMap {
-    fn id(&self) -> Option<&'static str> {
-        match self {
-            Self::Developer(_) => { Some("developer") },
-            // Self::Direction => { "direction" },
-            // Self::Sandbox => { "sandbox" },
-        }
-    }
-}
-
-// #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-// #[derive(SystemLabel)]
-// pub struct MapObjectSystem;
-
-// #[derive(Debug, Clone, Copy)]
-// pub struct MapSpawnEventData {
-//     pub map_type: MapType,
-// }
-
-// #[derive(Debug, Clone, Copy)]
-// pub struct MapSpawnEvent(pub MapSpawnEventData);
-
-// pub fn spawn_map(
-//     mut spawn_events: EventReader<MapSpawnEvent>,
-//     prefabs: Res<MapPrefabs>,
-//     // mut identifiers: ResMut<Identifiers>,
-//     mut commands: Commands,
-// ) {
-//     for event in spawn_events.iter() {
-//         let entity;
-//         match event.0.map_type {
-//             MapType::Developer => { entity = commands.spawn(DeveloperBundle::from(prefabs.developer_prefab.clone())).id(); }
-//             // MapType::Direction => { entity = commands.spawn(ResourceNodeBundle::from(prefabs.resource_node_prefab.clone())).id(); }
-//             // MapType::Sandbox => { entity = commands.spawn(FactoryBundle::from(prefabs.factory_prefab.clone())).id(); }
+// impl AssetId for SerdeMap {
+//     fn id(&self) -> Option<&'static str> {
+//         match self {
+//             Self::Developer(_) => { Some("developer") },
+//             // Self::Direction => { "direction" },
+//             // Self::Sandbox => { "sandbox" },
 //         }
 //     }
 // }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 #[derive(Serialize, Deserialize)]
 #[derive(Resource)]
 pub struct MapBounds(pub Vec2);
@@ -128,5 +59,65 @@ pub struct MapBounds(pub Vec2);
 impl Default for MapBounds {
     fn default() -> Self {
         Self(Vec2::new(1000.0, 1000.0))
+    }
+}
+
+#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize)]
+#[derive(TypeUuid)]
+#[uuid = "e6fdd9fa-16f4-4cea-afab-fdb5db3d0d80"]
+pub struct Map {
+    pub bounds: Option<MapBounds>,
+    pub collider_string: Option<String>,
+}
+
+pub struct MapLoader;
+
+impl AssetLoader for MapLoader {
+    fn load<'a>(
+        &'a self,
+        bytes: &'a [u8],
+        load_context: &'a mut bevy::asset::LoadContext,
+    ) -> bevy::utils::BoxedFuture<'a, Result<(), bevy::asset::Error>> {
+        Box::pin(async move {
+            match ron::de::from_bytes::<Map>(bytes) {
+                Ok(asset) => {
+
+                },
+                Err(e) => {
+                    error!("{}", e);
+                    error!("{:?}", &bytes[0..24]);
+                }
+            }
+            let custom_asset = ron::de::from_bytes::<Map>(bytes)?;
+            load_context.set_default_asset(LoadedAsset::new(custom_asset));
+            Ok(())
+        })
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["t5fmap"]
+    }
+}
+
+
+pub enum MapAsset {
+    Developer
+}
+
+impl From<&SerdeMap> for MapAsset {
+    fn from(value: &SerdeMap) -> Self {
+        match value {
+            SerdeMap::Developer(_) => MapAsset::Developer,
+        }
+    }
+}
+
+impl<'a> From<MapAsset> for AssetPath<'a> {
+    fn from(value: MapAsset) -> Self {
+        let path = match value {
+            MapAsset::Developer => "developer.t5fmap"
+        };
+        format!("maps/{}", path).into()
     }
 }

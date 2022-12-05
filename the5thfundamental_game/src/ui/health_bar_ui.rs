@@ -1,5 +1,4 @@
 use bevy::{prelude::*, ecs::schedule::ShouldRun};
-use qloader::*;
 use crate::{*, utility::assets::ImageAsset};
 
 const SIZE : u32 = 16;
@@ -130,8 +129,8 @@ impl HealthBar {
         let size = SIZE;
 
         if let Ok(mut x) = query.get_mut(self.green) {
-            let clamped = mathfu::D1::clamp01(percent);
-            let normalized = mathfu::D1::normalize_from_01(clamped, 0.0, (self.segments * size) as f32);
+            let clamped = percent.clamp(0.0, 1.0);
+            let normalized = d1::normalize_from_01(clamped, 0.0, (self.segments * size) as f32);
             x.size.width = Val::Px(normalized);
         }
     }

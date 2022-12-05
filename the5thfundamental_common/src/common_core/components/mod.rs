@@ -19,7 +19,7 @@ pub use relative::*;
 pub use weapon::*;
 
 use bevy::prelude::{Component, Vec2};
-use bevy_pathfinding::PathFinder;
+use crate::PathFinder;
 
 #[derive(Debug, Default, Clone, Copy)]
 #[derive(Component)]

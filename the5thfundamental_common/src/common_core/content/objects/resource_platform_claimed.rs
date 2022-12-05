@@ -75,7 +75,7 @@ impl From<ResourcePlatformClaimedPrefab> for ResourcePlatformClaimedBundle {
             economic_object: prefab.economic_object,
             team_player: TeamPlayer::default(),
             selectable: Selectable::single(),
-            collider: prefab.real_collider.clone().unwrap(),
+            collider: prefab.collider.clone(),
             visibility: Visibility::default(),
             computed_visibility: ComputedVisibility::default(),
             transform: Transform::default(),
@@ -85,22 +85,33 @@ impl From<ResourcePlatformClaimedPrefab> for ResourcePlatformClaimedBundle {
 }
 
 #[derive(Clone)]
-#[derive(Serialize, Deserialize)]
 pub struct ResourcePlatformClaimedPrefab {
     pub health: Health,
     pub economic_object: EconomicObject,
     pub cost: f64,
-    pub collider_string: String,
-    #[serde(skip)]
-    pub real_collider: Option<Collider>,
+    pub collider: Collider,
 }
 
-impl ResourcePlatformClaimedPrefab {
-    pub fn with_real_collider(mut self, collider: Collider) -> Self {
-        self.real_collider = Some(collider);
-        self
+impl TryFrom<&ObjectAsset> for ResourcePlatformClaimedPrefab {
+    type Error = ContentError;
+    fn try_from(prefab: &ObjectAsset) -> Result<Self, ContentError> {
+        let Some(health) = prefab.health else { return Err(ContentError::MissingHealth); };
+        let Some(economic_object) = prefab.economic_object else { return Err(ContentError::MissingEconomic); };
+        let Some(stack) = prefab.stack else { return Err(ContentError::MissingStack); };
+        let Some(collider_string) = prefab.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
+        let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
+
+        let collider = Collider::trimesh(vertices, indices);
+
+        Ok(Self {
+            health,
+            economic_object,
+            cost: stack.1.cost as f64,
+            collider,
+        })
     }
 }
+
 
 pub fn resource_platform_claimed_on_killed(
     mut activation_events: EventReader<ObjectKilledEvent>,

@@ -1,11 +1,9 @@
 use std::f32::{NEG_INFINITY, INFINITY,};
 
-use bevy::{gltf::{Gltf}, input::mouse::MouseWheel, prelude::*, render::camera::Camera, math::Vec3Swizzles};
+use bevy::{input::mouse::MouseWheel, prelude::*, render::camera::Camera, math::Vec3Swizzles};
 use bevy_ninepatch::*;
 use bevy_rapier3d::{prelude::InteractionGroups, plugin::RapierContext};
-use mathfu::D1;
 use the5thfundamental_common::*;
-use qloader::*;
 use crate::{*, utility::assets::{ImageAsset, GltfAsset}};
 
 pub const CLICK_BUFFER : usize = 8;
@@ -127,13 +125,13 @@ pub fn camera_control_system(
         if !camera_controller.outside_window && (!camera_controller.just_entered || !settings.post_action_stall) && !camera_controller.holding { pos - half_size } else { Vec2::default() });
 
     let threshholds : (f32, f32) = (
-        mathfu::D1::normalize_from_01(settings.thresholds.0, 0., half_size.x),
-        mathfu::D1::normalize_from_01(settings.thresholds.1, 0., half_size.y),
+        d1::normalize_from_01(settings.thresholds.0, 0., half_size.x),
+        d1::normalize_from_01(settings.thresholds.1, 0., half_size.y),
     );
 
     let height = trans.get_mut(camera_controller.camera).map_or(1.0, |x|{
-        mathfu::D1::clamp(mathfu::D1::normalize_from_to(x.translation.distance(Vec3::default()), settings.min_zoom().length(), settings.max_zoom().length(),
-        settings.zoom_base, settings.zoom_base * settings.zoom_ratio), settings.zoom_base, settings.zoom_base * settings.zoom_ratio)
+        d1::normalize_from_to(x.translation.distance(Vec3::default()), settings.min_zoom().length(), settings.max_zoom().length(),
+        settings.zoom_base, settings.zoom_base * settings.zoom_ratio).clamp(settings.zoom_base, settings.zoom_base * settings.zoom_ratio)
     });
 
     let slow = if key_input.pressed(KeyCode::C) {
@@ -145,10 +143,8 @@ pub fn camera_control_system(
     let mouse_dir = Vec3::new(adjusted_mouse_pos.x, 0.0, -adjusted_mouse_pos.y).normalize_or_zero();
 
     let mags : (f32,f32) = (
-        mathfu::D1::powf_sign(mathfu::D1::clamp01(mathfu::D1::normalize_to_01(
-        adjusted_mouse_pos.x.abs(), threshholds.0, half_size.x)), settings.scroll_acceleration_curve),
-        mathfu::D1::powf_sign(mathfu::D1::clamp01(mathfu::D1::normalize_to_01(
-        adjusted_mouse_pos.y.abs(), threshholds.1, half_size.y)), settings.scroll_acceleration_curve),
+        d1::powf_sign(d1::normalize_to_01(adjusted_mouse_pos.x.abs(), threshholds.0, half_size.x).clamp(0.0, 1.0), settings.scroll_acceleration_curve),
+        d1::powf_sign(d1::normalize_to_01(adjusted_mouse_pos.y.abs(), threshholds.1, half_size.y).clamp(0.0, 1.0), settings.scroll_acceleration_curve),
     );
 
     let hor = {
@@ -169,94 +165,92 @@ pub fn camera_control_system(
     let scroll_dir_z = mouse_dir.z * mags.0.max(mags.1);
 
     let (x, z) = (
-        mathfu::D1::clamp((scroll_dir_x + hor) * slow.1 * settings.max_scroll_speed * height,
-        -settings.max_scroll_speed * height, settings.max_scroll_speed * height),
-        mathfu::D1::clamp((scroll_dir_z + vert) * slow.1 * settings.max_scroll_speed * height,
-        -settings.max_scroll_speed * height, settings.max_scroll_speed * height),
+        ((scroll_dir_x + hor) * slow.1 * settings.max_scroll_speed * height).clamp(-settings.max_scroll_speed * height, settings.max_scroll_speed * height),
+        ((scroll_dir_z + vert) * slow.1 * settings.max_scroll_speed * height).clamp(-settings.max_scroll_speed * height, settings.max_scroll_speed * height),
     );
     // let (x, z) = (
-    //     mathfu::D1::clamp(hor * slow.1 * settings.max_scroll_speed * height,
+    //     d1::clamp(hor * slow.1 * settings.max_scroll_speed * height,
     //     -settings.max_scroll_speed * height, settings.max_scroll_speed * height),
-    //     mathfu::D1::clamp(vert * slow.1 * settings.max_scroll_speed * height,
+    //     d1::clamp(vert * slow.1 * settings.max_scroll_speed * height,
     //     -settings.max_scroll_speed * height, settings.max_scroll_speed * height),
     // );
 
-    let delta = mathfu::D1::clamp(time.delta_seconds(), 0.0, 1.0 / settings.minimum_fps_for_deltatime as f32);
+    let delta = (time.delta_seconds()).clamp(0.0, 1.0 / settings.minimum_fps_for_deltatime as f32);
 
     if let Ok(mut tran) = trans.get_mut(camera_controller.camera_root) {
         //*Rotation
         let mut dir = 0.;
         if key_input.pressed(KeyCode::Q) {
-            camera_controller.rotation_velocity = mathfu::D1::clamp(camera_controller.rotation_velocity, 0., INFINITY);
+            camera_controller.rotation_velocity = camera_controller.rotation_velocity.clamp(0., INFINITY);
             dir += 0.01;
         }
 
         if key_input.pressed(KeyCode::E) {
-            camera_controller.rotation_velocity = mathfu::D1::clamp(camera_controller.rotation_velocity, NEG_INFINITY, 0.);
+            camera_controller.rotation_velocity = camera_controller.rotation_velocity.clamp(NEG_INFINITY, 0.);
             dir -= 0.01;
         }
 
         if dir != 0. {
-            camera_controller.rotation_velocity = mathfu::D1::lerp(camera_controller.rotation_velocity, dir * settings.max_rotation_speed * slow.0, mathfu::D1::clamp01(settings.rotation_acceleration * delta));
+            camera_controller.rotation_velocity = d1::lerp(camera_controller.rotation_velocity, dir * settings.max_rotation_speed * slow.0, (settings.rotation_acceleration * delta).clamp(0.0, 1.0));
         } else {
-            camera_controller.rotation_velocity = mathfu::D1::lerp(camera_controller.rotation_velocity, 0.0, mathfu::D1::clamp01(settings.rotation_deceleration * delta));
+            camera_controller.rotation_velocity = d1::lerp(camera_controller.rotation_velocity, 0.0, (settings.rotation_deceleration * delta).clamp(0.0, 1.0));
         }
         tran.rotate(Quat::from_rotation_y(camera_controller.rotation_velocity));
 
         //*Scrolling
         if x.is_normal() {
-            if mathfu::D1::same_sign(x, camera_controller.root_velocity.x) {
-                if mathfu::D1::farther_from_zero(x, camera_controller.root_velocity.x) {
-                    camera_controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(camera_controller.root_velocity.x, x, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
+            if x.signum() == camera_controller.root_velocity.x.signum() {
+                if d1::farther_from_zero(x, camera_controller.root_velocity.x) {
+                    camera_controller.root_velocity.x = d1::more_than_or_zero_pog(
+                        d1::lerp(camera_controller.root_velocity.x, x, (settings.scroll_acceleration * delta).clamp(0.0,1.0))
                     );
                 } else {
-                    camera_controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(camera_controller.root_velocity.x, x, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
+                    camera_controller.root_velocity.x = d1::more_than_or_zero_pog(
+                        d1::lerp(camera_controller.root_velocity.x, x, (settings.scroll_deceleration * delta).clamp(0.0, 1.0))
                     );
                 }
             } else {
                 if camera_controller.root_velocity.x.abs() < settings.fast_decceleration_threshold {
-                    camera_controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(camera_controller.root_velocity.x, x, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
+                    camera_controller.root_velocity.x = d1::more_than_or_zero_pog(
+                        d1::lerp(camera_controller.root_velocity.x, x, (settings.scroll_acceleration * delta).clamp(0.0, 1.0))
                     );
                 } else {
-                    camera_controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(camera_controller.root_velocity.x, x, mathfu::D1::clamp01(settings.scroll_deceleration * settings.fast_decceleration_strength * delta))
+                    camera_controller.root_velocity.x = d1::more_than_or_zero_pog(
+                        d1::lerp(camera_controller.root_velocity.x, x, (settings.scroll_deceleration * settings.fast_decceleration_strength * delta).clamp(0.0, 1.0))
                     );
                 }
             }
         } else {
-            camera_controller.root_velocity.x = mathfu::D1::more_than_or_zero_pog(
-                mathfu::D1::lerp(camera_controller.root_velocity.x, 0.0, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
+            camera_controller.root_velocity.x = d1::more_than_or_zero_pog(
+                d1::lerp(camera_controller.root_velocity.x, 0.0, (settings.scroll_deceleration * delta).clamp(0.0, 1.0))
             );
         }
 
         if z.is_normal() {
-            if mathfu::D1::same_sign(z, camera_controller.root_velocity.z) {
-                if mathfu::D1::farther_from_zero(z, camera_controller.root_velocity.z) {
-                    camera_controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(camera_controller.root_velocity.z, z, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
+            if z.signum() == camera_controller.root_velocity.z.signum() {
+                if d1::farther_from_zero(z, camera_controller.root_velocity.z) {
+                    camera_controller.root_velocity.z = d1::more_than_or_zero_pog(
+                        d1::lerp(camera_controller.root_velocity.z, z, (settings.scroll_acceleration * delta).clamp(0.0, 1.0))
                     );
                 } else {
-                    camera_controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(camera_controller.root_velocity.z, z, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
+                    camera_controller.root_velocity.z = d1::more_than_or_zero_pog(
+                        d1::lerp(camera_controller.root_velocity.z, z, (settings.scroll_deceleration * delta).clamp(0.0, 1.0))
                     );
                 }
             } else {
                 if camera_controller.root_velocity.z.abs() < settings.fast_decceleration_threshold {
-                    camera_controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(camera_controller.root_velocity.z, z, mathfu::D1::clamp01(settings.scroll_acceleration * delta))
+                    camera_controller.root_velocity.z = d1::more_than_or_zero_pog(
+                        d1::lerp(camera_controller.root_velocity.z, z, (settings.scroll_acceleration * delta).clamp(0.0, 1.0))
                     );
                 } else {
-                    camera_controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
-                        mathfu::D1::lerp(camera_controller.root_velocity.z, z, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
+                    camera_controller.root_velocity.z = d1::more_than_or_zero_pog(
+                        d1::lerp(camera_controller.root_velocity.z, z, (settings.scroll_deceleration * settings.fast_decceleration_strength * delta).clamp(0.0, 1.0))
                     );
                 }
             }
         } else {
-            camera_controller.root_velocity.z = mathfu::D1::more_than_or_zero_pog(
-                mathfu::D1::lerp(camera_controller.root_velocity.z, 0.0, mathfu::D1::clamp01(settings.scroll_deceleration * delta))
+            camera_controller.root_velocity.z = d1::more_than_or_zero_pog(
+                d1::lerp(camera_controller.root_velocity.z, 0.0, (settings.scroll_deceleration * delta).clamp(0.0, 1.0))
             );
         }
 
@@ -275,22 +269,22 @@ pub fn camera_control_system(
         }
 
         if zoom_add > 0. {
-            zoom_add = mathfu::D1::clamp(zoom_add, 0., INFINITY);
+            zoom_add = zoom_add.clamp(0.0, INFINITY);
         } else if zoom_add < 0. {
-            zoom_add = mathfu::D1::clamp(zoom_add, NEG_INFINITY, 0.);
+            zoom_add = zoom_add.clamp(NEG_INFINITY, 0.0);
         }
 
         if zoom_add != 0. {
-            camera_controller.zoom_velocity = mathfu::D1::lerp(camera_controller.zoom_velocity, zoom_add * height * settings.max_zoom_speed * slow.2, mathfu::D1::clamp01(settings.zoom_acceleration * delta));
+            camera_controller.zoom_velocity = d1::lerp(camera_controller.zoom_velocity, zoom_add * height * settings.max_zoom_speed * slow.2, (settings.zoom_acceleration * delta).clamp(0.0, 1.0));
         } else {
-            camera_controller.zoom_velocity = mathfu::D1::lerp(camera_controller.zoom_velocity, 0., mathfu::D1::clamp01(settings.zoom_deceleration * delta));
+            camera_controller.zoom_velocity = d1::lerp(camera_controller.zoom_velocity, 0., (settings.zoom_deceleration * delta).clamp(0.0, 1.0));
         }
 
-        camera_controller.zoom_precentage = D1::clamp01(camera_controller.zoom_precentage + camera_controller.zoom_velocity * delta);
+        camera_controller.zoom_precentage = (camera_controller.zoom_precentage + camera_controller.zoom_velocity * delta).clamp(0.0, 1.0);
 
-        let direction = Vec3::new(0.0, D1::normalize_from_01(camera_controller.zoom_precentage, settings.min_zoom().y, settings.max_zoom().y),
-            D1::normalize_from_01(camera_controller.zoom_precentage, settings.min_zoom().z, settings.max_zoom().z)).normalize_or_zero();
-        let distance = D1::normalize_from_01(camera_controller.zoom_precentage, settings.min_zoom, settings.max_zoom);
+        let direction = Vec3::new(0.0, d1::normalize_from_01(camera_controller.zoom_precentage, settings.min_zoom().y, settings.max_zoom().y),
+            d1::normalize_from_01(camera_controller.zoom_precentage, settings.min_zoom().z, settings.max_zoom().z)).normalize_or_zero();
+        let distance = d1::normalize_from_01(camera_controller.zoom_precentage, settings.min_zoom, settings.max_zoom);
         tran.translation = direction * distance;
 
         if key_input.just_pressed(KeyCode::Grave) {
@@ -733,7 +727,7 @@ pub fn building_placement_startup_system(mut commands : Commands) {
 pub fn building_placement_system(
     mut spawn_event_writer: EventWriter<ObjectSpawnEvent>,
     mut asset_server : ResMut<AssetServer>,
-    
+
     cast : Res<CameraRaycast>,
     input : Res<Input<MouseButton>>,
 

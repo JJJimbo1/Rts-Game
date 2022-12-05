@@ -14,7 +14,7 @@ pub struct CommonPlugins;
 
 impl PluginGroup for CommonPlugins {
     fn build(self) -> bevy::app::PluginGroupBuilder {
-        let mut group = bevy::app::PluginGroupBuilder::start::<CommonPlugins>();
+        let group = bevy::app::PluginGroupBuilder::start::<CommonPlugins>();
         group
             .add(ProductionPlugin)
             .add(CombatPlugin)

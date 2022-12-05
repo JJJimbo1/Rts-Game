@@ -22,7 +22,7 @@
     post_action_stall: true,
 
 
-    max_zoom_speed: 0.8,
+    max_zoom_speed: 1.8,
     zoom_acceleration: 3.0,
     zoom_deceleration: 15.0,
     slow_zoom_multiplier: 0.125,

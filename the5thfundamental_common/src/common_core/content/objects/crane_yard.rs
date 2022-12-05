@@ -60,10 +60,10 @@ impl From<CraneYardPrefab> for CraneYardBundle {
             asset_type: CraneYard.into(),
             snowflake: Snowflake::new(),
             health: prefab.health,
-            queues: prefab.real_queues.unwrap(),
+            queues: prefab.queues.clone(),
             team_player: TeamPlayer::default(),
             selectable: Selectable::single(),
-            collider: prefab.real_collider.clone().unwrap(),
+            collider: prefab.collider.clone(),
             visibility: Visibility::default(),
             computed_visibility: ComputedVisibility::default(),
             transform: Transform::default(),
@@ -80,10 +80,10 @@ impl From<(SerdeCraneYard, &CraneYardPrefab)> for CraneYardBundle {
             asset_type: CraneYard.into(),
             snowflake: save.snowflake.unwrap_or_else(|| Snowflake::new()),
             health: save.health.unwrap_or(prefab.health),
-            queues: save.queues.unwrap_or(prefab.real_queues.as_ref().cloned().unwrap()),
+            queues: save.queues.unwrap_or(prefab.queues.clone()),
             team_player: save.team_player,
             selectable: Selectable::single(),
-            collider: prefab.real_collider.clone().unwrap(),
+            collider: prefab.collider.clone(),
             visibility: Visibility::default(),
             computed_visibility: ComputedVisibility::default(),
             transform: save.transform.into(),
@@ -93,31 +93,28 @@ impl From<(SerdeCraneYard, &CraneYardPrefab)> for CraneYardBundle {
 }
 
 #[derive(Clone)]
-#[derive(Serialize, Deserialize)]
 pub struct CraneYardPrefab {
     pub health: Health,
-    pub prefab_queues: PrefabQueues,
-    #[serde(skip)]
-    pub real_queues: Option<Queues>,
-    pub collider_string: String,
-    #[serde(skip)]
-    pub real_collider: Option<Collider>,
+    pub queues: Queues,
+    pub collider: Collider,
 }
 
-impl CraneYardPrefab {
-    pub fn with_real_queues(mut self, stacks: &HashMap<ObjectType, (ActiveQueue, StackData)>) -> Self {
-        let mut queues = Queues::new();
-        for s in self.prefab_queues.objects.iter() {
-            let (active, data) = stacks[s];
-            queues.push_data_to_queue(active, data);
-        }
-        self.real_queues = Some(queues);
-        self
-    }
+impl TryFrom<(&ObjectAsset, &HashMap<ObjectType, (ActiveQueue, StackData)>)> for CraneYardPrefab {
+    type Error = ContentError;
+    fn try_from((prefab, stacks): (&ObjectAsset, &HashMap<ObjectType, (ActiveQueue, StackData)>)) -> Result<Self, ContentError> {
+        let Some(health) = prefab.health else { return Err(ContentError::MissingHealth); };
+        let Some(prefab_queues) = prefab.prefab_queues.clone() else { return Err(ContentError::MissingQueues); };
+        let Some(collider_string) = prefab.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
+        let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
 
-    pub fn with_real_collider(mut self, collider: Collider) -> Self {
-        self.real_collider = Some(collider);
-        self
+        let queues = Queues::from((&prefab_queues, stacks));
+        let collider = Collider::trimesh(vertices, indices);
+
+        Ok(Self {
+            health,
+            queues,
+            collider,
+        })
     }
 }
 
@@ -140,5 +137,16 @@ impl<'a> From<SerdeCraneYardQuery<'a>> for SerdeCraneYard {
             team_player: *object.3,
             transform: (*object.4).into(),
         }
+    }
+}
+
+impl From<SerdeCraneYard> for ObjectSpawnEvent {
+    fn from(value: SerdeCraneYard) -> Self {
+        Self(ObjectSpawnEventData{
+            object_type: ObjectType::CraneYard,
+            snowflake: Snowflake::new(),
+            teamplayer: value.team_player,
+            transform: value.transform.into(),
+        })
     }
 }

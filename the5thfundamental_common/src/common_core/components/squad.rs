@@ -11,7 +11,7 @@ pub struct Squad {
     pub max_members: u8,
     pub current_members: u8,
     #[serde(skip)]
-    pub members: Vec<Entity>,
+    pub members: Vec<(ObjectType, Option<Entity>)>,
 }
 
 impl SerdeComponent for Squad {
@@ -35,7 +35,7 @@ impl From<PrefabSquad> for Squad {
         Self {
             max_members: prefab_squad.members.len() as u8,
             current_members: prefab_squad.members.len() as u8,
-            members: Vec::new(),
+            members: prefab_squad.members.iter().map(|object_type| (*object_type, None)).collect(),
         }
     }
 }

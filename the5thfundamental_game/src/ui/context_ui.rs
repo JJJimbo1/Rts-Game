@@ -2,7 +2,6 @@ use bevy::prelude::*;
 use serde::{Serialize, Deserialize};
 
 use the5thfundamental_common::*;
-use qloader::*;
 
 use crate::{*, utility::assets::{FontAsset, ImageAsset}};
 

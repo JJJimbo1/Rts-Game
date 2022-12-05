@@ -1,10 +1,12 @@
 pub mod levels;
 pub mod maps;
 pub mod objects;
+pub mod error;
 
 pub use levels::*;
 pub use maps::*;
 pub use objects::*;
+pub use error::*;
 
 use bevy::{prelude::{Component, Entity}, utils::HashSet, math::Vec2};
 

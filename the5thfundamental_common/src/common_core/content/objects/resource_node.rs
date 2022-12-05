@@ -68,7 +68,7 @@ impl From<ResourceNodePrefab> for ResourceNodeBundle {
             asset_type: ResourceNode::default().into(),
             snowflake: Snowflake::new(),
             team_player: TeamPlayer::default(),
-            collider: prefab.real_collider.clone().unwrap(),
+            collider: prefab.collider.clone(),
             visibility: Visibility::default(),
             computed_visibility: ComputedVisibility::default(),
             transform: Transform::default(),
@@ -85,7 +85,7 @@ impl From<(SerdeResourceNode, &ResourceNodePrefab)> for ResourceNodeBundle {
             snowflake: save.snowflake.unwrap_or_else(|| Snowflake::new()),
             resource_node: save.resource_node.unwrap_or_else(|| ResourceNode::default()),
             team_player: save.team_player,
-            collider: prefab.real_collider.clone().unwrap(),
+            collider: prefab.collider.clone(),
             visibility: Visibility::default(),
             computed_visibility: ComputedVisibility::default(),
             transform: save.transform.into(),
@@ -95,19 +95,24 @@ impl From<(SerdeResourceNode, &ResourceNodePrefab)> for ResourceNodeBundle {
 }
 
 #[derive(Clone)]
-#[derive(Serialize, Deserialize)]
 pub struct ResourceNodePrefab {
-    pub stack: (ActiveQueue, StackData),
     pub health: Health,
-    pub collider_string: String,
-    #[serde(skip)]
-    pub real_collider: Option<Collider>,
+    pub collider: Collider,
 }
 
-impl ResourceNodePrefab {
-    pub fn with_real_collider(mut self, collider: Collider) -> Self {
-        self.real_collider = Some(collider);
-        self
+impl TryFrom<&ObjectAsset> for ResourceNodePrefab {
+    type Error = ContentError;
+    fn try_from(prefab: &ObjectAsset) -> Result<Self, ContentError> {
+        let Some(health) = prefab.health else { return Err(ContentError::MissingHealth); };
+        let Some(collider_string) = prefab.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
+        let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
+
+        let collider = Collider::trimesh(vertices, indices);
+
+        Ok(Self {
+            health,
+            collider,
+        })
     }
 }
 
@@ -128,6 +133,17 @@ impl<'a> From<SerdeResourceNodeQuery<'a>> for SerdeResourceNode {
             team_player: *object.2,
             transform: (*object.3).into(),
         }
+    }
+}
+
+impl From<SerdeResourceNode> for ObjectSpawnEvent {
+    fn from(value: SerdeResourceNode) -> Self {
+        Self(ObjectSpawnEventData{
+            object_type: ObjectType::ResourceNode,
+            snowflake: Snowflake::new(),
+            teamplayer: value.team_player,
+            transform: value.transform.into(),
+        })
     }
 }
 

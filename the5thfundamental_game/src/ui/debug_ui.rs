@@ -1,12 +1,10 @@
 use bevy::prelude::*;
-use qloader::*;
 use crate::{*, utility::assets::FontAsset};
 
 pub fn create_debug_menu(
     settings : Res<MenuSettings>,
     mut asset_server: ResMut<AssetServer>,
     mut commands : Commands,
-    mut materials: ResMut<Assets<ColorMaterial>>
 ) {
     let debug_menu = DebugMenu::new(&settings, &mut asset_server, &mut commands);
     commands.insert_resource(debug_menu);
@@ -25,7 +23,6 @@ impl DebugMenu {
         settings : &MenuSettings,
         asset_server: &mut AssetServer,
         commands : &mut Commands,
-        // mut materials: &mut Assets<ColorMaterial>
     ) -> Self {
         let font = asset_server.load(FontAsset::Roboto);
 
@@ -69,7 +66,7 @@ impl DebugMenu {
                         color: Color::WHITE,
                     },
                 ),
-                visibility : Visibility { is_visible : false},
+                visibility : Visibility { is_visible : true},
                 ..Default::default()
             }).id());
         });
@@ -98,7 +95,7 @@ impl DebugMenu {
                         color: Color::WHITE,
                     },
                 ),
-                visibility : Visibility { is_visible : false},
+                visibility : Visibility { is_visible : true},
                 ..Default::default()
             }).id());
         });

@@ -1,12 +1,11 @@
 
 use std::{fmt, fs::{File, OpenOptions}, io::Write, path::Path};
 
-use bevy::{prelude::*, ecs::schedule::ShouldRun};
+use bevy::{prelude::*, ecs::schedule::ShouldRun, asset::LoadState};
 use bevy_rapier3d::prelude::Velocity;
 use ron::{de::from_reader, extensions::Extensions, ser::{PrettyConfig, to_string_pretty,}};
 use serde::{Serialize, Deserialize};
-use bevy_pathfinding::{Path as FPath, d2::{GridMap, GridCell}, GridSpace, OGrid};
-use crate::*;
+use crate::{*, pathing::Path as FPath};
 
 #[derive(Debug, Clone, Copy)]
 pub struct SavePlugin;
@@ -16,7 +15,7 @@ impl Plugin for SavePlugin {
         app
             .add_event::<SaveEvent>()
             .add_event::<LoadEvent>()
-            .add_event::<SaveLoaded>()
+            .add_event::<LevelLoadedEvent>()
 
             .add_system(save_game.with_run_criteria(should_run_save_system))
             .add_system(load_game.with_run_criteria(should_run_load_system))
@@ -29,10 +28,13 @@ impl Plugin for SavePlugin {
 pub struct SaveEvent(pub String);
 
 #[derive(Debug, Clone)]
-pub struct LoadEvent(pub String);
+pub struct LoadEvent(pub Handle<Level>);
 
 #[derive(Debug, Clone, Copy)]
-pub struct SaveLoaded;
+pub enum LevelLoadedEvent {
+    Success,
+    Failure,
+}
 
 // #[derive(Debug, Clone)]
 // #[derive(Serialize, Deserialize)]
@@ -51,7 +53,7 @@ pub struct SaveObjects {
 ///Target Maximum : 125,829,120
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
-pub struct SaveFile {
+pub struct SaveState {
     pub actors: Actors,
     pub map: SerdeMap,
     pub objects: SaveObjects,
@@ -91,7 +93,7 @@ pub fn save_game(
             tanks,
         };
 
-        let save_file = SaveFile {
+        let save_file = SaveState {
             actors: actors.clone(),
             map: *map,
             objects
@@ -103,70 +105,70 @@ pub fn save_game(
 }
 
 pub fn load_game(
+    mut load_level: Local<Option<Handle<Level>>>,
     mut load_event_reader: EventReader<LoadEvent>,
-    mut loaded_event_writer: EventWriter<SaveLoaded>,
+    mut level_loaded_event_writer: EventWriter<LevelLoadedEvent>,
     mut spawn_events_writer: EventWriter<ObjectSpawnEvent>,
-    object_prefabs: Res<ObjectPrefabs>,
-    map_prefabs: Res<MapPrefabs>,
+    // object_prefabs: Res<ObjectPrefabs>,
+    asset_server: Res<AssetServer>,
+    level_assets: Res<Assets<Level>>,
+    map_assets: Res<Assets<Map>>,
     mut commands: Commands
 ) {
     for event in load_event_reader.iter() {
-        let root = std::env::current_dir().unwrap();
-        //TODO: Remove unwrap
-        let save_file: SaveFile = load_from_file(format!("{}{}", root.as_path().display(), event.0)).unwrap();
-        commands.insert_resource(save_file.actors.clone());
-        commands.insert_resource(save_file.map.clone());
-
-        let bounds = match save_file.map {
-            SerdeMap::Developer(developer) => { commands.spawn(DeveloperBundle::from((developer, &map_prefabs.developer_prefab))); &map_prefabs.developer_prefab.bounds }
-        };
-
-        commands.insert_resource(bounds.clone());
-        commands.insert_resource({
-            // TODO: Map analyzation.
-            OGrid(GridMap::new(bounds.0.x as usize, bounds.0.y as usize)
-                .with_cells(|x, z| GridCell::new(x, z, false ))
-                .precomputed()
-            )}
-        );
-        commands.insert_resource(GridSpace::new(bounds.0.x as usize, bounds.0.y as usize));
-
-        // save_file.objects.crane_yards.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
-        // save_file.objects.resource_nodes.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
-        // save_file.objects.factories.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
-        // save_file.objects.marine_squads.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
-        // save_file.objects.tanks.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
-
-        for object in save_file.objects.crane_yards { spawn_events_writer.send(object.into()); }
-        for object in save_file.objects.resource_nodes { spawn_events_writer.send(object.into()); }
-        for object in save_file.objects.factories { spawn_events_writer.send(object.into()); }
-        for object in save_file.objects.marine_squads { spawn_events_writer.send(object.into()); }
-        for object in save_file.objects.tanks { spawn_events_writer.send(object.into()); }
-        loaded_event_writer.send(SaveLoaded);
+        *load_level = Some(event.0.clone());
     }
+
+    let Some(level_handle) = (load_level.clone()) else { return; };
+    if asset_server.get_load_state(level_handle.clone()) == LoadState::Failed { level_loaded_event_writer.send(LevelLoadedEvent::Failure); *load_level = None; }
+    let Some(level) = level_assets.get(&level_handle) else { return; };
+    let map_handle: Handle<Map> = asset_server.load(MapAsset::from(&level.save_state.map));
+    if asset_server.get_load_state(map_handle.clone()) == LoadState::Failed { level_loaded_event_writer.send(LevelLoadedEvent::Failure); *load_level = None; }
+    let Some(map) = map_assets.get(&map_handle) else { return; };
+
+    commands.insert_resource(level.save_state.actors.clone());
+    commands.insert_resource(level.save_state.map.clone());
+
+    let bounds = match level.save_state.map {
+        SerdeMap::Developer(developer) => { let map = map.try_into().unwrap(); commands.spawn(DeveloperBundle::from((developer, &map))); map.bounds }
+    };
+
+    commands.insert_resource(bounds.clone());
+    commands.insert_resource({
+        // TODO: Map analyzation.
+        OGrid(GridMap::new(bounds.0.x as usize, bounds.0.y as usize)
+            .with_cells(|x, z| GridCell::new(x, z, false ))
+            .precomputed()
+        )}
+    );
+    commands.insert_resource(GridSpace::new(bounds.0.x as usize, bounds.0.y as usize));
+
+    // save_file.objects.crane_yards.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
+    // save_file.objects.resource_nodes.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
+    // save_file.objects.factories.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
+    // save_file.objects.marine_squads.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
+    // save_file.objects.tanks.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
+
+    for object in &level.save_state.objects.crane_yards { spawn_events_writer.send(object.clone().into()); }
+    for object in &level.save_state.objects.resource_nodes { spawn_events_writer.send(object.clone().into()); }
+    for object in &level.save_state.objects.factories { spawn_events_writer.send(object.clone().into()); }
+    for object in &level.save_state.objects.marine_squads { spawn_events_writer.send(object.clone().into()); }
+    for object in &level.save_state.objects.tanks { spawn_events_writer.send(object.clone().into()); }
+    level_loaded_event_writer.send(LevelLoadedEvent::Success);
+    *load_level = None;
 }
 
 pub fn should_run_save_system(
     actors: Option<Res<Actors>>,
     map: Option<Res<SerdeMap>>,
 ) -> ShouldRun {
-
-    if actors.is_some() && map.is_some() {
-        ShouldRun::Yes
-    } else {
-        ShouldRun::No
-    }
+    (actors.is_some() && map.is_some()).into()
 }
 
 pub fn should_run_load_system(
     prefabs: Option<Res<ObjectPrefabs>>,
 ) -> ShouldRun {
-
-    if prefabs.is_some() {
-        ShouldRun::Yes
-    } else {
-        ShouldRun::No
-    }
+    prefabs.is_some().into()
 }
 
 pub fn save_to_file<S : Serialize, P : AsRef<Path>>(item : &S, path : P) -> Result<(), SaveLoadError> {
@@ -186,7 +188,7 @@ pub fn save_to_file<S : Serialize, P : AsRef<Path>>(item : &S, path : P) -> Resu
 
                 match x.write(s.as_bytes()) {
                 // match bincode::serialize(item) {
-                    Ok(i) => {
+                    Ok(_i) => {
                         return Ok(())
                         // match x.write(&i) {
                         //     Ok(_) => { return Ok(()); },

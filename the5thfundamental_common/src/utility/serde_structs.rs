@@ -1,10 +1,9 @@
-use bevy_pathfinding::Path;
 use serde::{Serialize, Deserialize};
 use bevy::{prelude::Transform, math::{Vec3, Quat}};
 use bevy_rapier3d::prelude::Velocity;
 use approx::*;
 
-use crate::GroundPathFinder;
+use crate::{GroundPathFinder, pathing::Path};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct SerdeTransform {

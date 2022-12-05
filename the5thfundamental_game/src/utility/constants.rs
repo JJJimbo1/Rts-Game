@@ -1,5 +1,7 @@
 pub use constants::*;
 mod constants {
+    use std::path::PathBuf;
+
     use bevy::prelude::Color;
     use lazy_static::lazy_static;
     use the5thfundamental_common::TeamPlayer;
@@ -8,7 +10,8 @@ mod constants {
 
     lazy_static! {
         #[derive(Debug, Copy, Clone)]
-        pub static ref PROJECT_ROOT_DIRECTORY : String = std::env::current_dir().unwrap().to_string_lossy().to_string();
+        // pub static ref PROJECT_ROOT_DIRECTORY : String = "NO".to_string();
+        pub static ref PROJECT_ROOT_DIRECTORY : String = std::env::current_dir().unwrap_or(PathBuf::from("")).to_string_lossy().to_string();
         #[derive(Debug, Copy, Clone)]
         pub static ref ASSET_DIRECTORY : String = format!("{}", *PROJECT_ROOT_DIRECTORY);
     }
@@ -53,20 +56,11 @@ mod constants {
     pub use assets::*;
     pub mod assets {
         use bevy::asset::AssetPath;
-        use the5thfundamental_common::{AssetId, AssetType, MapType, ObjectType};
+        use the5thfundamental_common::{AssetType, MapType, ObjectType};
 
         pub enum FontAsset {
             Roboto
         }
-
-        // impl FontAsset {
-        //     pub fn path(&self) -> String {
-        //         let path = match self {
-        //             Self::Roboto => "roboto/Roboto-Black.ttf"
-        //         };
-        //         format!("fonts/{}", path)
-        //     }
-        // }
 
         impl<'a> From<FontAsset> for AssetPath<'a> {
             fn from(value: FontAsset) -> Self {
@@ -106,23 +100,6 @@ mod constants {
             }
         }
 
-        // impl ImageAsset {
-        //     pub fn path(&self) -> String {
-        //         let path = match self {
-        //             Self::BlackBox => "black_box.png",
-        //             Self::WhiteBox => "white_box.png",
-        //             Self::WhiteDottedBox => "white_dotted_box.png",
-        //             Self::GoldDottedBox => "gold_dotted_box.png",
-        //             Self::HealthBarStart => "health_box_start.png",
-        //             Self::HealthBarMiddle => "health_bar_middle.png",
-        //             Self::HealthBarEnd => "health_bar_end.png",
-        //             Self::HealthBarGreen => "health_bar_green.png",
-        //             Self::SelectionBox => "selection_box.png",
-        //         };
-        //         format!("textures/ui/{}", path)
-        //     }
-        // }
-
         pub enum GltfAsset {
 
 
@@ -139,24 +116,6 @@ mod constants {
             TankGun
 
         }
-
-        // impl GltfAsset {
-        //     pub fn path(&self) -> String {
-        //         let path = match self {
-        //             Self::Developer => "developer.glb#Scene0",
-        //             Self::CraneYard => "crane_yard.glb#Scene0",
-        //             Self::ResourceNode => "resource_node.glb#Scene0",
-        //             Self::ResourcePlatformClaimed => "resource_platform_claimed.glb#Scene0",
-        //             Self::ResourcePlatformUnclaimed => "resource_platform_unclaimed.glb#Scene0",
-        //             Self::Factory => "factory.glb#Scene0",
-        //             Self::MarineSquad => "marine_squad.glb#Scene0",
-        //             Self::Marine => "marine.glb#Scene0",
-        //             Self::TankBase => "tank_base.glb#Scene0",
-        //             Self::TankGun => "tank_gun.glb#Scene0",
-        //         };
-        //         format!("models/{}", path)
-        //     }
-        // }
 
         impl From<AssetType> for GltfAsset {
             fn from(value: AssetType) -> Self {

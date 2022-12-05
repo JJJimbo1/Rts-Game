@@ -1,8 +1,7 @@
 use std::time::Duration;
 use bevy::{prelude::Component, utils::HashMap};
 use serde::{Serialize, Deserialize,};
-use zipqueue::ZipQueue;
-use crate::{ObjectType, SerdeComponent};
+use crate::*;
 
 
 
@@ -112,6 +111,17 @@ impl Queues {
         self.queues.get_mut(&queue).unwrap().zip_queue.push_stack(data);
     }
 
+}
+
+impl From<(&PrefabQueues, &HashMap<ObjectType, (ActiveQueue, StackData)>)> for Queues {
+    fn from((prefab, stacks): (&PrefabQueues, &HashMap<ObjectType, (ActiveQueue, StackData)>)) -> Self {
+        let mut queues = Queues::new();
+        for s in prefab.objects.iter() {
+            let (active, data) = stacks[s];
+            queues.push_data_to_queue(active, data);
+        }
+        queues
+    }
 }
 
 impl SerdeComponent for Queues {

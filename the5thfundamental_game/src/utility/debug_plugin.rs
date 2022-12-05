@@ -11,7 +11,7 @@ impl Plugin for DebugPlugin {
     fn build(&self, app: &mut App) {
         app
 
-            // .add_plugin(RapierDebugRenderPlugin::default())
+            .add_plugin(RapierDebugRenderPlugin::default())
             // .add_plugin(DiagnosticsPlugin::default())
             .add_plugin(DebugLinesPlugin::with_depth_test(false))
 

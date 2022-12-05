@@ -2,7 +2,7 @@ use std::path::Path;
 
 use bevy::prelude::*;
 use bevy_rapier3d::{prelude::Collider, plugin::{RapierPhysicsPlugin, NoUserData}};
-use qloader::*;
+// use qloader::*;
 
 
 
@@ -44,26 +44,26 @@ pub struct ColliderAsset {
     indices: Vec<[u32; 3]>,
 }
 
-impl QLoad<()> for ColliderAsset {
-    const PATHTYPE : PathType = PathType::Absolute;
-    fn extensions() -> Vec<&'static str> {
-        vec!["brcol"]
-    }
-    fn load<S : AsRef<Path>>(_path : S) -> Result<Self, QLoaderError> {
-        if let Ok(bytes) = std::fs::read(_path) {
-            if let Ok((v, i)) = bincode::deserialize::<(Vec<Vec3>, Vec<[u32; 3]>)>(&bytes) {
-                return Ok(Self {
-                    vertices: v,
-                    indices: i,
-                });
-            }
-        }
-        Err(QLoaderError::ParseError)
-    }
-}
+// impl QLoad<()> for ColliderAsset {
+//     const PATHTYPE : PathType = PathType::Absolute;
+//     fn extensions() -> Vec<&'static str> {
+//         vec!["brcol"]
+//     }
+//     fn load<S : AsRef<Path>>(_path : S) -> Result<Self, QLoaderError> {
+//         if let Ok(bytes) = std::fs::read(_path) {
+//             if let Ok((v, i)) = bincode::deserialize::<(Vec<Vec3>, Vec<[u32; 3]>)>(&bytes) {
+//                 return Ok(Self {
+//                     vertices: v,
+//                     indices: i,
+//                 });
+//             }
+//         }
+//         Err(QLoaderError::ParseError)
+//     }
+// }
 
-impl From<ColliderAsset> for Collider {
-    fn from(collider_asset : ColliderAsset) -> Self {
-        Self::trimesh(collider_asset.vertices, collider_asset.indices)
-    }
-}
+// impl From<ColliderAsset> for Collider {
+//     fn from(collider_asset : ColliderAsset) -> Self {
+//         Self::trimesh(collider_asset.vertices, collider_asset.indices)
+//     }
+// }

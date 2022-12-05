@@ -12,8 +12,8 @@ pub struct Relative<D = Transform> {
     pub data: D,
 }
 
-impl From<SerdeTurret> for Relative {
-    fn from(value: SerdeTurret) -> Self {
+impl From<Turret> for Relative {
+    fn from(value: Turret) -> Self {
         Self {
             entity: None,
             data: value.transform.into(),
@@ -23,11 +23,11 @@ impl From<SerdeTurret> for Relative {
 
 #[derive(Debug, Clone, Copy)]
 #[derive(Serialize, Deserialize)]
-pub struct SerdeTurret {
+pub struct Turret {
     pub transform: SerdeTransform
 }
 
-impl From<Relative> for SerdeTurret {
+impl From<Relative> for Turret {
     fn from(value: Relative) -> Self {
         Self {
             transform: value.data.into()
@@ -35,7 +35,7 @@ impl From<Relative> for SerdeTurret {
     }
 }
 
-impl SerdeComponent for SerdeTurret {
+impl SerdeComponent for Turret {
     fn saved(&self) -> Option<Self> {
         let transform = Transform::from(self.transform);
         // if transform.translation.x > 0.0 {

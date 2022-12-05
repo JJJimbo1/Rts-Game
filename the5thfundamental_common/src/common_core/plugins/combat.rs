@@ -1,10 +1,8 @@
 use bevy::{math::Vec3Swizzles, prelude::*};
-use bevy_pathfinding::{Path, PathFindingSystems, PathFindingPlugin, d2::{GridMap, GridCell}, GridSpace, DefaultPather, OGrid};
 use bevy_prototype_debug_lines::DebugLines;
 use bevy_rapier3d::prelude::{Collider, Velocity};
-use simple_random::prelude::Random;
 use xtrees::Quad;
-use crate::{Actors, Health, MapBounds, Target, TeamPlayer, TeamPlayerWorld, WeaponSet, Controller, UnitCommandEvent, UnitCommandType, ObjectKilledEvent, GroundPathFinder};
+use crate::*;
 
 #[derive(Default)]
 pub struct CombatPlugin;
@@ -14,7 +12,7 @@ impl CombatPlugin {
         mut command_reader: EventReader<UnitCommandEvent>,
         pathing_space: Res<GridSpace>,
         grid_map: Res<OGrid>,
-        mut rand : ResMut<Random>,
+        mut rand : ResMut<Random<WichmannHill>>,
         mut pathfinders: Query<(Entity, &Transform, &mut GroundPathFinder, &mut Controller)>,
     ) {
         for command in command_reader.iter() {
@@ -76,7 +74,7 @@ impl CombatPlugin {
                     if let Ok(target_transform) = transforms.get(target) {
 
                         let dir = Vec2::new(transform.translation.x - target_transform.translation.x, transform.translation.z - target_transform.translation.z).normalize() * weapon_set.closing_range;
-                        if mathfu::D2::distance_magnitude((transform.translation.x, transform.translation.z), (target_transform.translation.x, target_transform.translation.z)) > dir.length_squared() {
+                        if d2::distance_magnitude((transform.translation.x, transform.translation.z), (target_transform.translation.x, target_transform.translation.z)) > dir.length_squared() {
                             pathfinder.start = transform.translation.xz();
                             let (end_x, end_y) = pathing_space.position_to_index(target_transform.translation.xz() + dir);
                             let end = grid_map.0.get_cell(end_x, end_y).and_then(|c| grid_map.0.closest_unblocked_cell(*c)).map_or(target_transform.translation.xz() + dir, |c| pathing_space.index_to_position(c.index()));
@@ -87,7 +85,7 @@ impl CombatPlugin {
                         }
 
                         for weapon in weapon_set.weapons.iter_mut() {
-                            if mathfu::D2::distance_magnitude((transform.translation.x, transform.translation.z), (target_transform.translation.x, target_transform.translation.z)) < weapon.range.powi(2) {
+                            if d2::distance_magnitude((transform.translation.x, transform.translation.z), (target_transform.translation.x, target_transform.translation.z)) < weapon.range.powi(2) {
                                 weapon.target = Target::ManualTarget(target);
                             } else if let Target::AutoTarget(_) = weapon.target {
 
@@ -105,7 +103,7 @@ impl CombatPlugin {
                             weapon.target = Target::None;
                         } else if let Target::AutoTarget(target) = weapon.target {
                             if let Ok(target_transform) = transforms.get(target) {
-                                if mathfu::D2::distance_magnitude((transform.translation.x, transform.translation.z), (target_transform.translation.x, target_transform.translation.z)) > weapon.range.powi(2) {
+                                if d2::distance_magnitude((transform.translation.x, transform.translation.z), (target_transform.translation.x, target_transform.translation.z)) > weapon.range.powi(2) {
                                     weapon.target = Target::None;
                                 }
                             } else {
@@ -178,23 +176,30 @@ impl CombatPlugin {
             let y = transform.translation.y;
             match (path.0.get(0).cloned(), path.0.get(1).cloned()) {
                 (Some(first), Some(_second)) => {
-                    transform.look_at(first.extend(y).xzy(), Vec3::Y);
-                    let direction = (first - transform.translation.xz()).normalize_or_zero();
+
+                    let desired_rotation = transform.looking_at(first.extend(y).xzy(), Vec3::Y).rotation;
+                    let difference = transform.rotation.angle_between(desired_rotation);
+                    let speed = 0.015 / difference;
+                    let new_rotation = transform.rotation.slerp(desired_rotation, speed.clamp(0.0, 1.0));
+                    transform.rotation = new_rotation;
+
                     let distance = first.distance(transform.translation.xz());
                     if distance > 1.0 {
-                        velocity.linvel.x =  direction.x * controller.max_forward_speed.abs();
-                        velocity.linvel.z =  direction.y * controller.max_forward_speed.abs();
+                        velocity.linvel = transform.rotation * -Vec3::Z * controller.max_forward_speed.abs();
                     } else {
                         path.0.remove(0);
                     }
                 },
                 (Some(first), None) => {
-                    transform.look_at(first.extend(y).xzy(), Vec3::Y);
-                    let direction = (first - transform.translation.xz()).normalize_or_zero();
+                    let desired_rotation = transform.looking_at(first.extend(y).xzy(), Vec3::Y).rotation;
+                    let difference = transform.rotation.angle_between(desired_rotation);
+                    let speed = 0.015 / difference;
+                    let new_rotation = transform.rotation.slerp(desired_rotation, speed.clamp(0.0, 1.0));
+                    transform.rotation = new_rotation;
+
                     let distance = first.distance(transform.translation.xz());
                     if distance > 0.05 {
-                        velocity.linvel.x =  direction.x * (controller.max_forward_speed.abs()).min(distance * 3.0);
-                        velocity.linvel.z =  direction.y * (controller.max_forward_speed.abs()).min(distance * 3.0);
+                        velocity.linvel = transform.rotation * -Vec3::Z  * controller.max_forward_speed.abs().min(distance * 3.0);
                     } else {
                         path.0.remove(0);
                         transform.translation = first.extend(y).xzy();

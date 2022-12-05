@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy_pathfinding::Path;
 use bevy_rapier3d::prelude::{Collider, RigidBody, Velocity};
 use serde::{Serialize, Deserialize};
 
@@ -78,7 +77,7 @@ impl From<TankBasePrefab> for TankBaseBundle {
             selectable: Selectable::multiselect(),
             velocity: Velocity::default(),
             rigid_body: RigidBody::KinematicVelocityBased,
-            collider: prefab.real_collider.clone().unwrap(),
+            collider: prefab.collider.clone(),
             visibility: Visibility::default(),
             computed_visibility: ComputedVisibility::default(),
             transform: Transform::default(),
@@ -103,7 +102,7 @@ impl From<(SerdeTank, &TankBasePrefab)> for TankBaseBundle {
             team_player: save.team_player,
             velocity: save.velocity.unwrap_or(SerdeVelocity::default()).into(),
             rigid_body: RigidBody::KinematicVelocityBased,
-            collider: prefab.real_collider.clone().unwrap(),
+            collider: prefab.collider.clone(),
             selectable: Selectable::multiselect(),
             visibility: Visibility::default(),
             computed_visibility: ComputedVisibility::default(),
@@ -115,22 +114,33 @@ impl From<(SerdeTank, &TankBasePrefab)> for TankBaseBundle {
 
 
 #[derive(Clone)]
-#[derive(Serialize, Deserialize)]
 pub struct TankBasePrefab {
-    pub stack: (ActiveQueue, StackData),
     pub health: Health,
     pub controller: Controller,
     pub weapon_set: WeaponSet,
-    pub turret: SerdeTurret,
-    pub collider_string: String,
-    #[serde(skip)]
-    pub real_collider: Option<Collider>,
+    pub turret: Turret,
+    pub collider: Collider,
 }
 
-impl TankBasePrefab {
-    pub fn with_real_collider(mut self, collider: Collider) -> Self {
-        self.real_collider = Some(collider);
-        self
+impl TryFrom<&ObjectAsset> for TankBasePrefab {
+    type Error = ContentError;
+    fn try_from(prefab: &ObjectAsset) -> Result<Self, ContentError> {
+        let Some(health) = prefab.health else { return Err(ContentError::MissingHealth); };
+        let Some(controller) = prefab.controller else { return Err(ContentError::MissingController); };
+        let Some(weapon_set) = prefab.weapon_set.clone() else { return Err(ContentError::MissingWeapons); };
+        let Some(collider_string) = prefab.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
+        let Some(turret) = prefab.turret else { return Err(ContentError::MissingColliderString); };
+        let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
+
+        let collider = Collider::trimesh(vertices, indices);
+
+        Ok(Self {
+            health,
+            controller,
+            weapon_set,
+            turret: turret.into(),
+            collider,
+        })
     }
 }
 
@@ -143,7 +153,7 @@ pub struct SerdeTank {
     pub path: Option<Path>,
     pub controller: Option<Controller>,
     pub weapon_set: Option<WeaponSet>,
-    pub turret: Option<SerdeTurret>,
+    pub turret: Option<Turret>,
     pub velocity: Option<SerdeVelocity>,
     pub team_player: TeamPlayer,
     pub transform: SerdeTransform,
@@ -158,11 +168,22 @@ impl<'a> From<SerdeTankBaseQuery<'a>> for SerdeTank {
             path: object.3.saved(),
             controller: object.4.saved(),
             weapon_set: object.5.saved(),
-            turret: SerdeTurret::from(*object.6).saved(),
+            turret: Turret::from(*object.6).saved(),
             velocity: SerdeVelocity::from(*object.7).saved(),
             team_player: *object.8,
             transform: (*object.9).into(),
         }
+    }
+}
+
+impl From<SerdeTank> for ObjectSpawnEvent {
+    fn from(value: SerdeTank) -> Self {
+        Self(ObjectSpawnEventData{
+            object_type: ObjectType::TankBase,
+            snowflake: Snowflake::new(),
+            teamplayer: value.team_player,
+            transform: value.transform.into(),
+        })
     }
 }
 

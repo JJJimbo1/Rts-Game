@@ -1,8 +1,8 @@
 pub use settings::*;
 mod settings {
     use bevy::{math::Vec3, prelude::Resource};
-    use mathfu::D1;
     use serde::{Serialize, Deserialize};
+    use crate::*;
 
     #[derive(Deserialize)]
     #[derive(Resource)]
@@ -50,9 +50,9 @@ mod settings {
 
     impl CameraSettings {
         pub fn default_direction_and_distance(&self) -> (Vec3, f32) {
-            (Vec3::new(0.0, D1::normalize_from_01(self.default_zoom, self.min_zoom().y, self.max_zoom().y),
-            D1::normalize_from_01(self.default_zoom, self.min_zoom().z, self.max_zoom().z)).normalize_or_zero(),
-            D1::normalize_from_01(self.default_zoom, self.min_zoom, self.max_zoom))
+            (Vec3::new(0.0, d1::normalize_from_01(self.default_zoom, self.min_zoom().y, self.max_zoom().y),
+            d1::normalize_from_01(self.default_zoom, self.min_zoom().z, self.max_zoom().z)).normalize_or_zero(),
+            d1::normalize_from_01(self.default_zoom, self.min_zoom, self.max_zoom))
         }
 
         pub fn min_zoom(&self) -> Vec3 {
@@ -67,8 +67,8 @@ mod settings {
     impl Default for CameraSettings {
         fn default() -> Self {
             Self {
-                offset_y: (2.0, 4.0),
-                offset_z: (3.0, 4.0),
+                offset_y: (0.5, 1.0),
+                offset_z: (0.65, 1.0),
                 curve_power: (1.5, 1.5),
 
                 max_rotation_speed: 5.0,
@@ -89,13 +89,16 @@ mod settings {
                 scroll_button_speed_multiplier: 0.5,
                 post_action_stall: true,
 
-                max_zoom_speed: 1.2,
-                zoom_acceleration: 9.0,
+                #[cfg(target_family = "wasm")]
+                max_zoom_speed: 0.018,
+                #[cfg(not(target_family = "wasm"))]
+                max_zoom_speed: 1.8,
+                zoom_acceleration: 3.0,
                 zoom_deceleration: 15.0,
                 slow_zoom_multiplier: 0.125,
                 zoom_acceleration_curve: 2.0,
-                min_zoom: 20.,
-                max_zoom: 30.,
+                min_zoom: 60.,
+                max_zoom: 120.,
                 default_zoom: 0.8,
                 zoom_base: 10.0,
                 zoom_ratio: 5.0,

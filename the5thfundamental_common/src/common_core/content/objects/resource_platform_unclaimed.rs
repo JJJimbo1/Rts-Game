@@ -68,7 +68,7 @@ impl From<ResourcePlatformUnclaimedPrefab> for ResourcePlatformUnclaimedBundle {
             snowflake: Snowflake::new(),
             team_player: TeamPlayer::default(),
             selectable: Selectable::single(),
-            collider: prefab.real_collider.clone().unwrap(),
+            collider: prefab.collider.clone(),
             visibility: Visibility::default(),
             computed_visibility: ComputedVisibility::default(),
             transform: Transform::default(),
@@ -78,19 +78,24 @@ impl From<ResourcePlatformUnclaimedPrefab> for ResourcePlatformUnclaimedBundle {
 }
 
 #[derive(Clone)]
-#[derive(Serialize, Deserialize)]
 pub struct ResourcePlatformUnclaimedPrefab {
     pub health: Health,
-    pub economic_object: EconomicObject,
-    pub collider_string: String,
-    #[serde(skip)]
-    pub real_collider: Option<Collider>,
+    pub collider: Collider,
 }
 
-impl ResourcePlatformUnclaimedPrefab {
-    pub fn with_real_collider(mut self, collider: Collider) -> Self {
-        self.real_collider = Some(collider);
-        self
+impl TryFrom<&ObjectAsset> for ResourcePlatformUnclaimedPrefab {
+    type Error = ContentError;
+    fn try_from(prefab: &ObjectAsset) -> Result<Self, ContentError> {
+        let Some(health) = prefab.health else { return Err(ContentError::MissingHealth); };
+        let Some(collider_string) = prefab.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
+        let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
+
+        let collider = Collider::trimesh(vertices, indices);
+
+        Ok(Self {
+            health,
+            collider,
+        })
     }
 }
 

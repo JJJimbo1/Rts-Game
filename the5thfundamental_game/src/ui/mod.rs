@@ -55,11 +55,6 @@ pub fn set_visible(
         visible.is_visible = is_visible;
     }
 
-    // if let Ok(children) = children_query.get(entity) {
-    //     for child in children.iter() {
-    //         set_visible_recursive(is_visible, *child, visible_query, children_query);
-    //     }
-    // }
 }
 
 pub fn button_updater_system(

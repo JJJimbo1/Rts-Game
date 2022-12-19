@@ -5,11 +5,11 @@
         (
             object_type: MarineSquad,
             time_to_build: Duration (
-                secs : 0,
+                secs : 3,
                 nanos : 500_000_000,
             ),
             cost: 2,
-            // buffered: false,
+            buffered: false,
         )
     ),
     health : (

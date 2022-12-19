@@ -390,7 +390,7 @@ pub fn camera_raycast_response_system(
 }
 
 pub fn create_selector(
-    mut image_assets : Res<ImageAssets>,
+    image_assets : Res<ImageAssets>,
     // textures : Res<QLoader<ImageAsset, AssetServer>>,
     mut nine_patches: ResMut<Assets<NinePatchBuilder<()>>>,
     mut commands : Commands
@@ -754,6 +754,7 @@ pub fn building_placement_system(
     //Todo: Fix visibility. Bug with Bevy?
     match current_placement.status {
         PlacementStatus::Began(info) => {
+            
             let mut entity_builder = commands.spawn(SpatialBundle {
                 visibility: Visibility { is_visible: false },
                 ..default()

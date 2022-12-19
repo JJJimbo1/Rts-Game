@@ -72,7 +72,7 @@ impl ContextMenu {
 
             if let (Ok(children), Ok(mut but)) = (children_query.get(self.list_icons[i]), context_menu_buttons.get_mut(self.list_icons[i])) {
                 let empty = queue.buffer.height(&stack_data) == 0;
-                if !empty {
+                if !empty && stack_data.buffered {
                     *but = ContextMenuButtonsEvent::BeginPlaceBufferedButton(Some((entity, *stack_data)));
                 } else {
                     *but = ContextMenuButtonsEvent::BeginButton(Some((entity, self.active_tab.unwrap(), *stack_data)));
@@ -81,10 +81,10 @@ impl ContextMenu {
                     if let Ok(mut text) = texts.get_mut(*child) {
                         text.sections[0].value = format!("{}: {}", stack_data.object_type, queue.zip_queue.height(stack_data));
                     } else if let Ok(mut texture) = ui_colors.get_mut(*child) {
-                        if empty {
-                            *texture = BLACK.into();
-                        } else {
+                        if !empty && stack_data.buffered {
                             *texture = GREEN.into();
+                        } else {
+                            *texture = BLACK.into();
                         }
                     }
                     // else { println!("1"); }

@@ -143,7 +143,7 @@ pub struct StackData {
     pub object_type : ObjectType,
     pub time_to_build : Duration,
     pub cost : u128,
-    // pub buffered : bool,
+    pub buffered : bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -9,7 +9,7 @@
                 nanos : 0,
             ),
             cost: 350,
-            buffered: true,
+            buffered: false,
         )
     ),
     health : (

@@ -78,7 +78,6 @@ pub fn main_menu_update(
             }
             _ => { }
         }
-        println!("Bruh");
     }
 
     for event in skirmish_button_event_reader.iter() {

@@ -8,6 +8,7 @@ pub mod resource_platform_unclaimed;
 pub mod resource_platform_claimed;
 pub mod tank;
 
+use bevy_asset_loader::prelude::AssetCollection;
 pub use loading::*;
 pub use crane_yard::*;
 pub use factory::*;
@@ -18,8 +19,8 @@ pub use resource_platform_unclaimed::*;
 pub use resource_platform_claimed::*;
 pub use tank::*;
 
-use bevy_rapier3d::prelude::Collider;
-use bevy::{prelude::*, utils::HashMap, math::Vec3Swizzles, reflect::TypeUuid, asset::{AssetLoader, LoadedAsset}};
+use std::fmt::Display;
+use bevy::{prelude::*, math::Vec3Swizzles, reflect::TypeUuid, asset::{AssetLoader, LoadedAsset}, utils::HashMap};
 use serde::{Serialize, Deserialize};
 use crate::*;
 
@@ -45,32 +46,20 @@ impl From<ObjectType> for AssetType {
     }
 }
 
-impl AssetId for ObjectType {
-    fn id(&self) -> Option<&'static str> {
+impl Display for ObjectType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::CraneYard => { Some("crane_yard") },
-            Self::ResourceNode => { Some("resource_node") },
-            Self::ResourcePlatformUnclaimed => { Some("resource_platform_unclaimed") },
-            Self::ResourcePlatformClaimed => { Some("resource_platform_claimed") },
-            Self::Factory => { Some("factory") },
-            Self::MarineSquad => { None },
-            Self::Marine => { Some("marine") },
-            Self::TankBase => { Some("tank_base") },
-            Self::TankGun => { Some("tank_gun") },
+            ObjectType::CraneYard => write!(f, "Crane Yard"),
+            ObjectType::ResourceNode => write!(f, "Resource Node"),
+            ObjectType::ResourcePlatformUnclaimed => write!(f, "Resource Platform Unclaimed"),
+            ObjectType::ResourcePlatformClaimed => write!(f, "Resource Platform"),
+            ObjectType::Factory => write!(f, "Factory"),
+            ObjectType::MarineSquad => write!(f, "Marine Squad"),
+            ObjectType::Marine => write!(f, "Marine"),
+            ObjectType::TankBase => write!(f, "Tank"),
+            ObjectType::TankGun => write!(f, "Tank Gun"),
         }
     }
-}
-
-#[derive(Clone)]
-#[derive(Resource)]
-pub struct ObjectPrefabs {
-    pub crane_yard_prefab: CraneYardPrefab,
-    pub factory_prefab: FactoryPrefab,
-    pub marine_squad_prefab: MarineSquadPrefab,
-    pub resource_node_prefab: ResourceNodePrefab,
-    pub resource_platform_unclaimed_prefab: ResourcePlatformUnclaimedPrefab,
-    pub resource_platform_claimed_prefab: ResourcePlatformClaimedPrefab,
-    pub tank_prefab: TankBasePrefab,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -188,7 +177,7 @@ impl AssetLoader for ObjectAssetLoader {
         load_context: &'a mut bevy::asset::LoadContext,
     ) -> bevy::utils::BoxedFuture<'a, Result<(), bevy::asset::Error>> {
         Box::pin(async move {
-            match ron::de::from_bytes::<Map>(bytes) {
+            match ron::de::from_bytes::<MapAsset>(bytes) {
                 Ok(asset) => {
 
                 },
@@ -207,3 +196,84 @@ impl AssetLoader for ObjectAssetLoader {
         &["t5fobj"]
     }
 }
+
+#[derive(Debug, Default, Clone)]
+#[derive(Resource)]
+#[derive(AssetCollection)]
+pub struct ObjectAssets {
+    #[asset(path = "objects/crane_yard.t5fobj")]
+    pub crane_yard: Handle<ObjectAsset>,
+    #[asset(path = "objects/resource_node.t5fobj")]
+    pub resource_node: Handle<ObjectAsset>,
+    #[asset(path = "objects/resource_platform_unclaimed.t5fobj")]
+    pub resource_platform_unclaimed: Handle<ObjectAsset>,
+    #[asset(path = "objects/resource_platform_claimed.t5fobj")]
+    pub resource_platform_claimed: Handle<ObjectAsset>,
+    #[asset(path = "objects/factory.t5fobj")]
+    pub factory: Handle<ObjectAsset>,
+    #[asset(path = "objects/marine_squad.t5fobj")]
+    pub marine_squad: Handle<ObjectAsset>,
+    #[asset(path = "objects/tank.t5fobj")]
+    pub tank: Handle<ObjectAsset>,
+}
+
+#[derive(Clone)]
+#[derive(Resource)]
+pub struct ObjectPrefabs {
+    pub crane_yard_prefab: CraneYardPrefab,
+    pub resource_node_prefab: ResourceNodePrefab,
+    pub resource_platform_unclaimed_prefab: ResourcePlatformUnclaimedPrefab,
+    pub resource_platform_claimed_prefab: ResourcePlatformClaimedPrefab,
+    pub factory_prefab: FactoryPrefab,
+    pub marine_squad_prefab: MarineSquadPrefab,
+    pub tank_prefab: TankBasePrefab,
+}
+
+impl FromWorld for ObjectPrefabs {
+    fn from_world(world: &mut World) -> Self {
+        let cell = world.cell();
+        let objects = cell
+            .get_resource_mut::<Assets<ObjectAsset>>()
+            .expect("Failed to get Assets<ObjectAssets>");
+        let object_assets = cell
+            .get_resource::<ObjectAssets>()
+            .expect("Failed to get ObjectAssets");
+
+        let crane_yard_prefab_asset = objects.get(&object_assets.crane_yard).expect("Failed to load crane_yard");
+        let resource_node_prefab_asset = objects.get(&object_assets.resource_node).expect("Failed to load resource_node");
+        let resource_platform_unclaimed_prefab_asset = objects.get(&object_assets.resource_platform_unclaimed).expect("Failed to load resource_platform_unclaimed");
+        let resource_platform_claimed_prefab_asset = objects.get(&object_assets.resource_platform_claimed).expect("Failed to load resource_platform_claimed");
+        let factory_prefab_asset = objects.get(&object_assets.factory).expect("Failed to load factory");
+        let marine_squad_prefab_asset = objects.get(&object_assets.marine_squad).expect("Failed to load marine_squad");
+        let tank_prefab_asset = objects.get(&object_assets.tank).expect("Failed to load tank");
+
+        let mut stacks : HashMap<ObjectType, (ActiveQueue, StackData)> = HashMap::new();
+
+        // stacks.insert(ObjectType::ResourceNode, resource_node_prefab_asset.stack.unwrap());
+        stacks.insert(ObjectType::Factory, factory_prefab_asset.stack.unwrap());
+        stacks.insert(ObjectType::MarineSquad, marine_squad_prefab_asset.stack.unwrap());
+        stacks.insert(ObjectType::TankBase, tank_prefab_asset.stack.unwrap());
+
+        let crane_yard_prefab = CraneYardPrefab::try_from((crane_yard_prefab_asset, &stacks)).unwrap();
+        let resource_node_prefab = ResourceNodePrefab::try_from(resource_node_prefab_asset).unwrap();
+        let resource_platform_unclaimed_prefab = ResourcePlatformUnclaimedPrefab::try_from(resource_platform_unclaimed_prefab_asset).unwrap();
+        let resource_platform_claimed_prefab = ResourcePlatformClaimedPrefab::try_from(resource_platform_claimed_prefab_asset).unwrap();
+        let factory_prefab = FactoryPrefab::try_from((factory_prefab_asset, &stacks)).unwrap();
+        let marine_squad_prefab = MarineSquadPrefab::try_from(marine_squad_prefab_asset).unwrap();
+        let tank_prefab = TankBasePrefab::try_from(tank_prefab_asset).unwrap();
+
+        let object_prefabs = ObjectPrefabs {
+            crane_yard_prefab,
+            resource_node_prefab,
+            resource_platform_unclaimed_prefab,
+            resource_platform_claimed_prefab,
+            factory_prefab,
+            marine_squad_prefab,
+            tank_prefab,
+        };
+
+        info!("ObjectPrefabs");
+        object_prefabs
+    }
+}
+

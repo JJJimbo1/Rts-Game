@@ -22,11 +22,13 @@ pub fn match_loading_state_on_exit_system_set() -> SystemSet {
 pub fn match_loading_on_enter(
     file: Res<ChosenSaveFile>,
     mut load_event_write: EventWriter<LoadEvent>,
+    level_assets: Res<LevelAssets>,
     asset_loader: Res<AssetServer>,
     mut commands: Commands,
 ) {
     commands.insert_resource(Player(TeamPlayer::new(1, 0)));
-    load_event_write.send(LoadEvent(asset_loader.load(&file.0)));
+    // load_event_write.send(LoadEvent(asset_loader.load(&file.0)));
+    load_event_write.send(LoadEvent(level_assets.developer.clone()));
 }
 
 pub fn match_loading_update(

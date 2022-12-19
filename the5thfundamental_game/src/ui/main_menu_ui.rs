@@ -1,14 +1,14 @@
-use crate::{*, utility::assets::FontAsset};
+use crate::{*, utility::assets::FontAssets};
 
 pub fn create_main_menu(
     settings : Res<MenuSettings>,
-    mut asset_server: ResMut<AssetServer>,
+    mut font_assets: ResMut<FontAssets>,
     // textures : Res<QLoader<ImageAsset, AssetServer>>,
     // fonts : Res<QLoader<FontAsset, AssetServer>>,
     mut commands : Commands,
     // mut materials: ResMut<Assets<ColorMaterial>>
 ) {
-    let main_menu = MainMenuUi::new(&settings, &mut asset_server, &mut commands);
+    let main_menu = MainMenuUi::new(&settings, &mut font_assets, &mut commands);
     commands.insert_resource(main_menu);
 }
 
@@ -23,13 +23,13 @@ pub struct MainMenuUi {
 impl MainMenuUi {
     pub fn new(
         settings : &MenuSettings,
-        asset_server: &mut AssetServer,
+        font_assets: &mut FontAssets,
         // textures : &QLoader<ImageAsset, AssetServer>,
         // fonts : &QLoader<FontAsset, AssetServer>,
         // materials: &mut Assets<ColorMaterial>,
         commands : &mut Commands,
     ) -> Self {
-        let font: Handle<Font> = asset_server.load(FontAsset::Roboto);
+        let font: Handle<Font> = font_assets.roboto.clone();
         let font_size = FONT_SIZE_LARGE * settings.font_size;
 
         let mut entity_commands = commands.spawn(NodeBundle {
@@ -183,8 +183,8 @@ impl MainMenuUi {
 
         Self {
             container : container_entity,
-            campaign : CampaignUi::new(settings, asset_server, commands),
-            skirmish : SkirmishUi::new(settings, asset_server, commands),
+            campaign : CampaignUi::new(settings, font_assets, commands),
+            skirmish : SkirmishUi::new(settings, font_assets, commands),
         }
     }
 }
@@ -206,10 +206,10 @@ pub struct CampaignUi {
 impl CampaignUi {
     pub fn new(
         settings : &MenuSettings,
-        asset_server: &mut AssetServer,
+        font_assets: &mut FontAssets,
         commands : &mut Commands,
     ) -> Self {
-        let font: Handle<Font> = asset_server.load(FontAsset::Roboto);
+        let font: Handle<Font> = font_assets.roboto.clone();
         let font_size = FONT_SIZE_LARGE * settings.font_size;
 
         let mut entity_commands = commands.spawn(NodeBundle {
@@ -416,10 +416,10 @@ pub struct SkirmishUi {
 impl SkirmishUi {
     pub fn new(
         settings : &MenuSettings,
-        asset_server: &mut AssetServer,
+        font_assets: &mut FontAssets,
         commands : &mut Commands,
     ) -> Self {
-        let font: Handle<Font> = asset_server.load(FontAsset::Roboto);
+        let font: Handle<Font> = font_assets.roboto.clone();
         let font_size = FONT_SIZE_LARGE * settings.font_size;
 
         let mut entity_commands = commands.spawn(NodeBundle {

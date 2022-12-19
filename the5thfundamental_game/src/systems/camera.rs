@@ -4,7 +4,7 @@ use bevy::{input::mouse::MouseWheel, prelude::*, render::camera::Camera, math::V
 use bevy_ninepatch::*;
 use bevy_rapier3d::{prelude::InteractionGroups, plugin::RapierContext};
 use the5thfundamental_common::*;
-use crate::{*, utility::assets::{ImageAsset, GltfAsset}};
+use crate::{*, utility::assets::{ImageAssets, GltfAssets}};
 
 pub const CLICK_BUFFER : usize = 8;
 
@@ -49,6 +49,7 @@ pub fn create_camera(
     map: Res<MapBounds>,
     mut commands: Commands
 ) {
+    info!("Creating Camera");
     let (direction, distance) = settings.default_direction_and_distance();
 
     let z = direction.z * distance;
@@ -389,12 +390,12 @@ pub fn camera_raycast_response_system(
 }
 
 pub fn create_selector(
-    mut asset_server : ResMut<AssetServer>,
+    mut image_assets : Res<ImageAssets>,
     // textures : Res<QLoader<ImageAsset, AssetServer>>,
     mut nine_patches: ResMut<Assets<NinePatchBuilder<()>>>,
     mut commands : Commands
 ) {
-    let select = asset_server.load(ImageAsset::SelectionBox);
+    let select = image_assets.selection_box.clone();
     let nine_patch = nine_patches.add(NinePatchBuilder::by_margins(2, 2, 2, 2));
     let mut entity_commands = commands.spawn(NinePatchBundle {
         style: Style {
@@ -726,7 +727,7 @@ pub fn building_placement_startup_system(mut commands : Commands) {
 
 pub fn building_placement_system(
     mut spawn_event_writer: EventWriter<ObjectSpawnEvent>,
-    mut asset_server : ResMut<AssetServer>,
+    mut gltf_assets : Res<GltfAssets>,
 
     cast : Res<CameraRaycast>,
     input : Res<Input<MouseButton>>,
@@ -758,10 +759,11 @@ pub fn building_placement_system(
                 ..default()
             });
 
-            let gltf = asset_server.load(GltfAsset::from(AssetType::from(info.data.object_type)));
+            let gltf = gltf_assets.get_scene(info.data.object_type.into()).unwrap();
+            // let gltf = asset_server.load(GltfAsset::from(AssetType::from(info.data.object_type)));
             entity_builder.with_children(|parent| {
                 parent.spawn(SceneBundle{
-                    scene: gltf,
+                    scene: gltf.clone(),
                     ..default()
                 });
             });

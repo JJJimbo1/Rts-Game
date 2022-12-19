@@ -8,7 +8,7 @@
                 secs : 1,
                 nanos : 0,
             ),
-            cost: 600,
+            cost: 350,
             buffered: true,
         )
     ),

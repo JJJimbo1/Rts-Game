@@ -1,23 +1,23 @@
 
 use bevy::prelude::*;
 use the5thfundamental_common::*;
-use crate::{*, utility::assets::GltfAsset};
+use crate::{*, utility::assets::GltfAssets};
 
 
 
 pub fn client_object_spawn(
-    mut asset_server: ResMut<AssetServer>,
+    mut gltf_assets: ResMut<GltfAssets>,
     mut identifiers: ResMut<Identifiers>,
     assets: Query<(Entity, &Snowflake, &AssetType), Added<AssetType>>,
     mut commands: Commands,
 ) {
 
     assets.for_each(|(entity, snowflake, asset)| {
-        let scene = asset_server.load(GltfAsset::from(*asset));
+        let Some(scene) = gltf_assets.get_scene(*asset) else { return; };
         commands.entity(entity).with_children(|parent| {
             parent.spawn(
                 SceneBundle {
-                    scene,
+                    scene: scene.clone(),
                     ..default()
                 }
             );

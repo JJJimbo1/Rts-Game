@@ -28,7 +28,7 @@ impl Plugin for SavePlugin {
 pub struct SaveEvent(pub String);
 
 #[derive(Debug, Clone)]
-pub struct LoadEvent(pub Handle<Level>);
+pub struct LoadEvent(pub Handle<LevelAsset>);
 
 #[derive(Debug, Clone, Copy)]
 pub enum LevelLoadedEvent {
@@ -40,7 +40,7 @@ pub enum LevelLoadedEvent {
 // #[derive(Serialize, Deserialize)]
 // pub struct SaveMap(pub String);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 #[derive(Serialize, Deserialize)]
 pub struct SaveObjects {
     crane_yards: Vec<SerdeCraneYard>,
@@ -51,7 +51,7 @@ pub struct SaveObjects {
 }
 
 ///Target Maximum : 125,829,120
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 #[derive(Serialize, Deserialize)]
 pub struct SaveState {
     pub actors: Actors,
@@ -105,26 +105,27 @@ pub fn save_game(
 }
 
 pub fn load_game(
-    mut load_level: Local<Option<Handle<Level>>>,
+    mut load_level: Local<Option<Handle<LevelAsset>>>,
     mut load_event_reader: EventReader<LoadEvent>,
     mut level_loaded_event_writer: EventWriter<LevelLoadedEvent>,
     mut spawn_events_writer: EventWriter<ObjectSpawnEvent>,
     // object_prefabs: Res<ObjectPrefabs>,
     asset_server: Res<AssetServer>,
-    level_assets: Res<Assets<Level>>,
-    map_assets: Res<Assets<Map>>,
+    level_assets: Res<Assets<LevelAsset>>,
+    maps: Res<Assets<MapAsset>>,
+    map_assets: Res<MapAssets>,
     mut commands: Commands
 ) {
     for event in load_event_reader.iter() {
         *load_level = Some(event.0.clone());
     }
 
-    let Some(level_handle) = (load_level.clone()) else { return; };
+    let Some(level_handle) = load_level.clone() else { return; };
     if asset_server.get_load_state(level_handle.clone()) == LoadState::Failed { level_loaded_event_writer.send(LevelLoadedEvent::Failure); *load_level = None; }
     let Some(level) = level_assets.get(&level_handle) else { return; };
-    let map_handle: Handle<Map> = asset_server.load(MapAsset::from(&level.save_state.map));
+    let map_handle: Handle<MapAsset> = map_assets.from_serde_map(&level.save_state.map).clone();
     if asset_server.get_load_state(map_handle.clone()) == LoadState::Failed { level_loaded_event_writer.send(LevelLoadedEvent::Failure); *load_level = None; }
-    let Some(map) = map_assets.get(&map_handle) else { return; };
+    let Some(map) = maps.get(&map_handle) else { return; };
 
     commands.insert_resource(level.save_state.actors.clone());
     commands.insert_resource(level.save_state.map.clone());
@@ -142,12 +143,6 @@ pub fn load_game(
         )}
     );
     commands.insert_resource(GridSpace::new(bounds.0.x as usize, bounds.0.y as usize));
-
-    // save_file.objects.crane_yards.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
-    // save_file.objects.resource_nodes.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
-    // save_file.objects.factories.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
-    // save_file.objects.marine_squads.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
-    // save_file.objects.tanks.iter().for_each(|object| { spawn_events_writer.send((*object).into()); });
 
     for object in &level.save_state.objects.crane_yards { spawn_events_writer.send(object.clone().into()); }
     for object in &level.save_state.objects.resource_nodes { spawn_events_writer.send(object.clone().into()); }

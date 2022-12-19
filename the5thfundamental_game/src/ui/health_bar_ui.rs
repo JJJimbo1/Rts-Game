@@ -1,5 +1,5 @@
 use bevy::{prelude::*, ecs::schedule::ShouldRun};
-use crate::{*, utility::assets::ImageAsset};
+use crate::{*, utility::assets::ImageAssets};
 
 const SIZE : u32 = 16;
 
@@ -13,14 +13,14 @@ pub struct HealthBar {
 impl HealthBar {
     pub fn new(
         segments : u32,
-        asset_server: &mut AssetServer,
+        image_assets: &ImageAssets,
         commands : &mut Commands
     ) -> Self{
 
-        let start = asset_server.load(ImageAsset::HealthBarStart);
-        let middle = asset_server.load(ImageAsset::HealthBarMiddle);
-        let end = asset_server.load(ImageAsset::HealthBarEnd);
-        let green = asset_server.load(ImageAsset::HealthBarGreen);
+        let start = image_assets.health_bar_start.clone();
+        let middle = image_assets.health_bar_middle.clone();
+        let end = image_assets.health_bar_end.clone();
+        let green = image_assets.health_bar_green.clone();
 
         // let start = textures.get("health_bar_start").unwrap();
         // let middle = textures.get("health_bar_middle").unwrap();
@@ -162,7 +162,7 @@ pub fn should_update_health_bars(
 }
 
 pub fn create_health_bars(
-    mut asset_server: ResMut<AssetServer>,
+    mut image_assets: Res<ImageAssets>,
     add_health_bars : Query<(Entity, &Health), Without<HealthBar>>,
     mut commands: Commands,
 ) {
@@ -170,7 +170,7 @@ pub fn create_health_bars(
         .iter()
         .map(|(entity, health)| (entity, (health.max_health() / 250.0).ceil() as u32))
         .for_each(|(entity, segments)| {
-            let health_bar = HealthBar::new(segments, &mut asset_server, &mut commands);
+            let health_bar = HealthBar::new(segments, &image_assets, &mut commands);
             commands.entity(entity).insert(health_bar);
     });
 }

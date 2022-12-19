@@ -1,17 +1,5 @@
 #![enable(implicit_some)]
 (
-    stack: (
-        Structures,
-        (
-            object_type: ResourceNode,
-            time_to_build: Duration (
-                secs : 1,
-                nanos : 0,
-            ),
-            cost: 600,
-            buffered: true,
-        )
-    ),
     health : (
         max_health : 1000,
         health : 1000,
@@ -25,10 +13,6 @@
             shock : 0.0,
             radioactivity : 0.9,
         )
-    ),
-    economic_object : (
-        resource_gen : 5.0,
-        resource_drain : 0.0,
     ),
     collider_string: "GAAAAAAAAADg/P/AAAAAwAAAgEDg/P/AAAAAwAAAgEDg/P/AAAAAwAAAgEDg/P/AAAAAQAAAgEDg/P/AAAAAQAAAgEDg/P/AAAAAQAAAgEDg/P/AAAAAwAAAgMDg/P/AAAAAwAAAgMDg/P/AAAAAwAAAgMDg/P/AAAAAQAAAgMDg/P/AAAAAQAAAgMDg/P/AAAAAQAAAgMCQAQBBAAAAwAAAgECQAQBBAAAAwAAAgECQAQBBAAAAwAAAgECQAQBBAAAAQAAAgECQAQBBAAAAQAAAgECQAQBBAAAAQAAAgECQAQBBAAAAwAAAgMCQAQBBAAAAwAAAgMCQAQBBAAAAwAAAgMCQAQBBAAAAQAAAgMCQAQBBAAAAQAAAgMCQAQBBAAAAQAAAgMAMAAAAAAAAAAcAAAASAAAADAAAAAcAAAAMAAAAAQAAABYAAAALAAAABQAAABYAAAAFAAAAEAAAAAoAAAAVAAAAEwAAAAoAAAATAAAACAAAAA0AAAAPAAAABAAAAA0AAAAEAAAAAgAAAAMAAAAJAAAABgAAAAMAAAAGAAAAAAAAABQAAAAXAAAAEQAAABQAAAARAAAADgAAAA=="
 )

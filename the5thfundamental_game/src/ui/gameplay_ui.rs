@@ -1,12 +1,12 @@
 use bevy::prelude::*;
-use crate::{*, utility::assets::FontAsset};
+use crate::{*, utility::assets::FontAssets};
 
 pub fn create_gameplay_ui(
     settings : Res<MenuSettings>,
-    mut asset_server: ResMut<AssetServer>,
+    mut font_assets: Res<FontAssets>,
     mut commands : Commands,
 ) {
-    let gameplay_ui = GameplayUi::new(&settings, &mut asset_server, &mut commands);
+    let gameplay_ui = GameplayUi::new(&settings, &font_assets, &mut commands);
     commands.insert_resource(gameplay_ui);
 }
 
@@ -20,10 +20,10 @@ pub struct GameplayUi {
 impl GameplayUi {
     pub fn new(
         settings : &MenuSettings,
-        asset_server: &AssetServer,
+        font_assets: &FontAssets,
         commands : &mut Commands,
     ) -> Self {
-        let font = asset_server.load(FontAsset::Roboto);
+        let font = font_assets.roboto.clone();
         let font_size = FONT_SIZE_LARGE * settings.font_size;
 
         let mut entity_commands = commands.spawn(NodeBundle {

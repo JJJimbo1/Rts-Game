@@ -28,39 +28,39 @@ pub fn main() {
     // crash();
 }
 
-fn begin_log() {
-    let path = PathBuf::from(format!("{}/log.txt", *PROJECT_ROOT_DIRECTORY));
-    let mut _f = match OpenOptions::new()
-        .write(true)
-        .open(path.clone()) {
-            Ok(mut x) => {
-                match x.set_len(0) {
-                    Ok(_) => { },
-                    Err(e) => { log::error!("{}", e); }
-                }
-                match x.write(Local::now().format("Game started: %b %e, %Y, %H:%M:%S,\n================================\n").to_string().as_bytes()) {
-                    Ok(_) => { },
-                    Err(e) => { log::error!("{}", e); }
-                }
-            },
-            Err(e) => { log::error!("{}", e); }
-        };
-}
+// fn begin_log() {
+//     let path = PathBuf::from(format!("{}/log.txt", *PROJECT_ROOT_DIRECTORY));
+//     let mut _f = match OpenOptions::new()
+//         .write(true)
+//         .open(path.clone()) {
+//             Ok(mut x) => {
+//                 match x.set_len(0) {
+//                     Ok(_) => { },
+//                     Err(e) => { log::error!("{}", e); }
+//                 }
+//                 match x.write(Local::now().format("Game started: %b %e, %Y, %H:%M:%S,\n================================\n").to_string().as_bytes()) {
+//                     Ok(_) => { },
+//                     Err(e) => { log::error!("{}", e); }
+//                 }
+//             },
+//             Err(e) => { log::error!("{}", e); }
+//         };
+// }
 
-fn end_log() {
-    let path = PathBuf::from(format!("{}/log.txt", *PROJECT_ROOT_DIRECTORY));
-    let mut _f = match OpenOptions::new()
-        .append(true)
-        .open(path.clone()) {
-            Ok(mut x) => {
-                match x.write(Local::now().format("\n================================\nGame ended: %b %e, %Y, %H:%M:%S").to_string().as_bytes()) {
-                    Ok(_) => { },
-                    Err(e) => { log::error!("{}", e); }
-                }
-            },
-            Err(e) => { log::error!("{}", e); }
-        };
-}
+// fn end_log() {
+//     let path = PathBuf::from(format!("{}/log.txt", *PROJECT_ROOT_DIRECTORY));
+//     let mut _f = match OpenOptions::new()
+//         .append(true)
+//         .open(path.clone()) {
+//             Ok(mut x) => {
+//                 match x.write(Local::now().format("\n================================\nGame ended: %b %e, %Y, %H:%M:%S").to_string().as_bytes()) {
+//                     Ok(_) => { },
+//                     Err(e) => { log::error!("{}", e); }
+//                 }
+//             },
+//             Err(e) => { log::error!("{}", e); }
+//         };
+// }
 
 fn crash() {
     let mut s = String::new();

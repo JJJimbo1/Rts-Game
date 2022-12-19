@@ -4,11 +4,13 @@ pub use chrono::Local;
 pub use the5thfundamental_common::*;
 pub use random::*;
 
+
 pub mod ui;
 pub mod resources;
 pub mod settings;
 pub mod states;
 pub mod systems;
+pub mod plugins;
 pub mod utility;
 
 pub use ui::*;
@@ -16,11 +18,13 @@ pub use resources::*;
 pub use settings::*;
 pub use states::*;
 pub use systems::*;
+pub use plugins::*;
 pub use utility::*;
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum GameState {
+    AssetLoading,
     Loading,
     MainMenu,
     SingleplayerGame,
@@ -68,7 +72,8 @@ pub fn play_game(asset_folder: String) {
             })
         )
         .add_plugins(CommonPlugins)
-        .add_plugin(CommonLoadingPlugin { state: GameState::Loading})
+        .add_plugin(CommonLoadingPlugin { loading_state: GameState::AssetLoading, next_state: GameState::Loading})
+        .add_plugin(ClientLoadingPlugin { loading_state: GameState::AssetLoading, next_state: GameState::Loading})
         .add_plugin(PhysicsPlugin)
         .add_plugin(DebugPlugin)
 
@@ -116,7 +121,7 @@ pub fn play_game(asset_folder: String) {
         .add_system(ui_hit_detection_system)
         .add_system_set(camera_system_set(SystemSet::on_update(GameState::SingleplayerGame).after(ui_hit_detection_system)))
 
-        .add_state(GameState::Loading)
+        .add_state(GameState::AssetLoading)
 
         // .add_startup_system(setup)
     .run();

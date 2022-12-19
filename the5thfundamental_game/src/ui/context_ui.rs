@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 
 use the5thfundamental_common::*;
 
-use crate::{*, utility::assets::{FontAsset, ImageAsset}};
+use crate::{*, utility::assets::{FontAssets, ImageAssets}};
 
 #[derive(Debug, Clone, Copy)]
 pub enum ActiveTab {
@@ -79,7 +79,7 @@ impl ContextMenu {
                 }
                 for child in children.iter() {
                     if let Ok(mut text) = texts.get_mut(*child) {
-                        text.sections[0].value = format!("{}: {}", stack_data.object_type.id().map_or("".to_string(), |s| s.to_string()), queue.zip_queue.height(stack_data));
+                        text.sections[0].value = format!("{}: {}", stack_data.object_type, queue.zip_queue.height(stack_data));
                     } else if let Ok(mut texture) = ui_colors.get_mut(*child) {
                         if empty {
                             *texture = BLACK.into();
@@ -106,12 +106,13 @@ impl Menu for ContextMenu {
 
 pub fn create_context_menu(
     settings : Res<MenuSettings>,
-    mut asset_server: ResMut<AssetServer>,
+    mut font_assets: Res<FontAssets>,
+    mut image_assets: Res<ImageAssets>,
     mut nine_patches : ResMut<Assets<NinePatchBuilder<()>>>,
     mut materials : ResMut<Assets<ColorMaterial>>,
     mut commands : Commands,
 ) {
-    let font = asset_server.load(FontAsset::Roboto);
+    let font = font_assets.roboto.clone();
     let font_size = FONT_SIZE_SMALL * settings.font_size / 1.5;
 
     let mut entity_commands = commands.spawn(NodeBundle {
@@ -186,14 +187,14 @@ pub fn create_context_menu(
             }).insert(ContextMenuButtonsEvent::BeginButton(None)).insert(BlocksRaycast)
             .with_children(|parent| {
                 parent.spawn(NinePatchBundle {
-                    style : Style {
-                        position_type : PositionType::Absolute,
-                        size : Size { width: Val::Percent(100.0), height: Val::Percent(100.0) },
+                    style: Style {
+                        position_type: PositionType::Absolute,
+                        size: Size { width: Val::Percent(100.0), height: Val::Percent(100.0) },
                         ..Default::default()
                     },
                     nine_patch_data : NinePatchData {
-                        texture : asset_server.load(ImageAsset::WhiteBox),
-                        nine_patch : nine_patches.add(NinePatchBuilder::by_margins(2, 2, 2, 2)),
+                        texture: image_assets.white_box.clone(),
+                        nine_patch: nine_patches.add(NinePatchBuilder::by_margins(2, 2, 2, 2)),
                         ..Default::default()
                     },
                     ..Default::default()

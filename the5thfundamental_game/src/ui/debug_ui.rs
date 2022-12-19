@@ -1,12 +1,12 @@
 use bevy::prelude::*;
-use crate::{*, utility::assets::FontAsset};
+use crate::{*, utility::assets::FontAssets};
 
 pub fn create_debug_menu(
     settings : Res<MenuSettings>,
-    mut asset_server: ResMut<AssetServer>,
+    mut font_assets: Res<FontAssets>,
     mut commands : Commands,
 ) {
-    let debug_menu = DebugMenu::new(&settings, &mut asset_server, &mut commands);
+    let debug_menu = DebugMenu::new(&settings, &font_assets, &mut commands);
     commands.insert_resource(debug_menu);
 }
 
@@ -21,10 +21,10 @@ pub struct DebugMenu {
 impl DebugMenu {
     pub fn new(
         settings : &MenuSettings,
-        asset_server: &mut AssetServer,
+        font_assets: &FontAssets,
         commands : &mut Commands,
     ) -> Self {
-        let font = asset_server.load(FontAsset::Roboto);
+        let font = font_assets.roboto.clone();
 
         let font_size = FONT_SIZE_SMALL * settings.font_size;
 

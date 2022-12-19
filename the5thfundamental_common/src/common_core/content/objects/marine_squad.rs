@@ -10,11 +10,11 @@ pub struct MarineSquad
 //(Squad)
 ;
 
-impl AssetId for MarineSquad {
-    fn id(&self) -> Option<&'static str> {
-        ObjectType::from(self.clone()).id()
-    }
-}
+// impl AssetId for MarineSquad {
+//     fn id(&self) -> Option<&'static str> {
+//         ObjectType::from(self.clone()).id()
+//     }
+// }
 
 impl From<MarineSquad> for ObjectType {
     fn from(_: MarineSquad) -> Self {

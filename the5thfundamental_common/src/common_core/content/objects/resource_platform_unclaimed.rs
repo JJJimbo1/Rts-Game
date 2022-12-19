@@ -7,12 +7,12 @@ use crate::*;
 #[derive(Component)]
 pub struct ResourcePlatformUnclaimed(pub Option<(Entity, usize)>);
 
-impl AssetId for ResourcePlatformUnclaimed {
-    fn id(&self) -> Option<&'static str> {
-        // "resource_platform"
-        ObjectType::ResourcePlatformUnclaimed.id()
-    }
-}
+// impl AssetId for ResourcePlatformUnclaimed {
+//     fn id(&self) -> Option<&'static str> {
+//         // "resource_platform"
+//         ObjectType::ResourcePlatformUnclaimed.id()
+//     }
+// }
 
 impl From<ResourcePlatformUnclaimed> for ObjectType {
     fn from(_: ResourcePlatformUnclaimed) -> Self {

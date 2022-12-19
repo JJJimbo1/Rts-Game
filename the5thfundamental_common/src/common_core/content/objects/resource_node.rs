@@ -7,11 +7,11 @@ use crate::*;
 #[derive(Component)]
 pub struct ResourceNode(pub [ResourcePlatform; 6]);
 
-impl AssetId for ResourceNode {
-    fn id(&self) -> Option<&'static str> {
-        ObjectType::from(*self).id()
-    }
-}
+// impl AssetId for ResourceNode {
+//     fn id(&self) -> Option<&'static str> {
+//         ObjectType::from(*self).id()
+//     }
+// }
 
 impl From<ResourceNode> for ObjectType {
     fn from(_: ResourceNode) -> Self {

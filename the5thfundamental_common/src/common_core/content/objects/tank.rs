@@ -9,11 +9,11 @@ use crate::*;
 pub struct TankBase;
 // pub struct TankBase(Option<(Entity, TankGun)>);
 
-impl AssetId for TankBase {
-    fn id(&self) -> Option<&'static str> {
-        ObjectType::from(*self).id()
-    }
-}
+// impl AssetId for TankBase {
+//     fn id(&self) -> Option<&'static str> {
+//         ObjectType::from(*self).id()
+//     }
+// }
 
 impl From<TankBase> for ObjectType {
     fn from(_: TankBase) -> Self {
@@ -191,11 +191,11 @@ impl From<SerdeTank> for ObjectSpawnEvent {
 #[derive(Component)]
 pub struct TankGun;
 
-impl AssetId for TankGun {
-    fn id(&self) -> Option<&'static str> {
-        ObjectType::from(*self).id()
-    }
-}
+// impl AssetId for TankGun {
+//     fn id(&self) -> Option<&'static str> {
+//         ObjectType::from(*self).id()
+//     }
+// }
 
 impl From<TankGun> for ObjectType {
     fn from(_: TankGun) -> Self {

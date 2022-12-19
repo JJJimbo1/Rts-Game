@@ -8,11 +8,11 @@ use crate::*;
 #[derive(Component)]
 pub struct Marine;
 
-impl AssetId for Marine {
-    fn id(&self) -> Option<&'static str> {
-        ObjectType::from(*self).id()
-    }
-}
+// impl AssetId for Marine {
+//     fn id(&self) -> Option<&'static str> {
+//         ObjectType::from(*self).id()
+//     }
+// }
 
 impl From<Marine> for ObjectType {
     fn from(_: Marine) -> Self {

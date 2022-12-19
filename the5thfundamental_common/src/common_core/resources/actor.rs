@@ -16,11 +16,11 @@ pub struct Actors {
 
 impl Actors {
     // pub fn assign_building(&mut self, actor : TeamPlayer, queues : Snowflake) {
-        //     if let Some(x) = self.actors.get_mut(&actor) {
-            //         x.buildings.push(queues);
-            //     }
-            // }
-            
+    //     if let Some(x) = self.actors.get_mut(&actor) {
+    //         x.buildings.push(queues);
+    //     }
+    // }
+
     pub fn reset_ratings(&mut self) {
         for a in self.actors.values_mut() {
             a.rating.reset();

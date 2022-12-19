@@ -29,6 +29,7 @@ pub mod loading_state {
         mut materials : ResMut<Assets<ColorMaterial>>,
         mut commands : Commands
     ) {
+        info!("LOADING!!!");
         commands.insert_resource(CameraSettings::default());
         commands.insert_resource(MenuSettings { font_size : 1.0 });
         commands.insert_resource(ButtonMaterials {
@@ -41,19 +42,19 @@ pub mod loading_state {
     }
 
     pub fn game_loading_update(
-        mut content_load_event: EventReader<ContentLoadEvent>,
         mut state: ResMut<State<GameState>>
     ) {
-        for event in content_load_event.iter() {
-            match event {
-                ContentLoadEvent::Success => {
-                    match state.overwrite_set(GameState::MainMenu) { _ => { } }
-                },
-                ContentLoadEvent::Failure => {
-                    error!("WHATTTTTTTTTTTTTTT");
-                }
-            }
-        }
+        info!("UPDATING!!!");
+        match state.overwrite_set(GameState::MainMenu) { _ => { } }
+        // for event in content_load_event.iter() {
+        //     match event {
+        //         ContentLoadEvent::Success => {
+        //         },
+        //         ContentLoadEvent::Failure => {
+        //             error!("WHATTTTTTTTTTTTTTT");
+        //         }
+        //     }
+        // }
     }
 
     pub fn game_loading_on_exit(

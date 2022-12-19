@@ -9,11 +9,11 @@ use crate::*;
 #[derive(Component)]
 pub struct Developer;
 
-impl AssetId for Developer {
-    fn id(&self) -> Option<&'static str> {
-        MapType::from(*self).id()
-    }
-}
+// impl AssetId for Developer {
+//     fn id(&self) -> Option<&'static str> {
+//         MapType::from(*self).id()
+//     }
+// }
 
 impl From<Developer> for MapType {
     fn from(_: Developer) -> Self {
@@ -79,9 +79,9 @@ pub struct DeveloperPrefab {
     pub collider: Collider,
 }
 
-impl TryFrom<&Map> for DeveloperPrefab {
+impl TryFrom<&MapAsset> for DeveloperPrefab {
     type Error = ContentError;
-    fn try_from(map : &Map) -> Result<Self, ContentError> {
+    fn try_from(map : &MapAsset) -> Result<Self, ContentError> {
         let Some(bounds) = map.bounds else { return Err(ContentError::MissingBounds); };
         let Some(collider_string) = map.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
         let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
@@ -95,7 +95,7 @@ impl TryFrom<&Map> for DeveloperPrefab {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 #[derive(Serialize, Deserialize)]
 pub struct SerdeDeveloper {
     // snowflake: Snowflake,

@@ -1,12 +1,14 @@
 pub mod developer;
 
+use bevy_asset_loader::prelude::AssetCollection;
 use bevy_rapier3d::prelude::Collider;
 pub use developer::*;
 
+use std::fmt::Display;
 use bevy::{prelude::*, reflect::TypeUuid, asset::{AssetLoader, LoadedAsset, AssetPath}};
 use serde::{Serialize, Deserialize};
 
-use crate::{AssetId, AssetType};
+use crate::AssetType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[derive(Serialize, Deserialize)]
@@ -24,21 +26,35 @@ impl From<MapType> for AssetType {
     }
 }
 
-impl AssetId for MapType {
-    fn id(&self) -> Option<&'static str> {
+impl Display for MapType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Developer => { Some("developer") },
-            // Self::Direction => { "direction" },
-            // Self::Sandbox => { "sandbox" },
+            MapType::Developer => write!(f, "Developer")
         }
     }
 }
+
+// impl AssetId for MapType {
+//     fn id(&self) -> Option<&'static str> {
+//         match self {
+//             Self::Developer => { Some("developer") },
+//             // Self::Direction => { "direction" },
+//             // Self::Sandbox => { "sandbox" },
+//         }
+//     }
+// }
 
 #[derive(Debug, Clone, Copy)]
 #[derive(Serialize, Deserialize)]
 #[derive(Resource)]
 pub enum SerdeMap {
     Developer(SerdeDeveloper),
+}
+
+impl Default for SerdeMap {
+    fn default() -> Self {
+        Self::Developer(default())
+    }
 }
 
 // impl AssetId for SerdeMap {
@@ -66,30 +82,21 @@ impl Default for MapBounds {
 #[derive(Serialize, Deserialize)]
 #[derive(TypeUuid)]
 #[uuid = "e6fdd9fa-16f4-4cea-afab-fdb5db3d0d80"]
-pub struct Map {
+pub struct MapAsset {
     pub bounds: Option<MapBounds>,
     pub collider_string: Option<String>,
 }
 
-pub struct MapLoader;
+pub struct MapAssetLoader;
 
-impl AssetLoader for MapLoader {
+impl AssetLoader for MapAssetLoader {
     fn load<'a>(
         &'a self,
         bytes: &'a [u8],
         load_context: &'a mut bevy::asset::LoadContext,
     ) -> bevy::utils::BoxedFuture<'a, Result<(), bevy::asset::Error>> {
         Box::pin(async move {
-            match ron::de::from_bytes::<Map>(bytes) {
-                Ok(asset) => {
-
-                },
-                Err(e) => {
-                    error!("{}", e);
-                    error!("{:?}", &bytes[0..24]);
-                }
-            }
-            let custom_asset = ron::de::from_bytes::<Map>(bytes)?;
+            let custom_asset = ron::de::from_bytes::<MapAsset>(bytes)?;
             load_context.set_default_asset(LoadedAsset::new(custom_asset));
             Ok(())
         })
@@ -100,24 +107,24 @@ impl AssetLoader for MapLoader {
     }
 }
 
-
-pub enum MapAsset {
-    Developer
+#[derive(Debug, Default, Clone)]
+#[derive(Resource)]
+#[derive(AssetCollection)]
+pub struct MapAssets {
+    #[asset(path = "maps/developer.t5fmap")]
+    pub developer: Handle<MapAsset>
 }
 
-impl From<&SerdeMap> for MapAsset {
-    fn from(value: &SerdeMap) -> Self {
-        match value {
-            SerdeMap::Developer(_) => MapAsset::Developer,
+impl MapAssets {
+    pub fn from_map_type(&self, map_type: MapType) -> &Handle<MapAsset> {
+        match map_type {
+            MapType::Developer => &self.developer
         }
     }
-}
 
-impl<'a> From<MapAsset> for AssetPath<'a> {
-    fn from(value: MapAsset) -> Self {
-        let path = match value {
-            MapAsset::Developer => "developer.t5fmap"
-        };
-        format!("maps/{}", path).into()
+    pub fn from_serde_map(&self, serde_map: &SerdeMap) -> &Handle<MapAsset> {
+        match serde_map {
+            SerdeMap::Developer(_) => &self.developer
+        }
     }
 }

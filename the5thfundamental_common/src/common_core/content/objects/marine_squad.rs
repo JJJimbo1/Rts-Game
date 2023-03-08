@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, ecs::schedule::StateData};
 use bevy_rapier3d::prelude::{Collider, RigidBody, Velocity};
 use serde::{Serialize, Deserialize};
 
@@ -6,15 +6,7 @@ use crate::*;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[derive(Component)]
-pub struct MarineSquad
-//(Squad)
-;
-
-// impl AssetId for MarineSquad {
-//     fn id(&self) -> Option<&'static str> {
-//         ObjectType::from(self.clone()).id()
-//     }
-// }
+pub struct MarineSquad;
 
 impl From<MarineSquad> for ObjectType {
     fn from(_: MarineSquad) -> Self {
@@ -189,38 +181,50 @@ impl From<SerdeMarineSquad> for ObjectSpawnEvent {
     }
 }
 
-pub fn spawn_marine_squad(
-    mut spawn_events: EventReader<ObjectSpawnEvent>,
-    prefabs: Res<ObjectPrefabs>,
-    mut identifiers: ResMut<Identifiers>,
-    mut new_marine_squads: Query<(Entity, &TeamPlayer, &mut Squad), Added<MarineSquad>>,
-    mut commands: Commands,
-) {
+pub struct MarineSquadPlugin<T: StateData> {
+    state: T,
+}
 
-    for event in spawn_events.iter() {
-        if event.0.object_type != ObjectType::MarineSquad { continue; }
-        let entity = commands.spawn(MarineSquadBundle::from(prefabs.marine_squad_prefab.clone()).with_spawn_data(event.0)).id();
-        identifiers.insert(event.0.snowflake, entity);
-    }
-    new_marine_squads.for_each_mut(|(entity, teamplayer, squad)| {
-        let mut offset: f32 = 0.0;
-        for (object_type, _) in prefabs.marine_squad_prefab.squad.members.iter().take(squad.current_members.into()) {
-            let marine_transform = Transform::from_xyz(offset, 0.0, 0.0);
-            let spawn_data = ObjectSpawnEventData {
-                object_type: *object_type,
-                snowflake: Snowflake::new(),
-                teamplayer: *teamplayer,
-                transform: marine_transform,
-            };
-            match spawn_data.object_type {
-                ObjectType::Marine => {
-                    commands.entity(entity).with_children(|child_builder| {
-                        child_builder.spawn(MarineBundle::default().with_spawn_data(spawn_data));
-                    });
-                },
-                _ => { },
-            };
-            offset += 0.75
+impl<T: StateData> MarineSquadPlugin<T> {
+    pub fn spawn_marine_squad(
+        mut spawn_events: EventReader<ObjectSpawnEvent>,
+        prefabs: Res<ObjectPrefabs>,
+        mut identifiers: ResMut<Identifiers>,
+        mut new_marine_squads: Query<(Entity, &TeamPlayer, &mut Squad), Added<MarineSquad>>,
+        mut commands: Commands,
+    ) {
+    
+        for event in spawn_events.iter() {
+            if event.0.object_type != ObjectType::MarineSquad { continue; }
+            let entity = commands.spawn(MarineSquadBundle::from(prefabs.marine_squad_prefab.clone()).with_spawn_data(event.0)).id();
+            identifiers.insert(event.0.snowflake, entity);
         }
-    });
+        new_marine_squads.for_each_mut(|(entity, teamplayer, squad)| {
+            let mut offset: f32 = 0.0;
+            for (object_type, _) in prefabs.marine_squad_prefab.squad.members.iter().take(squad.current_members.into()) {
+                let marine_transform = Transform::from_xyz(offset, 0.0, 0.0);
+                let spawn_data = ObjectSpawnEventData {
+                    object_type: *object_type,
+                    snowflake: Snowflake::new(),
+                    teamplayer: *teamplayer,
+                    transform: marine_transform,
+                };
+                match spawn_data.object_type {
+                    ObjectType::Marine => {
+                        commands.entity(entity).with_children(|child_builder| {
+                            child_builder.spawn(MarineBundle::default().with_spawn_data(spawn_data));
+                        });
+                    },
+                    _ => { },
+                };
+                offset += 0.75
+            }
+        });
+    }
+}
+
+impl<T: StateData> Plugin for MarineSquadPlugin<T> {
+    fn build(&self, app: &mut App) {
+        
+    }
 }

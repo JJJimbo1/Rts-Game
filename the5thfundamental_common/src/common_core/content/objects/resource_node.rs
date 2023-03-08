@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, ecs::schedule::StateData};
 use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
 use crate::*;
@@ -28,7 +28,6 @@ impl From<ResourceNode> for AssetType {
 impl SerdeComponent for ResourceNode {
     fn saved(&self) -> Option<Self> {
         if self.0.iter().fold(true, |b, platform| if let ResourcePlatform::Claimed(_, _) = platform { false } else { b }) {
-            println!("no save");
             None
         } else {
             Some(*self)
@@ -147,43 +146,6 @@ impl From<SerdeResourceNode> for ObjectSpawnEvent {
     }
 }
 
-pub fn resource_node_spawn(
-    prefabs: Res<ObjectPrefabs>,
-    mut resource_nodes: Query<(Entity, &Transform, &ResourceNode), Added<ResourceNode>>,
-    mut commands: Commands,
-) {
-    resource_nodes.for_each_mut(|(entity, transform, resource_node)| {
-        for i in 0..resource_node.0.len() {
-            let rotation = 1.0472 * i as f32;
-            let mut platform_transform = transform.mul_transform(Transform::from_rotation(Quat::from_rotation_y(rotation)));
-            platform_transform.translation += platform_transform.right() * 17.0;
-            let platform_type = resource_node.0[i];
-            match platform_type {
-                ResourcePlatform::Unclaimed => {
-                    let spawn_data = ObjectSpawnEventData {
-                        object_type: ObjectType::ResourcePlatformUnclaimed,
-                        snowflake: Snowflake::new(),
-                        teamplayer: TeamPlayer::default(),
-                        transform: platform_transform,
-                    };
-                    let platform = ResourcePlatformUnclaimed(Some((entity, i)));
-                    commands.spawn(ResourcePlatformUnclaimedBundle::from(prefabs.resource_platform_unclaimed_prefab.clone()).with_platform(platform).with_spawn_data(spawn_data));
-                }
-                ResourcePlatform::Claimed(snowflake, player) => {
-                    let spawn_data = ObjectSpawnEventData {
-                        object_type: ObjectType::ResourcePlatformClaimed,
-                        snowflake,
-                        teamplayer: player,
-                        transform: platform_transform,
-                    };
-                    let platform = ResourcePlatformClaimed(Some((entity, i)));
-                    commands.spawn(ResourcePlatformClaimedBundle::from(prefabs.resource_platform_claimed_prefab.clone()).with_platform(platform).with_spawn_data(spawn_data));
-                }
-            }
-        }
-    });
-}
-
 #[derive(Debug, Clone, Copy)]
 #[derive(Serialize, Deserialize)]
 pub enum ResourcePlatform {
@@ -194,5 +156,57 @@ pub enum ResourcePlatform {
 impl Default for ResourcePlatform {
     fn default() -> Self {
         Self::Unclaimed
+    }
+}
+
+pub struct ResourceNodePlugin<T: StateData> {
+    state: T,
+}
+
+impl<T: StateData> ResourceNodePlugin<T> {
+    pub fn resource_node_spawn(
+        prefabs: Res<ObjectPrefabs>,
+        mut resource_nodes: Query<(Entity, &Transform, &ResourceNode), Added<ResourceNode>>,
+        mut commands: Commands,
+    ) {
+        resource_nodes.for_each_mut(|(entity, transform, resource_node)| {
+            for i in 0..resource_node.0.len() {
+                let rotation = 1.0472 * i as f32;
+                let mut platform_transform = transform.mul_transform(Transform::from_rotation(Quat::from_rotation_y(rotation)));
+                platform_transform.translation += platform_transform.right() * 17.0;
+                let platform_type = resource_node.0[i];
+                match platform_type {
+                    ResourcePlatform::Unclaimed => {
+                        let spawn_data = ObjectSpawnEventData {
+                            object_type: ObjectType::ResourcePlatformUnclaimed,
+                            snowflake: Snowflake::new(),
+                            teamplayer: TeamPlayer::default(),
+                            transform: platform_transform,
+                        };
+                        let platform = ResourcePlatformUnclaimed(Some((entity, i)));
+                        commands.spawn(ResourcePlatformUnclaimedBundle::from(prefabs.resource_platform_unclaimed_prefab.clone()).with_platform(platform).with_spawn_data(spawn_data));
+                    }
+                    ResourcePlatform::Claimed(snowflake, player) => {
+                        let spawn_data = ObjectSpawnEventData {
+                            object_type: ObjectType::ResourcePlatformClaimed,
+                            snowflake,
+                            teamplayer: player,
+                            transform: platform_transform,
+                        };
+                        let platform = ResourcePlatformClaimed(Some((entity, i)));
+                        commands.spawn(ResourcePlatformClaimedBundle::from(prefabs.resource_platform_claimed_prefab.clone()).with_platform(platform).with_spawn_data(spawn_data));
+                    }
+                }
+            }
+        });
+    }
+}
+
+impl<T: StateData> Plugin for ResourceNodePlugin<T> {
+    fn build(&self, app: &mut App) {
+        app
+            .add_system_set(SystemSet::on_update(self.state.clone())
+            .with_system(Self::resource_node_spawn)
+        );
     }
 }

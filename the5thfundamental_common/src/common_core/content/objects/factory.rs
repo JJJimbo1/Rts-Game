@@ -1,4 +1,4 @@
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{prelude::*, utils::HashMap, ecs::schedule::StateData};
 use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
 
@@ -151,38 +151,50 @@ impl From<SerdeFactory> for ObjectSpawnEvent {
     }
 }
 
-pub fn factory_system(
-    mut spawn_events: EventWriter<ObjectSpawnEvent>,
-    mut queues: Query<(&Transform, &TeamPlayer, &mut Queues), With<Factory>>
-) {
-    queues.for_each_mut(|(transform, teamplayer, mut queues)| {
+pub struct FactoryPlugin<T: StateData> {
+    state: T,
+}
 
-        for data in queues.queues[&ActiveQueue::Infantry].buffer.spine() {
-            let mut transform = *transform;
-            transform.translation += transform.forward() * 20.0;
-            let spawn_data = ObjectSpawnEventData {
-                object_type: data.object_type,
-                snowflake: Snowflake::new(),
-                teamplayer: *teamplayer,
-                transform
-            };
-            spawn_events.send(ObjectSpawnEvent(spawn_data));
-        }
-        for data in queues.queues[&ActiveQueue::Vehicles].buffer.spine() {
-            let mut transform = *transform;
-            transform.translation += transform.forward() * 20.0;
-            let spawn_data = ObjectSpawnEventData {
-                object_type: data.object_type,
-                snowflake: Snowflake::new(),
-                teamplayer: *teamplayer,
-                transform
-            };
-            spawn_events.send(ObjectSpawnEvent(spawn_data));
-        }
+impl<T: StateData> FactoryPlugin<T> {
+    pub fn factory_system(
+        mut spawn_events: EventWriter<ObjectSpawnEvent>,
+        mut queues: Query<(&Transform, &TeamPlayer, &mut Queues), With<Factory>>
+    ) {
+        queues.for_each_mut(|(transform, teamplayer, mut queues)| {
 
-        queues.queues.get_mut(&ActiveQueue::Infantry).unwrap().buffer.clear();
-        queues.queues.get_mut(&ActiveQueue::Vehicles).unwrap().buffer.clear();
+            for data in queues.queues[&ActiveQueue::Infantry].buffer.spine() {
+                let mut transform = *transform;
+                transform.translation += transform.forward() * 20.0;
+                let spawn_data = ObjectSpawnEventData {
+                    object_type: data.object_type,
+                    snowflake: Snowflake::new(),
+                    teamplayer: *teamplayer,
+                    transform
+                };
+                spawn_events.send(ObjectSpawnEvent(spawn_data));
+            }
+            for data in queues.queues[&ActiveQueue::Vehicles].buffer.spine() {
+                let mut transform = *transform;
+                transform.translation += transform.forward() * 20.0;
+                let spawn_data = ObjectSpawnEventData {
+                    object_type: data.object_type,
+                    snowflake: Snowflake::new(),
+                    teamplayer: *teamplayer,
+                    transform
+                };
+                spawn_events.send(ObjectSpawnEvent(spawn_data));
+            }
 
+            queues.queues.get_mut(&ActiveQueue::Infantry).unwrap().buffer.clear();
+            queues.queues.get_mut(&ActiveQueue::Vehicles).unwrap().buffer.clear();
+        });
+    }
+}
 
-    });
+impl<T: StateData> Plugin for FactoryPlugin<T> {
+    fn build(&self, app: &mut App) {
+        app.add_system_set(SystemSet::on_update(self.state.clone())
+            .with_system(Self::factory_system.label(QueueSystem))
+        );
+    }
 }

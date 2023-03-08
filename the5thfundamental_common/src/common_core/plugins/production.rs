@@ -56,7 +56,7 @@ impl ProductionPlugin {
         queues.for_each_mut(|(team_player, mut queues)| {
             if let Some(actor) = actors.actors.get_mut(team_player) {
                 for queue in queues.queues.values_mut() {
-                    if let Some(stack_data) = queue.zip_queue.get_next() {
+                    if let Some(stack_data) = queue.next() {
                         let cost_this_frame = stack_data.cost as f64 / stack_data.time_to_build.as_secs_f64() * queue.time_left(time.delta_seconds_f64());
                         if actor.economy.remove_resources(cost_this_frame) && { queue.update(time.delta_seconds_f64()); queue.is_ready() } {
                             let data = queue.advance().unwrap();

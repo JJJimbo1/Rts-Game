@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, ecs::schedule::StateData};
 use serde::{Serialize, Deserialize};
 
 use crate::*;
@@ -34,16 +34,7 @@ pub struct MarineBundle {
     pub object_type: ObjectType,
     pub asset_type: AssetType,
     pub snowflake: Snowflake,
-    // pub health: Health,
-    // pub path_finder: GroundPathFinder,
-    // pub path: Path,
-    // pub controller: Controller,
-    // pub weapon_set: WeaponSet,
     pub team_player: TeamPlayer,
-    // pub selectable: Selectable,
-    // pub velocity: Velocity,
-    // pub rigid_body: RigidBody,
-    // pub collider: Collider,
     pub visibility: Visibility,
     pub computed_visibility: ComputedVisibility,
     pub transform: Transform,
@@ -65,16 +56,7 @@ impl Default for MarineBundle {
             object_type: Marine.into(),
             asset_type: Marine.into(),
             snowflake: Snowflake::new(),
-            // health: prefab.health,
-            // path_finder: GroundPathFinder::default(),
-            // path: Path::default(),
-            // controller: prefab.controller,
-            // weapon_set: prefab.weapon_set,
             team_player: TeamPlayer::default(),
-            // selectable: Selectable::multiselect(),
-            // velocity: Velocity::default(),
-            // rigid_body: RigidBody::KinematicVelocityBased,
-            // collider: prefab.real_collider.clone().unwrap(),
             visibility: Visibility::default(),
             computed_visibility: ComputedVisibility::default(),
             transform: Transform::default(),
@@ -156,3 +138,17 @@ impl Default for MarineBundle {
 //         }
 //     }
 // }
+
+pub struct MarinePlugin<T: StateData> {
+    state: T,
+}
+
+impl<T: StateData> MarinePlugin<T> {
+    
+}
+
+impl<T: StateData> Plugin for MarinePlugin<T> {
+    fn build(&self, app: &mut App) {
+        
+    }
+}

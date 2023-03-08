@@ -17,8 +17,6 @@ impl<T: StateData + Clone> Plugin for ClientLoadingPlugin<T> {
                 .with_collection::<GltfAssets>()
                 .continue_to_state(self.next_state.clone())
             )
-
-            // .add_event::<ContentLoadEvent>()
         ;
     }
 }

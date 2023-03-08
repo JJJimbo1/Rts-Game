@@ -28,7 +28,8 @@ pub fn match_loading_on_enter(
 ) {
     commands.insert_resource(Player(TeamPlayer::new(1, 0)));
     // load_event_write.send(LoadEvent(asset_loader.load(&file.0)));
-    load_event_write.send(LoadEvent(level_assets.developer.clone()));
+    let level = asset_loader.load(file.0.clone());
+    load_event_write.send(LoadEvent(level.clone()));
 }
 
 pub fn match_loading_update(

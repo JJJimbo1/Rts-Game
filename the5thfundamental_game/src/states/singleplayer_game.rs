@@ -1,3 +1,4 @@
+use bevy::core::FrameCount;
 use the5thfundamental_common::*;
 use crate::*;
 
@@ -17,25 +18,25 @@ pub fn singleplayer_game_state_on_update_system_set() -> SystemSet {
         // .with_system(health_bar_update_system)
         // .with_system(health_bar_cleanup_system)
         .with_system(button_updater_system)
-        .with_system(context_menu_update)
+        .with_system(context_menu_update.after(QueueSystem))
         .with_system(context_menu_event_writer)
         .with_system(context_menu_event_reader)
         // .with_system(health_bar_update_system)
         // .with_system(health_bar_cleanup_system)
 
-        .with_system(spawn_standard_objects)
-        .with_system(patch_grid_map)
-        .with_system(resource_node_spawn)
-        .with_system(spawn_marine_squad)
-        .with_system(TankPlugin::spawn_tank)
-        .with_system(TankPlugin::aim_tank_gun)
+        // .with_system(spawn_standard_objects)
+        // .with_system(patch_grid_map)
+        // .with_system(resource_node_spawn)
+        // .with_system(spawn_marine_squad)
+        // .with_system(TankPlugin::spawn_tank)
+        // .with_system(TankPlugin::aim_tank_gun)
         // .with_system(tank_gun_spawn)
-        .with_system(resource_platform_unclaimed_on_activation)
-        .with_system(resource_platform_claimed_on_killed)
-        .with_system(factory_system.before(context_menu_update))
-        .with_system(client_object_spawn.after(spawn_standard_objects))
+        // .with_system(resource_platform_unclaimed_on_activation)
+        // .with_system(resource_platform_claimed_on_killed)
+        // .with_system(factory_system.before(context_menu_update))
+        .with_system(client_object_spawn.after(ObjectPlugin::<GameState>::spawn_standard_objects))
 
-        .with_system(save_game)
+        // .with_system(save_game)
 }
 
 pub fn singleplayer_game_state_on_exit_system_set() -> SystemSet {
@@ -60,12 +61,13 @@ pub fn singleplayer_game_on_enter(
 }
 
 pub fn singleplayer_game_on_update(
+    frame: Res<FrameCount>,
     input : Res<Input<KeyCode>>,
     mut save_events: EventWriter<SaveEvent>,
 
 ) {
     if input.just_pressed(KeyCode::F6) {
-        save_events.send(SaveEvent("/assets/saves/developer.ron".to_string()));
+        save_events.send(SaveEvent("saves/developer.t5flvl".to_string()));
     }
 }
 

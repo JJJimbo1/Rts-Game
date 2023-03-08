@@ -38,11 +38,11 @@ fn bound_system(
     });
 }
 
-#[derive(Debug, Clone)]
-pub struct ColliderAsset {
-    vertices: Vec<Vec3>,
-    indices: Vec<[u32; 3]>,
-}
+// #[derive(Debug, Clone)]
+// pub struct ColliderAsset {
+//     vertices: Vec<Vec3>,
+//     indices: Vec<[u32; 3]>,
+// }
 
 // impl QLoad<()> for ColliderAsset {
 //     const PATHTYPE : PathType = PathType::Absolute;

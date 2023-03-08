@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, ecs::schedule::StateData};
 use bevy_rapier3d::prelude::{Collider, RigidBody, Velocity};
 use serde::{Serialize, Deserialize};
 
@@ -249,9 +249,11 @@ impl Default for TankGunBundle {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct TankPlugin;
+pub struct TankPlugin<T: StateData> {
+    state: T
+}
 
-impl TankPlugin {
+impl<T: StateData> TankPlugin<T> {
     pub fn spawn_tank(
         mut spawn_events: EventReader<ObjectSpawnEvent>,
         prefabs: Res<ObjectPrefabs>,
@@ -311,5 +313,15 @@ impl TankPlugin {
 
         });
 
+    }
+}
+
+impl<T: StateData> Plugin for TankPlugin<T> {
+    fn build(&self, app: &mut App) {
+        app
+            .add_system_set(SystemSet::on_update(self.state.clone())
+            .with_system(Self::spawn_tank)
+            .with_system(Self::aim_tank_gun)
+        );
     }
 }

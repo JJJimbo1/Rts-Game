@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, ecs::schedule::StateData};
 use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
 use crate::*;
@@ -112,27 +112,41 @@ impl TryFrom<&ObjectAsset> for ResourcePlatformClaimedPrefab {
     }
 }
 
+pub struct ResourcePlatformClaimedPlugin<T: StateData> {
+    state: T,
+}
 
-pub fn resource_platform_claimed_on_killed(
-    mut activation_events: EventReader<ObjectKilledEvent>,
-    prefabs: Res<ObjectPrefabs>,
-    mut resource_nodes: Query<&mut ResourceNode>,
-    resource_platforms_unclaimed: Query<(&GlobalTransform, &ResourcePlatformClaimed, &Snowflake)>,
-    mut commands: Commands,
-) {
-    for event in activation_events.iter() {
-        if let Ok((global_transform, platform, snowflake)) = resource_platforms_unclaimed.get(event.0) {
-            let spawn_data = ObjectSpawnEventData {
-                object_type: ObjectType::ResourcePlatformUnclaimed,
-                snowflake: *snowflake,
-                teamplayer: TeamPlayer::default(),
-                transform: Transform::from(*global_transform),
-            };
-            if let Ok(mut node) = resource_nodes.get_mut(platform.0.unwrap().0) {
-                node.0[platform.0.unwrap().1] = ResourcePlatform::Unclaimed;
+impl<T: StateData> ResourcePlatformClaimedPlugin<T> {
+    pub fn resource_platform_claimed_on_killed(
+        mut activation_events: EventReader<ObjectKilledEvent>,
+        prefabs: Res<ObjectPrefabs>,
+        mut resource_nodes: Query<&mut ResourceNode>,
+        resource_platforms_unclaimed: Query<(&GlobalTransform, &ResourcePlatformClaimed, &Snowflake)>,
+        mut commands: Commands,
+    ) {
+        for event in activation_events.iter() {
+            if let Ok((global_transform, platform, snowflake)) = resource_platforms_unclaimed.get(event.0) {
+                let spawn_data = ObjectSpawnEventData {
+                    object_type: ObjectType::ResourcePlatformUnclaimed,
+                    snowflake: *snowflake,
+                    teamplayer: TeamPlayer::default(),
+                    transform: Transform::from(*global_transform),
+                };
+                if let Ok(mut node) = resource_nodes.get_mut(platform.0.unwrap().0) {
+                    node.0[platform.0.unwrap().1] = ResourcePlatform::Unclaimed;
+                }
+                commands.spawn(ResourcePlatformUnclaimedBundle::from(prefabs.resource_platform_unclaimed_prefab.clone()).with_platform((*platform).into()).with_spawn_data(spawn_data));
+                commands.entity(event.0).despawn_recursive();
             }
-            commands.spawn(ResourcePlatformUnclaimedBundle::from(prefabs.resource_platform_unclaimed_prefab.clone()).with_platform((*platform).into()).with_spawn_data(spawn_data));
-            commands.entity(event.0).despawn_recursive();
         }
+    }
+}
+
+impl<T: StateData> Plugin for ResourcePlatformClaimedPlugin<T> {
+    fn build(&self, app: &mut App) {
+        app
+            .add_system_set(SystemSet::on_update(self.state.clone())
+            .with_system(Self::resource_platform_claimed_on_killed)
+        );
     }
 }

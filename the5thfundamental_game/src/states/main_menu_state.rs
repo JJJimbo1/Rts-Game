@@ -66,8 +66,8 @@ pub fn main_menu_update(
     for event in campaign_button_event_reader.iter() {
         match *event {
             CampaignButtonsEvent::Continue => {
-                // commands.insert_resource(ChosenSaveFile("/assets/saves/developer.ron".to_string()));
-                // state.overwrite_replace(GameState::MatchLoadingState).unwrap();
+                commands.insert_resource(ChosenSaveFile("saves/developer.t5flvl".to_string()));
+                state.overwrite_replace(GameState::MatchLoadingState).unwrap();
             },
             CampaignButtonsEvent::LevelSelect => {
                 commands.insert_resource(ChosenSaveFile("levels/developer.t5flvl".to_string()));

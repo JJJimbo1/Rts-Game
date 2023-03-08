@@ -63,7 +63,7 @@ impl ContextMenu {
         children_query: Query<&Children>,
     ) {
         set_visible(true, self.list_container, &mut visible_query);
-        let stacks = queue.zip_queue.stacks();
+        let stacks = &queue.stacks;
         let count = stacks.len().clamp(0, 9);
         // println!("{}", count);
         for i in 0..count {
@@ -73,13 +73,13 @@ impl ContextMenu {
             if let (Ok(children), Ok(mut but)) = (children_query.get(self.list_icons[i]), context_menu_buttons.get_mut(self.list_icons[i])) {
                 let empty = queue.buffer.height(&stack_data) == 0;
                 if !empty && stack_data.buffered {
-                    *but = ContextMenuButtonsEvent::BeginPlaceBufferedButton(Some((entity, *stack_data)));
+                    *but = ContextMenuButtonsEvent::BeginPlaceBufferedButton(Some((entity, stack_data)));
                 } else {
-                    *but = ContextMenuButtonsEvent::BeginButton(Some((entity, self.active_tab.unwrap(), *stack_data)));
+                    *but = ContextMenuButtonsEvent::BeginButton(Some((entity, self.active_tab.unwrap(), stack_data)));
                 }
                 for child in children.iter() {
                     if let Ok(mut text) = texts.get_mut(*child) {
-                        text.sections[0].value = format!("{}: {}", stack_data.object_type, queue.zip_queue.height(stack_data));
+                        text.sections[0].value = format!("{}: {}", stack_data.object_type, queue.zip_queue.height(&stack_data));
                     } else if let Ok(mut texture) = ui_colors.get_mut(*child) {
                         if !empty && stack_data.buffered {
                             *texture = GREEN.into();
@@ -339,11 +339,13 @@ pub fn context_menu_event_writer(
 
 pub fn context_menu_event_reader(
     // master_queues : Res<MasterQueue>,
+    input: Res<Input<KeyCode>>,
     mut context_menu_events : EventReader<ContextMenuButtonsEvent>,
     mut menu : ResMut<ContextMenu>,
     mut current_placement : ResMut<CurrentPlacement<CLICK_BUFFER>>,
     mut queueses : Query<&mut Queues>,
 ) {
+    let shift = input.pressed(KeyCode::LShift) || input.pressed(KeyCode::RShift);
     for event in context_menu_events.iter() {
         match event.clone() {
             ContextMenuButtonsEvent::StructuresTab => { menu.active_tab = ActiveQueue::Structures.into(); }
@@ -359,6 +361,12 @@ pub fn context_menu_event_reader(
                     if let Ok(mut queues) = queueses.get_mut(entity) {
                         if let Some(queue) = queues.queues.get_mut(&tab) {
                             queue.enqueue(stack_data);
+                            if shift {
+                                queue.enqueue(stack_data);
+                                queue.enqueue(stack_data);
+                                queue.enqueue(stack_data);
+                                queue.enqueue(stack_data);
+                            }
                         }
                     }
                 }

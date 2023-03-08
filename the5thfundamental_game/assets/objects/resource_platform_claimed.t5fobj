@@ -1,11 +1,11 @@
 #![enable(implicit_some)]
 (
     stack: (
-        Structures,
+        Infantry,
         (
-            object_type: ResourceNode,
+            object_type: ResourcePlatformClaimed,
             time_to_build: Duration (
-                secs : 1,
+                secs : 0,
                 nanos : 0,
             ),
             cost: 350,

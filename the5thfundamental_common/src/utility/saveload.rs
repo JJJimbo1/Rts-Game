@@ -100,7 +100,8 @@ pub fn save_game(
         };
 
         let root = std::env::current_dir().unwrap();
-        save_to_file(&save_file, &format!("{}{}", root.as_path().display(), event.0)).unwrap();
+        println!("{}", &format!("{}/the5thfundamental_game/assets/{}", root.as_path().display(), event.0.clone()));
+        save_to_file(&save_file, &format!("{}/the5thfundamental_game/assets/{}", root.as_path().display(), event.0)).unwrap();
     }
 }
 

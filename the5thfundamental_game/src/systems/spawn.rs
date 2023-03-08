@@ -6,13 +6,13 @@ use crate::{*, utility::assets::GltfAssets};
 
 
 pub fn client_object_spawn(
-    mut gltf_assets: ResMut<GltfAssets>,
-    mut identifiers: ResMut<Identifiers>,
+    gltf_assets: Res<GltfAssets>,
+    // identifiers: Res<Identifiers>,
     assets: Query<(Entity, &Snowflake, &AssetType), Added<AssetType>>,
     mut commands: Commands,
 ) {
 
-    assets.for_each(|(entity, snowflake, asset)| {
+    assets.for_each(|(entity, _snowflake, asset)| {
         let Some(scene) = gltf_assets.get_scene(*asset) else { return; };
         commands.entity(entity).with_children(|parent| {
             parent.spawn(

@@ -22,6 +22,7 @@ pub enum ActiveQueue {
 #[derive(Serialize, Deserialize)]
 pub struct Queue {
     pub timer : f64,
+    pub stacks: Vec<StackData>,
     pub zip_queue: ZipQueue<StackData>,
     pub buffer : ZipQueue<StackData>,
 }
@@ -30,6 +31,7 @@ impl Default for Queue {
     fn default() -> Self {
         Self {
             timer: 0.0,
+            stacks: Vec::new(),
             zip_queue: ZipQueue::new(),
             buffer: ZipQueue::new(),
         }
@@ -55,9 +57,13 @@ impl Queue {
         self.timer <= 0.0
     }
 
+    pub fn next(&self) -> Option<StackData> {
+        self.zip_queue.next()
+    }
+
     pub fn advance(&mut self) -> Option<StackData> {
-        let r = self.zip_queue.get_next_move();
-        if let Some(sd) = self.zip_queue.get_next() {
+        let r = self.zip_queue.next_move();
+        if let Some(sd) = self.zip_queue.next() {
             self.set_timer(sd.time_to_build.as_secs_f64());
         }
         r
@@ -67,18 +73,15 @@ impl Queue {
         if self.zip_queue.is_empty() {
             self.timer = stack_data.time_to_build.as_secs_f64();
         }
-        self.zip_queue.raise_stack(stack_data, 1);
+        self.zip_queue.push(stack_data);
     }
 
     pub fn push_to_buffer(&mut self, stack_data: StackData) {
-        if !self.buffer.contains_stack(&stack_data) {
-            self.buffer.push_stack(stack_data.clone());
-        }
-        self.buffer.raise_stack(stack_data, 1);
+        self.buffer.push(stack_data);
     }
 
     pub fn remove_from_buffer(&mut self, stack_data: &StackData) {
-        self.buffer.lower_stack(stack_data, 1);
+        self.buffer.remove(stack_data);
     }
 }
 
@@ -104,12 +107,12 @@ impl Queues {
         self.queues.iter().fold(0, |a, (_, x)| a + x.zip_queue.spine().len()) == 0
     }
 
-    pub fn push_data_to_queue(&mut self, queue: ActiveQueue, data: StackData) {
-        if !self.queues.contains_key(&queue) {
-            self.queues.insert(queue, Queue::default());
-        }
-        self.queues.get_mut(&queue).unwrap().zip_queue.push_stack(data);
-    }
+    // pub fn push_data_to_queue(&mut self, queue: ActiveQueue, data: StackData) {
+    //     if !self.queues.contains_key(&queue) {
+    //         self.queues.insert(queue, Queue::default());
+    //     }
+    //     self.queues.get_mut(&queue).unwrap().zip_queue.push_stack(data);
+    // }
 
 }
 
@@ -118,7 +121,7 @@ impl From<(&PrefabQueues, &HashMap<ObjectType, (ActiveQueue, StackData)>)> for Q
         let mut queues = Queues::new();
         for s in prefab.objects.iter() {
             let (active, data) = stacks[s];
-            queues.push_data_to_queue(active, data);
+            queues.queues.entry(active).or_default().stacks.push(data);
         }
         queues
     }
@@ -139,7 +142,6 @@ impl SerdeComponent for Queues {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
 pub struct StackData {
-    // pub id : String,
     pub object_type : ObjectType,
     pub time_to_build : Duration,
     pub cost : u128,
@@ -158,3 +160,6 @@ pub struct QueueObject {
 pub struct PrefabQueues {
     pub objects: Vec<ObjectType>
 }
+
+#[derive(SystemLabel)]
+pub struct QueueSystem;

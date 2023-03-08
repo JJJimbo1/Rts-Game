@@ -1,4 +1,4 @@
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{prelude::*, utils::HashMap, ecs::schedule::StateData};
 use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
 
@@ -7,12 +7,6 @@ use crate::*;
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[derive(Component)]
 pub struct CraneYard;
-
-// impl AssetId for CraneYard {
-//     fn id(&self) -> Option<&'static str> {
-//         ObjectType::from(*self).id()
-//     }
-// }
 
 impl From<CraneYard> for ObjectType {
     fn from(_: CraneYard) -> Self {
@@ -148,5 +142,19 @@ impl From<SerdeCraneYard> for ObjectSpawnEvent {
             teamplayer: value.team_player,
             transform: value.transform.into(),
         })
+    }
+}
+
+pub struct CraneYardPlugin<T: StateData> {
+    state: T,
+}
+
+impl<T: StateData> CraneYardPlugin<T> {
+    
+}
+
+impl<T: StateData> Plugin for CraneYardPlugin<T> {
+    fn build(&self, app: &mut App) {
+        
     }
 }

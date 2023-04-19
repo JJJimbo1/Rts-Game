@@ -3,8 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{SerdeComponent, SerdeTransform};
 
-
-
 #[derive(Debug, Default, Clone, Copy)]
 #[derive(Component)]
 pub struct Relative<D = Transform> {
@@ -37,13 +35,6 @@ impl From<Relative> for Turret {
 
 impl SerdeComponent for Turret {
     fn saved(&self) -> Option<Self> {
-        let transform = Transform::from(self.transform);
-        // if transform.translation.x > 0.0 {
-
-        // }
-
-
-
         Some(*self)
     }
 }

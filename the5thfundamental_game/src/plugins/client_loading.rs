@@ -1,14 +1,14 @@
-use bevy::{prelude::*, asset::{LoadState, HandleId}, utils::HashMap, ecs::schedule::{StateData, }};
-use bevy_asset_loader::prelude::{AssetCollection, LoadingStateAppExt, LoadingState};
+use bevy::{prelude::*, ecs::schedule::StateData};
+use bevy_asset_loader::prelude::{LoadingStateAppExt, LoadingState};
 use crate::*;
 
 
-pub struct ClientLoadingPlugin<T: StateData> {
-    pub loading_state: T,
-    pub next_state: T,
+pub struct ClientLoadingPlugin<S: StateData> {
+    pub loading_state: S,
+    pub next_state: S,
 }
 
-impl<T: StateData + Clone> Plugin for ClientLoadingPlugin<T> {
+impl<S: StateData + Clone> Plugin for ClientLoadingPlugin<S> {
     fn build(&self, app: &mut App) {
         app
             .add_loading_state(LoadingState::new(self.loading_state.clone())

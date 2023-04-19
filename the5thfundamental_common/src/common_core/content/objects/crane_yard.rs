@@ -1,47 +1,65 @@
 use bevy::{prelude::*, utils::HashMap, ecs::schedule::StateData};
 use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
+use superstruct::*;
 
 use crate::*;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[derive(Component)]
-pub struct CraneYard;
+pub struct CraneYardMarker;
 
-impl From<CraneYard> for ObjectType {
-    fn from(_: CraneYard) -> Self {
+impl From<CraneYardMarker> for ObjectType {
+    fn from(_: CraneYardMarker) -> Self {
         ObjectType::CraneYard
     }
 }
 
-impl From<CraneYard> for AssetType {
-    fn from(_: CraneYard) -> Self {
+impl From<CraneYardMarker> for AssetType {
+    fn from(_: CraneYardMarker) -> Self {
         Self::Object(ObjectType::CraneYard)
     }
 }
 
-#[derive(Clone)]
-#[derive(Bundle)]
-pub struct CraneYardBundle {
-    pub crane_yard: CraneYard,
-    pub object_type: ObjectType,
-    pub asset_type: AssetType,
-    pub snowflake: Snowflake,
-    pub health: Health,
-    pub queues: Queues,
-    pub team_player: TeamPlayer,
-    pub selectable: Selectable,
-    pub collider: Collider,
-    pub visibility: Visibility,
-    pub computed_visibility: ComputedVisibility,
-    pub transform: Transform,
-    pub global_transform: GlobalTransform,
+#[superstruct{
+    variants(Bundle, Prefab, Serde),
+    variant_attributes(derive(Debug, Clone)),
+    specific_variant_attributes(
+        Bundle(derive(Bundle)),
+        Serde(derive(Serialize, Deserialize)),
+    ),
+}]
+#[derive(Debug, Clone)]
+pub struct CraneYard {
+    #[superstruct(only(Bundle, Prefab))]    pub health: Health,
+    #[superstruct(only(Bundle, Prefab))]    pub queues: Queues,
+    #[superstruct(only(Bundle, Prefab))]    pub collider: Collider,
+    #[superstruct(only(Bundle))]            pub crane_yard: CraneYardMarker,
+    #[superstruct(only(Bundle))]            pub object_type: ObjectType,
+    #[superstruct(only(Bundle))]            pub asset_type: AssetType,
+    #[superstruct(only(Bundle))]     pub snowflake: Snowflake,
+    #[superstruct(only(Bundle))]            pub selectable: Selectable,
+    #[superstruct(only(Bundle))]            pub visibility: Visibility,
+    #[superstruct(only(Bundle))]            pub computed_visibility: ComputedVisibility,
+    #[superstruct(only(Bundle))]            pub global_transform: GlobalTransform,
+    #[superstruct(only(Bundle, Serde))]     pub team_player: TeamPlayer,
+    #[superstruct(only(Bundle, Serde))]     pub transform: Transform,
+    #[superstruct(only(Serde))]             pub serde_snowflake: Option<Snowflake>,
+    #[superstruct(only(Serde))]             pub serde_health: Option<Health>,
+    #[superstruct(only(Serde))]             pub serde_queues: Option<Queues>,
 }
 
 impl CraneYardBundle {
-    pub fn with_spawn_data(mut self, spawn_data: ObjectSpawnEventData) -> Self {
+    pub fn with_spawn_data(mut self, spawn_data: SpawnData) -> Self {
         self.team_player = spawn_data.teamplayer;
         self.transform = spawn_data.transform;
+        self
+    }
+
+    pub fn with_serde_data(mut self, serde_data: Option<SerdeData>) -> Self {
+        let Some(serde_data) = serde_data else { return self; };
+        if let Some(health) = serde_data.health { self.health = health; }
+        if let Some(queues) = serde_data.queues { self.queues = queues; }
         self
     }
 }
@@ -49,9 +67,9 @@ impl CraneYardBundle {
 impl From<CraneYardPrefab> for CraneYardBundle {
     fn from(prefab: CraneYardPrefab) -> Self {
         Self {
-            crane_yard: CraneYard,
-            object_type: CraneYard.into(),
-            asset_type: CraneYard.into(),
+            crane_yard: CraneYardMarker,
+            object_type: CraneYardMarker.into(),
+            asset_type: CraneYardMarker.into(),
             snowflake: Snowflake::new(),
             health: prefab.health,
             queues: prefab.queues.clone(),
@@ -66,15 +84,15 @@ impl From<CraneYardPrefab> for CraneYardBundle {
     }
 }
 
-impl From<(SerdeCraneYard, &CraneYardPrefab)> for CraneYardBundle {
-    fn from((save, prefab): (SerdeCraneYard, &CraneYardPrefab)) -> Self {
+impl From<(CraneYardSerde, &CraneYardPrefab)> for CraneYardBundle {
+    fn from((save, prefab): (CraneYardSerde, &CraneYardPrefab)) -> Self {
         Self {
-            crane_yard: CraneYard,
-            object_type: CraneYard.into(),
-            asset_type: CraneYard.into(),
-            snowflake: save.snowflake.unwrap_or_else(|| Snowflake::new()),
-            health: save.health.unwrap_or(prefab.health),
-            queues: save.queues.unwrap_or(prefab.queues.clone()),
+            crane_yard: CraneYardMarker,
+            object_type: CraneYardMarker.into(),
+            asset_type: CraneYardMarker.into(),
+            snowflake: save.serde_snowflake.unwrap_or(Snowflake::new()),
+            health: save.serde_health.unwrap_or(prefab.health),
+            queues: save.serde_queues.unwrap_or(prefab.queues.clone()),
             team_player: save.team_player,
             selectable: Selectable::single(),
             collider: prefab.collider.clone(),
@@ -84,13 +102,6 @@ impl From<(SerdeCraneYard, &CraneYardPrefab)> for CraneYardBundle {
             global_transform: GlobalTransform::default(),
         }
     }
-}
-
-#[derive(Clone)]
-pub struct CraneYardPrefab {
-    pub health: Health,
-    pub queues: Queues,
-    pub collider: Collider,
 }
 
 impl TryFrom<(&ObjectAsset, &HashMap<ObjectType, (ActiveQueue, StackData)>)> for CraneYardPrefab {
@@ -112,49 +123,50 @@ impl TryFrom<(&ObjectAsset, &HashMap<ObjectType, (ActiveQueue, StackData)>)> for
     }
 }
 
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
-pub struct SerdeCraneYard {
-    pub snowflake: Option<Snowflake>,
-    pub health: Option<Health>,
-    pub queues: Option<Queues>,
-    pub team_player: TeamPlayer,
-    pub transform: SerdeTransform,
-}
-
-impl<'a> From<SerdeCraneYardQuery<'a>> for SerdeCraneYard {
+impl<'a> From<SerdeCraneYardQuery<'a>> for CraneYardSerde {
     fn from(object: SerdeCraneYardQuery) -> Self {
         Self {
-            snowflake: Some(*object.0),
-            health: object.1.saved(),
-            queues: object.2.saved(),
+            serde_snowflake: Some(*object.0),
+            serde_health: object.1.saved(),
+            serde_queues: object.2.saved(),
             team_player: *object.3,
             transform: (*object.4).into(),
         }
     }
 }
 
-impl From<SerdeCraneYard> for ObjectSpawnEvent {
-    fn from(value: SerdeCraneYard) -> Self {
+impl From<CraneYardSerde> for ObjectSpawnEvent {
+    fn from(value: CraneYardSerde) -> Self {
         Self(ObjectSpawnEventData{
             object_type: ObjectType::CraneYard,
-            snowflake: Snowflake::new(),
-            teamplayer: value.team_player,
-            transform: value.transform.into(),
+            spawn_data: SpawnData {
+                snowflake: Snowflake::new(),
+                teamplayer: value.team_player,
+                transform: value.transform.into(),
+            },
+            serde_data: Some(SerdeData {
+                health: value.serde_health,
+                queues: value.serde_queues,
+                ..default()
+            }),
         })
     }
 }
 
-pub struct CraneYardPlugin<T: StateData> {
-    state: T,
+pub struct CraneYardPlugin<S: StateData> {
+    pub state: S,
 }
 
-impl<T: StateData> CraneYardPlugin<T> {
-    
+impl<S: StateData> CraneYardPlugin<S> {
+    pub fn new(state: S) -> Self {
+        Self {
+            state
+        }
+    }
 }
 
-impl<T: StateData> Plugin for CraneYardPlugin<T> {
-    fn build(&self, app: &mut App) {
+impl<S: StateData> Plugin for CraneYardPlugin<S> {
+    fn build(&self, _app: &mut App) {
         
     }
 }

@@ -60,27 +60,19 @@ impl Display for ObjectType {
     }
 }
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-#[derive(SystemLabel)]
-pub struct SpawnObjectSystem;
-
-#[derive(Debug, Clone, Copy)]
-pub struct ObjectSpawnEventData {
-    pub object_type: ObjectType,
-    pub snowflake: Snowflake,
-    pub teamplayer: TeamPlayer,
-    pub transform: Transform,
-}
-
-impl From<ObjectSpawnEventData> for (Snowflake, TeamPlayer, Transform) {
-    fn from(value: ObjectSpawnEventData) -> Self {
-        (value.snowflake, value.teamplayer, value.transform)
-    }
-}
-
 //TODO: Maybe make this separate for each object?
 #[derive(Debug, Clone)]
 pub struct ObjectSpawnEvent(pub ObjectSpawnEventData);
+
+impl ObjectSpawnEvent {
+    pub fn spawn_data(&self) -> SpawnData {
+        self.0.spawn_data
+    }
+
+    pub fn serde_data(&self) -> Option<SerdeData> {
+        self.0.serde_data.clone()
+    }
+}
 
 // #[derive(Debug, Clone)]
 // pub enum SerdeObjectSpawnEvent {
@@ -119,7 +111,7 @@ impl AssetLoader for ObjectAssetLoader {
         Box::pin(async move {
             match ron::de::from_bytes::<ObjectAsset>(bytes) {
                 Ok(asset) => {
-                    info!("{:?}", asset);
+                    // info!("{:?}", asset);
 
                 },
                 Err(e) => {
@@ -191,7 +183,6 @@ impl FromWorld for ObjectPrefabs {
 
         let mut stacks : HashMap<ObjectType, (ActiveQueue, StackData)> = HashMap::new();
 
-        // stacks.insert(ObjectType::ResourceNode, resource_node_prefab_asset.stack.unwrap());
         stacks.insert(ObjectType::Factory, factory_prefab_asset.stack.unwrap());
         stacks.insert(ObjectType::MarineSquad, marine_squad_prefab_asset.stack.unwrap());
         stacks.insert(ObjectType::TankBase, tank_prefab_asset.stack.unwrap());
@@ -214,16 +205,22 @@ impl FromWorld for ObjectPrefabs {
             tank_prefab,
         };
 
-        info!("ObjectPrefabs");
+        // info!("ObjectPrefabs");
         object_prefabs
     }
 }
 
-pub struct ObjectPlugin<T: StateData> {
-    state: T,
+pub struct ObjectPlugin<S: StateData> {
+    state: S,
 }
 
-impl<T: StateData> ObjectPlugin<T> {
+impl<S: StateData> ObjectPlugin<S> {
+    pub fn new(state: S) -> Self {
+        Self {
+            state
+        }
+    }
+
     pub fn spawn_standard_objects(
         mut spawn_events: EventReader<ObjectSpawnEvent>,
         prefabs: Res<ObjectPrefabs>,
@@ -233,11 +230,11 @@ impl<T: StateData> ObjectPlugin<T> {
         for event in spawn_events.iter() {
             let mut entity = None;
             match event.0.object_type {
-                ObjectType::CraneYard => { entity = Some(commands.spawn( CraneYardBundle::from(prefabs.crane_yard_prefab.clone()).with_spawn_data(event.0.clone())).id()); }
-                ObjectType::ResourceNode => { entity = Some(commands.spawn( ResourceNodeBundle::from(prefabs.resource_node_prefab.clone()).with_spawn_data(event.0.clone())).id()); }
+                ObjectType::CraneYard => { entity = Some(commands.spawn( CraneYardBundle::from(prefabs.crane_yard_prefab.clone()).with_spawn_data(event.spawn_data()).with_serde_data(event.serde_data())).id()); }
+                ObjectType::ResourceNode => { entity = Some(commands.spawn( ResourceNodeBundle::from(prefabs.resource_node_prefab.clone()).with_spawn_data(event.spawn_data()).with_serde_data(event.serde_data())).id()); }
                 ObjectType::ResourcePlatformUnclaimed => { /*entity = Some(commands.spawn( ResourcePlatformUnclaimedBundle::from(prefabs.resource_platform_unclaimed_prefab.clone()).with_spawn_data(event.0)).id())*/ }
                 ObjectType::ResourcePlatformClaimed => { /*entity = Some(commands.spawn( ResourcePlatformClaimedBundle::from(prefabs.resource_platform_claimed_prefab.clone()).with_spawn_data(event.0)).id());*/ }
-                ObjectType::Factory => { entity = Some(commands.spawn( FactoryBundle::from(prefabs.factory_prefab.clone()).with_spawn_data(event.0.clone())).id()); }
+                ObjectType::Factory => { entity = Some(commands.spawn( FactoryBundle::from(prefabs.factory_prefab.clone()).with_spawn_data(event.spawn_data()).with_serde_data(event.serde_data())).id()); }
                 ObjectType::MarineSquad => { /*entity = Some(commands.spawn( MarineSquadBundle::from(prefabs.marine_squad_prefab.clone()).with_spawn_data(event.0)).id());*/ },
                 ObjectType::Marine => { /*entity = Some(commands.spawn( MarineSquadBundle::from(prefabs.marine_squad_prefab.clone()).with_spawn_data(event.0)).id());*/ }
                 ObjectType::TankBase => { /*entity = Some(commands.spawn( TankBaseBundle::from(prefabs.tank_prefab.clone()).with_spawn_data(event.0)).id());*/ },
@@ -245,7 +242,7 @@ impl<T: StateData> ObjectPlugin<T> {
                 // _ => { }
             }
             if let Some(x) = entity {
-                identifiers.insert(event.0.snowflake, x);
+                identifiers.insert(event.spawn_data().snowflake, x);
             }
         }
     }
@@ -279,12 +276,20 @@ impl<T: StateData> ObjectPlugin<T> {
     }
 }
 
-impl<T: StateData> Plugin for ObjectPlugin<T> {
+impl<S: StateData> Plugin for ObjectPlugin<S> {
     fn build(&self, app: &mut App) {
         app
             .add_system_set(SystemSet::on_update(self.state.clone())
             .with_system(Self::spawn_standard_objects)
-            .with_system(Self::patch_grid_map)
-        );
+            .with_system(Self::patch_grid_map.after(Self::spawn_standard_objects))
+        )
+        .add_plugin(CraneYardPlugin::new(self.state.clone()))
+        .add_plugin(FactoryPlugin::new(self.state.clone()))
+        .add_plugin(MarineSquadPlugin::new(self.state.clone()))
+        .add_plugin(ResourceNodePlugin::new(self.state.clone()))
+        .add_plugin(ResourcePlatformClaimedPlugin::new(self.state.clone()))
+        .add_plugin(ResourcePlatformUnclaimedPlugin::new(self.state.clone()))
+        .add_plugin(TankPlugin::new(self.state.clone()))
+        ;
     }
 }

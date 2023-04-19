@@ -43,11 +43,11 @@ pub enum LevelLoadedEvent {
 #[derive(Debug, Default, Clone)]
 #[derive(Serialize, Deserialize)]
 pub struct SaveObjects {
-    crane_yards: Vec<SerdeCraneYard>,
-    factories: Vec<SerdeFactory>,
-    marine_squads: Vec<SerdeMarineSquad>,
-    resource_nodes: Vec<SerdeResourceNode>,
-    tanks: Vec<SerdeTank>,
+    crane_yards: Vec<CraneYardSerde>,
+    factories: Vec<FactorySerde>,
+    marine_squads: Vec<MarineSquadSerde>,
+    resource_nodes: Vec<ResourceNodeSerde>,
+    tanks: Vec<TankBaseSerde>,
 }
 
 ///Target Maximum : 125,829,120
@@ -61,8 +61,8 @@ pub struct SaveState {
 
 pub type SerdeCraneYardQuery<'a> = (&'a Snowflake, &'a Health, &'a Queues, &'a TeamPlayer, &'a Transform);
 pub type SerdeFactoryQuery<'a> = (&'a Snowflake, &'a Health, &'a Queues, &'a TeamPlayer, &'a Transform);
-pub type SerdeMarineSquadQuery<'a> = (&'a Snowflake, &'a MarineSquad, &'a Health, &'a Squad, &'a GroundPathFinder, &'a FPath, &'a Controller, &'a WeaponSet, &'a Velocity, &'a TeamPlayer, &'a Transform);
-pub type SerdeResourceNodeQuery<'a> = (&'a Snowflake, &'a ResourceNode, &'a TeamPlayer, &'a Transform);
+pub type SerdeMarineSquadQuery<'a> = (&'a Snowflake, &'a Health, &'a Squad, &'a GroundPathFinder, &'a FPath, &'a Controller, &'a WeaponSet, &'a Velocity, &'a TeamPlayer, &'a Transform);
+pub type SerdeResourceNodeQuery<'a> = (&'a Snowflake, &'a ResourceNodePlatforms, &'a TeamPlayer, &'a Transform);
 pub type SerdeTankBaseQuery<'a> = (&'a Snowflake, &'a Health, &'a GroundPathFinder, &'a FPath, &'a Controller, &'a WeaponSet, &'a Relative, &'a Velocity, &'a TeamPlayer, &'a Transform);
 
 pub fn save_game(
@@ -70,20 +70,20 @@ pub fn save_game(
     actors: Res<Actors>,
     map: Res<SerdeMap>,
     object: (
-        Query<SerdeCraneYardQuery, With<CraneYard>>,
-        Query<SerdeFactoryQuery, With<Factory>>,
-        Query<SerdeMarineSquadQuery, With<MarineSquad>>,
-        Query<SerdeResourceNodeQuery, With<ResourceNode>>,
-        Query<SerdeTankBaseQuery, With<TankBase>>,
+        Query<SerdeCraneYardQuery, With<CraneYardMarker>>,
+        Query<SerdeFactoryQuery, With<FactoryMarker>>,
+        Query<SerdeMarineSquadQuery, With<MarineSquadMarker>>,
+        Query<SerdeResourceNodeQuery, With<ResourceNodePlatforms>>,
+        Query<SerdeTankBaseQuery, With<TankBaseMarker>>,
     ),
 ) {
     for event in save_event_reader.iter() {
-        println!("SAVE");
-        let crane_yards = object.0.iter().map(|object| SerdeCraneYard::from(object)).collect();
-        let factories = object.1.iter().map(|object| SerdeFactory::from(object)).collect();
-        let marine_squads = object.2.iter().map(|object| SerdeMarineSquad::from(object)).collect();
-        let resource_nodes = object.3.iter().map(|object| SerdeResourceNode::from(object)).collect();
-        let tanks = object.4.iter().map(|object| SerdeTank::from(object)).collect();
+        // println!("SAVE");
+        let crane_yards = object.0.iter().map(|object| CraneYardSerde::from(object)).collect();
+        let factories = object.1.iter().map(|object| FactorySerde::from(object)).collect();
+        let marine_squads = object.2.iter().map(|object| MarineSquadSerde::from(object)).collect();
+        let resource_nodes = object.3.iter().map(|object| ResourceNodeSerde::from(object)).collect();
+        let tanks = object.4.iter().map(|object| TankBaseSerde::from(object)).collect();
 
         let objects = SaveObjects {
             crane_yards,
@@ -99,9 +99,13 @@ pub fn save_game(
             objects
         };
 
+        let level_asset = LevelAsset {
+            save_state: save_file,
+        };
+
         let root = std::env::current_dir().unwrap();
-        println!("{}", &format!("{}/the5thfundamental_game/assets/{}", root.as_path().display(), event.0.clone()));
-        save_to_file(&save_file, &format!("{}/the5thfundamental_game/assets/{}", root.as_path().display(), event.0)).unwrap();
+        // println!("{}", &format!("{}/the5thfundamental_game/assets/{}", root.as_path().display(), event.0.clone()));
+        save_to_file(&level_asset, &format!("{}/the5thfundamental_game/assets/{}", root.as_path().display(), event.0)).unwrap();
     }
 }
 
@@ -110,7 +114,6 @@ pub fn load_game(
     mut load_event_reader: EventReader<LoadEvent>,
     mut level_loaded_event_writer: EventWriter<LevelLoadedEvent>,
     mut spawn_events_writer: EventWriter<ObjectSpawnEvent>,
-    // object_prefabs: Res<ObjectPrefabs>,
     asset_server: Res<AssetServer>,
     level_assets: Res<Assets<LevelAsset>>,
     maps: Res<Assets<MapAsset>>,
@@ -144,6 +147,9 @@ pub fn load_game(
         )}
     );
     commands.insert_resource(GridSpace::new(bounds.0.x as usize, bounds.0.y as usize));
+    for node in &level.save_state.objects.resource_nodes {
+        println!("{:?}", node.serde_resource_node);
+    }
 
     for object in &level.save_state.objects.crane_yards { spawn_events_writer.send(object.clone().into()); }
     for object in &level.save_state.objects.resource_nodes { spawn_events_writer.send(object.clone().into()); }

@@ -18,7 +18,7 @@ impl CombatPlugin {
         for command in command_reader.iter() {
             match command.command_type {
                 UnitCommandType::Move(destination) => {
-                    println!("MOVE!");
+                    // println!("MOVE!");
                     let spread = (command.units.len() as f32).sqrt() * 2.0;
                     pathfinders.iter_mut().filter(|(entity, _, _, _)| command.units.contains(entity)).for_each(|(_, transform, mut pathfinder, mut controller)| {
                         pathfinder.start = transform.translation.xz();
@@ -31,7 +31,7 @@ impl CombatPlugin {
                     });
                 },
                 UnitCommandType::Attack(target) => {
-                    println!("ATTACK!");
+                    // println!("ATTACK!");
                     pathfinders.iter_mut().filter(|(entity, _, _, _)| command.units.contains(entity)).for_each(|(_, _, _, mut controller)| {
                         controller.pursuant = Some(target);
                     });

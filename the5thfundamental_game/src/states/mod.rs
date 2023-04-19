@@ -6,7 +6,7 @@ pub mod singleplayer_game;
 // pub mod error_state;
 
 
-pub use self::loading_state::loading_state::*;
+pub use self::loading_state::*;
 pub use self::main_menu_state::*;
 pub use match_loading_state::*;
 pub use self::singleplayer_game::*;

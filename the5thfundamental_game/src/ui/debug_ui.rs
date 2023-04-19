@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use crate::{*, utility::assets::FontAssets};
 
-pub fn create_debug_menu(
+pub fn create_debug_ui(
     settings : Res<MenuSettings>,
     mut font_assets: Res<FontAssets>,
     mut commands : Commands,

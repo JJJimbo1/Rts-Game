@@ -103,49 +103,6 @@ impl<const U: usize> UiHit<U> {
 #[derive(Component)]
 pub struct BlocksRaycast;
 
-pub fn ui_hit_detection_system(
-    mut ui_hit : ResMut<UiHit<CLICK_BUFFER>>,
-    mut input : EventReader<MouseButtonInput>,
-    interaction_query: Query<
-        (&Interaction, &Visibility),
-        (Changed<Interaction>, With<BlocksRaycast>),
-    >,
-) {
-    *ui_hit.hitting.last_mut().unwrap() = false;
-    for b in 1..ui_hit.hitting.len() {
-        ui_hit.hitting[b-1] = ui_hit.hitting[b]
-    }
-    
-    interaction_query.for_each(|(int, vis)| {
-        if vis.is_visible {
-            match int {
-                Interaction::Clicked => {
-                    for b in 0..ui_hit.hitting.len() {
-                        ui_hit.hitting[b] = true;
-                    }
-                    ui_hit.holding = true;
-                },
-                _ => { }
-            }
-        }
-    });
-    for event in input.iter() {
-        match event.state {
-            ButtonState::Released => {
-                if event.button == MouseButton::Left {
-                    if ui_hit.holding {
-                        ui_hit.holding = false;
-                        for b in 0..ui_hit.hitting.len() {
-                            ui_hit.hitting[b] = true;
-                        }
-                    }
-                }
-            },
-            _ => { }
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 #[derive(Component)]
 pub enum MainMenuButtons {

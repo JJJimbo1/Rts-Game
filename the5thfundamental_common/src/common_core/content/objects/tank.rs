@@ -1,12 +1,13 @@
 use bevy::{prelude::*, ecs::schedule::StateData};
 use bevy_rapier3d::prelude::{Collider, RigidBody, Velocity};
+use superstruct::*;
 use serde::{Serialize, Deserialize};
 
 use crate::*;
 
 #[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
 #[derive(Component)]
-pub struct TankBase;
+pub struct TankBaseMarker;
 // pub struct TankBase(Option<(Entity, TankGun)>);
 
 // impl AssetId for TankBase {
@@ -15,47 +16,76 @@ pub struct TankBase;
 //     }
 // }
 
-impl From<TankBase> for ObjectType {
-    fn from(_: TankBase) -> Self {
+impl From<TankBaseMarker> for ObjectType {
+    fn from(_: TankBaseMarker) -> Self {
         ObjectType::TankBase
     }
 }
 
-impl From<TankBase> for AssetType {
-    fn from(_: TankBase) -> Self {
+impl From<TankBaseMarker> for AssetType {
+    fn from(_: TankBaseMarker) -> Self {
         Self::Object(ObjectType::TankBase)
     }
 }
 
-#[derive(Clone)]
-#[derive(Bundle)]
-pub struct TankBaseBundle {
-    pub tank: TankBase,
-    pub object_type: ObjectType,
-    pub asset_type: AssetType,
-    pub health: Health,
-    pub snowflake: Snowflake,
-    pub path_finder: GroundPathFinder,
-    pub path: Path,
-    pub controller: Controller,
-    pub weapon_set: WeaponSet,
-    pub turret: Relative,
-    pub team_player: TeamPlayer,
-    pub selectable: Selectable,
-    pub velocity: Velocity,
-    pub rigid_body: RigidBody,
-    pub collider: Collider,
-    pub visibility: Visibility,
-    pub computed_visibility: ComputedVisibility,
-    pub transform: Transform,
-    pub global_transform: GlobalTransform,
+
+#[superstruct{
+    variants(Bundle, Prefab, Serde),
+    variant_attributes(derive(Debug, Clone)),
+    specific_variant_attributes(
+        Bundle(derive(Bundle)),
+        Serde(derive(Serialize, Deserialize)),
+    ),
+}]
+#[derive(Debug, Clone)]
+pub struct TankBase {
+    #[superstruct(only(Prefab))]            pub turret: Turret,
+    #[superstruct(only(Bundle, Prefab))]    pub collider: Collider,
+    #[superstruct(only(Bundle, Prefab))]    pub health: Health,
+    #[superstruct(only(Bundle, Prefab))]    pub controller: Controller,
+    #[superstruct(only(Bundle, Prefab))]    pub weapon_set: WeaponSet,
+    #[superstruct(only(Bundle))]            pub tank_marker: TankBaseMarker,
+    #[superstruct(only(Bundle))]            pub object_type: ObjectType,
+    #[superstruct(only(Bundle))]            pub asset_type: AssetType,
+    #[superstruct(only(Bundle))]            pub snowflake: Snowflake,
+    #[superstruct(only(Bundle))]            pub path_finder: GroundPathFinder,
+    #[superstruct(only(Bundle))]            pub path: Path,
+    #[superstruct(only(Bundle))]            pub relative: Relative,
+    #[superstruct(only(Bundle))]            pub selectable: Selectable,
+    #[superstruct(only(Bundle))]            pub velocity: Velocity,
+    #[superstruct(only(Bundle))]            pub rigid_body: RigidBody,
+    #[superstruct(only(Bundle))]            pub visibility: Visibility,
+    #[superstruct(only(Bundle))]            pub computed_visibility: ComputedVisibility,
+    #[superstruct(only(Bundle))]            pub global_transform: GlobalTransform,
+    #[superstruct(only(Bundle, Serde))]     pub team_player: TeamPlayer,
+    #[superstruct(only(Bundle, Serde))]     pub transform: Transform,
+    #[superstruct(only(Serde))]             pub serde_snowflake: Option<Snowflake>,
+    #[superstruct(only(Serde))]             pub serde_health: Option<Health>,
+    #[superstruct(only(Serde))]             pub serde_path_finder: Option<GroundPathFinder>,
+    #[superstruct(only(Serde))]             pub serde_path: Option<Path>,
+    #[superstruct(only(Serde))]             pub serde_controller: Option<Controller>,
+    #[superstruct(only(Serde))]             pub serde_weapon_set: Option<WeaponSet>,
+    #[superstruct(only(Serde))]             pub serde_turret: Option<Turret>,
+    #[superstruct(only(Serde))]             pub serde_velocity: Option<SerdeVelocity>,
 }
 
 impl TankBaseBundle {
-    pub fn with_spawn_data(mut self, spawn_data: ObjectSpawnEventData) -> Self {
+    pub fn with_spawn_data(mut self, spawn_data: SpawnData) -> Self {
         self.snowflake = spawn_data.snowflake;
         self.team_player = spawn_data.teamplayer;
         self.transform = spawn_data.transform;
+        self
+    }
+
+    pub fn with_serde_data(mut self, serde_data: Option<SerdeData>) -> Self {
+        let Some(serde_data) = serde_data else { return self; };
+        if let Some(health) = serde_data.health { self.health = health; }
+        if let Some(path_finder) = serde_data.path_finder { self.path_finder = path_finder; }
+        if let Some(path) = serde_data.path { self.path = path; }
+        if let Some(controller) = serde_data.controller { self.controller = controller; }
+        if let Some(weapon_set) = serde_data.weapon_set { self.weapon_set = weapon_set; }
+        if let Some(turret) = serde_data.turret { self.relative = turret.into(); }
+        if let Some(velocity) = serde_data.velocity { self.velocity = velocity; }
         self
     }
 }
@@ -63,16 +93,16 @@ impl TankBaseBundle {
 impl From<TankBasePrefab> for TankBaseBundle {
     fn from(prefab: TankBasePrefab) -> Self {
         Self {
-            tank: TankBase::default(),
-            object_type: TankBase::default().into(),
-            asset_type: TankBase::default().into(),
+            tank_marker: TankBaseMarker::default(),
+            object_type: TankBaseMarker::default().into(),
+            asset_type: TankBaseMarker::default().into(),
             snowflake: Snowflake::new(),
             health: prefab.health,
             path_finder: GroundPathFinder::default(),
             path: Path::default(),
             controller: prefab.controller,
             weapon_set: prefab.weapon_set,
-            turret: prefab.turret.into(),
+            relative: prefab.turret.into(),
             team_player: TeamPlayer::default(),
             selectable: Selectable::multiselect(),
             velocity: Velocity::default(),
@@ -86,40 +116,30 @@ impl From<TankBasePrefab> for TankBaseBundle {
     }
 }
 
-impl From<(SerdeTank, &TankBasePrefab)> for TankBaseBundle {
-    fn from((save, prefab): (SerdeTank, &TankBasePrefab)) -> Self {
+impl From<(TankBaseSerde, &TankBasePrefab)> for TankBaseBundle {
+    fn from((save, prefab): (TankBaseSerde, &TankBasePrefab)) -> Self {
         Self {
-            tank: TankBase::default(),
-            object_type: TankBase::default().into(),
-            asset_type: TankBase::default().into(),
-            snowflake: save.snowflake.unwrap_or_else(|| Snowflake::new()),
-            health: save.health.unwrap_or(prefab.health),
-            path_finder: save.path_finder.unwrap_or_default(),
-            path: save.path.unwrap_or_default(),
-            controller: save.controller.unwrap_or(prefab.controller),
-            weapon_set: save.weapon_set.unwrap_or(prefab.weapon_set.clone()),
-            turret: save.turret.unwrap_or(prefab.turret).into(),
+            tank_marker: TankBaseMarker::default(),
+            object_type: TankBaseMarker::default().into(),
+            asset_type: TankBaseMarker::default().into(),
+            snowflake: save.serde_snowflake.unwrap_or(Snowflake::new()),
+            health: save.serde_health.unwrap_or(prefab.health),
+            path_finder: save.serde_path_finder.unwrap_or_default(),
+            path: save.serde_path.unwrap_or_default(),
+            controller: save.serde_controller.unwrap_or(prefab.controller),
+            weapon_set: save.serde_weapon_set.unwrap_or(prefab.weapon_set.clone()),
+            relative: save.serde_turret.unwrap_or(prefab.turret).into(),
             team_player: save.team_player,
-            velocity: save.velocity.unwrap_or(SerdeVelocity::default()).into(),
+            velocity: save.serde_velocity.unwrap_or(SerdeVelocity::default()).into(),
             rigid_body: RigidBody::KinematicVelocityBased,
             collider: prefab.collider.clone(),
             selectable: Selectable::multiselect(),
             visibility: Visibility::default(),
             computed_visibility: ComputedVisibility::default(),
-            transform: save.transform.into(),
+            transform: save.transform,
             global_transform: GlobalTransform::default(),
         }
     }
-}
-
-
-#[derive(Clone)]
-pub struct TankBasePrefab {
-    pub health: Health,
-    pub controller: Controller,
-    pub weapon_set: WeaponSet,
-    pub turret: Turret,
-    pub collider: Collider,
 }
 
 impl TryFrom<&ObjectAsset> for TankBasePrefab {
@@ -144,45 +164,42 @@ impl TryFrom<&ObjectAsset> for TankBasePrefab {
     }
 }
 
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
-pub struct SerdeTank {
-    pub snowflake: Option<Snowflake>,
-    pub health: Option<Health>,
-    pub path_finder: Option<GroundPathFinder>,
-    pub path: Option<Path>,
-    pub controller: Option<Controller>,
-    pub weapon_set: Option<WeaponSet>,
-    pub turret: Option<Turret>,
-    pub velocity: Option<SerdeVelocity>,
-    pub team_player: TeamPlayer,
-    pub transform: SerdeTransform,
-}
-
-impl<'a> From<SerdeTankBaseQuery<'a>> for SerdeTank {
+impl<'a> From<SerdeTankBaseQuery<'a>> for TankBaseSerde {
     fn from(object: SerdeTankBaseQuery) -> Self {
         Self {
-            snowflake: Some(*object.0),
-            health: object.1.saved(),
-            path_finder: object.2.saved(),
-            path: object.3.saved(),
-            controller: object.4.saved(),
-            weapon_set: object.5.saved(),
-            turret: Turret::from(*object.6).saved(),
-            velocity: SerdeVelocity::from(*object.7).saved(),
+            serde_snowflake: Some(*object.0),
+            serde_health: object.1.saved(),
+            serde_path_finder: object.2.saved(),
+            serde_path: object.3.saved(),
+            serde_controller: object.4.saved(),
+            serde_weapon_set: object.5.saved(),
+            serde_turret: Turret::from(*object.6).saved(),
+            serde_velocity: SerdeVelocity::from(*object.7).saved(),
             team_player: *object.8,
-            transform: (*object.9).into(),
+            transform: *object.9,
         }
     }
 }
 
-impl From<SerdeTank> for ObjectSpawnEvent {
-    fn from(value: SerdeTank) -> Self {
+impl From<TankBaseSerde> for ObjectSpawnEvent {
+    fn from(value: TankBaseSerde) -> Self {
         Self(ObjectSpawnEventData{
             object_type: ObjectType::TankBase,
-            snowflake: Snowflake::new(),
-            teamplayer: value.team_player,
-            transform: value.transform.into(),
+            spawn_data: SpawnData {
+                snowflake: Snowflake::new(),
+                teamplayer: value.team_player,
+                transform: value.transform.into(),
+            },
+            serde_data: Some(SerdeData {
+                health: value.serde_health,
+                path_finder: value.serde_path_finder,
+                path: value.serde_path,
+                controller: value.serde_controller,
+                weapon_set: value.serde_weapon_set,
+                turret: value.serde_turret,
+                velocity: value.serde_velocity.map(|vel| vel.into()),
+                ..default()
+            }),
         })
     }
 }
@@ -190,12 +207,6 @@ impl From<SerdeTank> for ObjectSpawnEvent {
 #[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
 #[derive(Component)]
 pub struct TankGun;
-
-// impl AssetId for TankGun {
-//     fn id(&self) -> Option<&'static str> {
-//         ObjectType::from(*self).id()
-//     }
-// }
 
 impl From<TankGun> for ObjectType {
     fn from(_: TankGun) -> Self {
@@ -224,7 +235,7 @@ pub struct TankGunBundle {
 }
 
 impl TankGunBundle {
-    pub fn with_spawn_data(mut self, spawn_data: &ObjectSpawnEventData) -> Self {
+    pub fn with_spawn_data(mut self, spawn_data: &SpawnData) -> Self {
         self.snowflake = spawn_data.snowflake;
         self.teamplayer = spawn_data.teamplayer;
         self.transform = spawn_data.transform;
@@ -249,35 +260,40 @@ impl Default for TankGunBundle {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct TankPlugin<T: StateData> {
-    state: T
+pub struct TankPlugin<S: StateData> {
+    state: S
 }
 
-impl<T: StateData> TankPlugin<T> {
+impl<S: StateData> TankPlugin<S> {
+    pub fn new(state: S) -> Self {
+        Self {
+            state
+        }
+    }
+
     pub fn spawn_tank(
         mut spawn_events: EventReader<ObjectSpawnEvent>,
         prefabs: Res<ObjectPrefabs>,
-        mut new_tanks: Query<&mut Relative, Added<TankBase>>,
+        mut new_tanks: Query<&mut Relative, Added<TankBaseMarker>>,
         new_tank_guns: Query<(Entity, &Parent), Added<TankGun>>,
 
         mut identifiers: ResMut<Identifiers>,
         mut commands: Commands,
     ) {
-        spawn_events.iter().filter_map(|event| (event.0.object_type == ObjectType::TankBase).then_some(event.0)).for_each(|data| {
+        spawn_events.iter().filter_map(|event| (event.0.object_type == ObjectType::TankBase).then_some(event.0.clone())).for_each(|data| {
             let tank_turret_transform = Transform::from(prefabs.tank_prefab.turret.transform);
-            let gun_spawn_data = ObjectSpawnEventData {
-                object_type: ObjectType::TankGun,
+            let gun_spawn_data = SpawnData {
                 snowflake: Snowflake::new(),
                 teamplayer: TeamPlayer::default(),
                 transform: tank_turret_transform,
             };
 
             let mut gun_entity = None;
-            let base_entity = commands.spawn(TankBaseBundle::from(prefabs.tank_prefab.clone()).with_spawn_data(data)).with_children(|parent| {
+            let base_entity = commands.spawn(TankBaseBundle::from(prefabs.tank_prefab.clone()).with_spawn_data(data.spawn_data).with_serde_data(data.serde_data)).with_children(|parent| {
                 gun_entity = Some(parent.spawn(TankGunBundle::default().with_spawn_data(&gun_spawn_data)).id());
             }).id();
 
-            identifiers.insert(data.snowflake, base_entity);
+            identifiers.insert(data.spawn_data.snowflake, base_entity);
             identifiers.insert(gun_spawn_data.snowflake, gun_entity.unwrap());
         });
 
@@ -316,7 +332,7 @@ impl<T: StateData> TankPlugin<T> {
     }
 }
 
-impl<T: StateData> Plugin for TankPlugin<T> {
+impl<S: StateData> Plugin for TankPlugin<S> {
     fn build(&self, app: &mut App) {
         app
             .add_system_set(SystemSet::on_update(self.state.clone())

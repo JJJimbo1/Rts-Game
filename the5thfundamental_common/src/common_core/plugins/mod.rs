@@ -2,11 +2,13 @@ pub mod cleanup;
 pub mod combat;
 pub mod physics;
 pub mod production;
+pub mod spawn;
 
 pub use cleanup::*;
 pub use combat::*;
 pub use physics::*;
 pub use production::*;
+pub use spawn::*;
 
 use bevy::prelude::PluginGroup;
 

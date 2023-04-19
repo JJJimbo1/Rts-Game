@@ -12,7 +12,6 @@ pub use systems::*;
 pub use traits::*;
 
 use crate::pathing::pathing2d::*;
-use bevy::prelude::*;
 
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -74,9 +73,6 @@ impl PathingGridSpace for GridSpace {
         self
     }
 }
-
-// pub struct DefaultPathingGridMap(pub GridMap);
-
 
 #[derive(Debug, Clone, Copy)]
 #[derive(Resource)]

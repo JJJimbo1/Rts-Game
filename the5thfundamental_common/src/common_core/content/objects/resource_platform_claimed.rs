@@ -1,65 +1,66 @@
 use bevy::{prelude::*, ecs::schedule::StateData};
 use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
+use superstruct::*;
 use crate::*;
+
+#[derive(Debug, Clone, Copy)]
+#[derive(Component)]
+pub struct ResourcePlatformClaimedMarker;
 
 #[derive(Debug, Default, Clone, Copy)]
 #[derive(Serialize, Deserialize)]
 #[derive(Component)]
-pub struct ResourcePlatformClaimed(pub Option<(Entity, usize)>);
+pub struct ResourcePlatformOwner(pub Option<(Entity, usize)>);
 
-// impl AssetId for ResourcePlatformClaimed {
-//     fn id(&self) -> Option<&'static str> {
-//         ObjectType::ResourcePlatformClaimed.id()
-//     }
-// }
-
-impl From<ResourcePlatformClaimed> for ObjectType {
-    fn from(_: ResourcePlatformClaimed) -> Self {
+impl From<ResourcePlatformClaimedMarker> for ObjectType {
+    fn from(_: ResourcePlatformClaimedMarker) -> Self {
         ObjectType::ResourcePlatformClaimed
     }
 }
 
-impl From<ResourcePlatformClaimed> for AssetType {
-    fn from(_: ResourcePlatformClaimed) -> Self {
+impl From<ResourcePlatformClaimedMarker> for AssetType {
+    fn from(_: ResourcePlatformClaimedMarker) -> Self {
         Self::Object(ObjectType::ResourcePlatformClaimed)
     }
 }
 
-impl From<ResourcePlatformUnclaimed> for ResourcePlatformClaimed {
-    fn from(resource_platform_unclaimed: ResourcePlatformUnclaimed) -> Self {
-        ResourcePlatformClaimed(resource_platform_unclaimed.0)
-    }
-}
-
-#[derive(Clone)]
-#[derive(Bundle)]
-pub struct ResourcePlatformClaimedBundle {
-    pub resource_platform: ResourcePlatformClaimed,
-    pub object_type: ObjectType,
-    pub asset_type: AssetType,
-    pub snowflake: Snowflake,
-    pub health: Health,
-    pub economic_object: EconomicObject,
-    pub team_player: TeamPlayer,
-    pub selectable: Selectable,
-    pub collider: Collider,
-    pub visibility: Visibility,
-    pub computed_visibility: ComputedVisibility,
-    pub transform: Transform,
-    pub global_transform: GlobalTransform,
+#[superstruct{
+    variants(Bundle, Prefab),
+    variant_attributes(derive(Debug, Clone)),
+    specific_variant_attributes(
+        Bundle(derive(Bundle)),
+    ),
+}]
+#[derive(Debug, Clone)]
+pub struct ResourcePlatformClaimed {
+    #[superstruct(only(Prefab))]            pub cost: f64,
+    #[superstruct(only(Bundle, Prefab))]    pub health: Health,
+    #[superstruct(only(Bundle, Prefab))]    pub economic_object: EconomicObject,
+    #[superstruct(only(Bundle, Prefab))]    pub collider: Collider,
+    #[superstruct(only(Bundle))]            pub resource_platform_claimed_marker: ResourcePlatformClaimedMarker,
+    #[superstruct(only(Bundle))]            pub resource_platform_owner: ResourcePlatformOwner,
+    #[superstruct(only(Bundle))]            pub object_type: ObjectType,
+    #[superstruct(only(Bundle))]            pub asset_type: AssetType,
+    #[superstruct(only(Bundle))]            pub snowflake: Snowflake,
+    #[superstruct(only(Bundle))]            pub team_player: TeamPlayer,
+    #[superstruct(only(Bundle))]            pub selectable: Selectable,
+    #[superstruct(only(Bundle))]            pub visibility: Visibility,
+    #[superstruct(only(Bundle))]            pub computed_visibility: ComputedVisibility,
+    #[superstruct(only(Bundle))]            pub transform: Transform,
+    #[superstruct(only(Bundle))]            pub global_transform: GlobalTransform,
 }
 
 impl ResourcePlatformClaimedBundle {
-    pub fn with_spawn_data(mut self, spawn_data: ObjectSpawnEventData) -> Self {
+    pub fn with_spawn_data(mut self, spawn_data: SpawnData) -> Self {
         self.snowflake = spawn_data.snowflake;
         self.team_player = spawn_data.teamplayer;
         self.transform = spawn_data.transform;
         self
     }
 
-    pub fn with_platform(mut self, platform: ResourcePlatformClaimed) -> Self {
-        self.resource_platform = platform;
+    pub fn with_platform(mut self, platform: ResourcePlatformOwner) -> Self {
+        self.resource_platform_owner = platform;
         self
     }
 }
@@ -67,9 +68,10 @@ impl ResourcePlatformClaimedBundle {
 impl From<ResourcePlatformClaimedPrefab> for ResourcePlatformClaimedBundle {
     fn from(prefab: ResourcePlatformClaimedPrefab) -> Self {
         Self {
-            resource_platform: ResourcePlatformClaimed::default(),
-            object_type: ResourcePlatformClaimed::default().into(),
-            asset_type: ResourcePlatformClaimed::default().into(),
+            resource_platform_claimed_marker: ResourcePlatformClaimedMarker,
+            resource_platform_owner: ResourcePlatformOwner::default(),
+            object_type: ResourcePlatformClaimedMarker.into(),
+            asset_type: ResourcePlatformClaimedMarker.into(),
             snowflake: Snowflake::new(),
             health: prefab.health,
             economic_object: prefab.economic_object,
@@ -82,14 +84,6 @@ impl From<ResourcePlatformClaimedPrefab> for ResourcePlatformClaimedBundle {
             global_transform: GlobalTransform::default(),
         }
     }
-}
-
-#[derive(Clone)]
-pub struct ResourcePlatformClaimedPrefab {
-    pub health: Health,
-    pub economic_object: EconomicObject,
-    pub cost: f64,
-    pub collider: Collider,
 }
 
 impl TryFrom<&ObjectAsset> for ResourcePlatformClaimedPrefab {
@@ -112,22 +106,27 @@ impl TryFrom<&ObjectAsset> for ResourcePlatformClaimedPrefab {
     }
 }
 
-pub struct ResourcePlatformClaimedPlugin<T: StateData> {
-    state: T,
+pub struct ResourcePlatformClaimedPlugin<S: StateData> {
+    state: S,
 }
 
-impl<T: StateData> ResourcePlatformClaimedPlugin<T> {
+impl<S: StateData> ResourcePlatformClaimedPlugin<S> {
+    pub fn new(state: S) -> Self {
+        Self {
+            state
+        }
+    }
+
     pub fn resource_platform_claimed_on_killed(
         mut activation_events: EventReader<ObjectKilledEvent>,
         prefabs: Res<ObjectPrefabs>,
-        mut resource_nodes: Query<&mut ResourceNode>,
-        resource_platforms_unclaimed: Query<(&GlobalTransform, &ResourcePlatformClaimed, &Snowflake)>,
+        mut resource_nodes: Query<&mut ResourceNodePlatforms>,
+        resource_platforms_unclaimed: Query<(&GlobalTransform, &ResourcePlatformOwner, &Snowflake)>,
         mut commands: Commands,
     ) {
         for event in activation_events.iter() {
             if let Ok((global_transform, platform, snowflake)) = resource_platforms_unclaimed.get(event.0) {
-                let spawn_data = ObjectSpawnEventData {
-                    object_type: ObjectType::ResourcePlatformUnclaimed,
+                let spawn_data = SpawnData {
                     snowflake: *snowflake,
                     teamplayer: TeamPlayer::default(),
                     transform: Transform::from(*global_transform),
@@ -135,14 +134,14 @@ impl<T: StateData> ResourcePlatformClaimedPlugin<T> {
                 if let Ok(mut node) = resource_nodes.get_mut(platform.0.unwrap().0) {
                     node.0[platform.0.unwrap().1] = ResourcePlatform::Unclaimed;
                 }
-                commands.spawn(ResourcePlatformUnclaimedBundle::from(prefabs.resource_platform_unclaimed_prefab.clone()).with_platform((*platform).into()).with_spawn_data(spawn_data));
+                commands.spawn(ResourcePlatformUnclaimedBundle::from(prefabs.resource_platform_unclaimed_prefab.clone()).with_platform(*platform).with_spawn_data(spawn_data));
                 commands.entity(event.0).despawn_recursive();
             }
         }
     }
 }
 
-impl<T: StateData> Plugin for ResourcePlatformClaimedPlugin<T> {
+impl<S: StateData> Plugin for ResourcePlatformClaimedPlugin<S> {
     fn build(&self, app: &mut App) {
         app
             .add_system_set(SystemSet::on_update(self.state.clone())

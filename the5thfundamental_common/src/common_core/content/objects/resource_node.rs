@@ -1,31 +1,30 @@
 use bevy::{prelude::*, ecs::schedule::StateData};
 use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
+use superstruct::*;
 use crate::*;
 
-#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy)]
 #[derive(Component)]
-pub struct ResourceNode(pub [ResourcePlatform; 6]);
+pub struct ResourceNodeMarker;
 
-// impl AssetId for ResourceNode {
-//     fn id(&self) -> Option<&'static str> {
-//         ObjectType::from(*self).id()
-//     }
-// }
-
-impl From<ResourceNode> for ObjectType {
-    fn from(_: ResourceNode) -> Self {
+impl From<ResourceNodeMarker> for ObjectType {
+    fn from(_: ResourceNodeMarker) -> Self {
         ObjectType::ResourceNode
     }
 }
 
-impl From<ResourceNode> for AssetType {
-    fn from(_: ResourceNode) -> Self {
+impl From<ResourceNodeMarker> for AssetType {
+    fn from(_: ResourceNodeMarker) -> Self {
         Self::Object(ObjectType::ResourceNode)
     }
 }
 
-impl SerdeComponent for ResourceNode {
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
+#[derive(Component)]
+pub struct ResourceNodePlatforms(pub [ResourcePlatform; 6]);
+
+impl SerdeComponent for ResourceNodePlatforms {
     fn saved(&self) -> Option<Self> {
         if self.0.iter().fold(true, |b, platform| if let ResourcePlatform::Claimed(_, _) = platform { false } else { b }) {
             None
@@ -35,26 +34,43 @@ impl SerdeComponent for ResourceNode {
     }
 }
 
-#[derive(Clone)]
-#[derive(Bundle)]
-pub struct ResourceNodeBundle {
-    pub resource_node: ResourceNode,
-    pub object_type: ObjectType,
-    pub asset_type: AssetType,
-    pub snowflake: Snowflake,
-    pub team_player: TeamPlayer,
-    pub collider: Collider,
-    pub visibility: Visibility,
-    pub computed_visibility: ComputedVisibility,
-    pub transform: Transform,
-    pub global_transform: GlobalTransform,
+#[superstruct{
+    variants(Bundle, Prefab, Serde),
+    variant_attributes(derive(Debug, Clone)),
+    specific_variant_attributes(
+        Bundle(derive(Bundle)),
+        Serde(derive(Serialize, Deserialize)),
+    ),
+}]
+#[derive(Debug, Clone)]
+pub struct ResourceNode {
+    // #[superstruct(only(Prefab))]            pub health: Health,
+    #[superstruct(only(Bundle, Prefab))]    pub collider: Collider,
+    #[superstruct(only(Bundle))]            pub resource_node_marker: ResourceNodeMarker,
+    #[superstruct(only(Bundle))]            pub resource_node_platforms: ResourceNodePlatforms,
+    #[superstruct(only(Bundle))]            pub object_type: ObjectType,
+    #[superstruct(only(Bundle))]            pub asset_type: AssetType,
+    #[superstruct(only(Bundle))]            pub snowflake: Snowflake,
+    #[superstruct(only(Bundle))]            pub visibility: Visibility,
+    #[superstruct(only(Bundle))]            pub computed_visibility: ComputedVisibility,
+    #[superstruct(only(Bundle))]            pub global_transform: GlobalTransform,
+    #[superstruct(only(Bundle, Serde))]     pub team_player: TeamPlayer,
+    #[superstruct(only(Bundle, Serde))]     pub transform: Transform,
+    #[superstruct(only(Serde))]             pub serde_snowflake: Option<Snowflake>,
+    #[superstruct(only(Serde))]             pub serde_resource_node: Option<ResourceNodePlatforms>,
 }
 
 impl ResourceNodeBundle {
-    pub fn with_spawn_data(mut self, spawn_data: ObjectSpawnEventData) -> Self {
+    pub fn with_spawn_data(mut self, spawn_data: SpawnData) -> Self {
         self.snowflake = spawn_data.snowflake;
         self.team_player = spawn_data.teamplayer;
         self.transform = spawn_data.transform;
+        self
+    }
+
+    pub fn with_serde_data(mut self, serde_data: Option<SerdeData>) -> Self {
+        let Some(serde_data) = serde_data else { return self; };
+        if let Some(resource_node) = serde_data.resource_node { self.resource_node_platforms = resource_node; }
         self
     }
 }
@@ -62,9 +78,10 @@ impl ResourceNodeBundle {
 impl From<ResourceNodePrefab> for ResourceNodeBundle {
     fn from(prefab: ResourceNodePrefab) -> Self {
         Self {
-            resource_node: ResourceNode::default(),
-            object_type: ResourceNode::default().into(),
-            asset_type: ResourceNode::default().into(),
+            resource_node_marker: ResourceNodeMarker,
+            resource_node_platforms: ResourceNodePlatforms::default(),
+            object_type: ResourceNodeMarker.into(),
+            asset_type: ResourceNodeMarker.into(),
             snowflake: Snowflake::new(),
             team_player: TeamPlayer::default(),
             collider: prefab.collider.clone(),
@@ -76,72 +93,79 @@ impl From<ResourceNodePrefab> for ResourceNodeBundle {
     }
 }
 
-impl From<(SerdeResourceNode, &ResourceNodePrefab)> for ResourceNodeBundle {
-    fn from((save, prefab): (SerdeResourceNode, &ResourceNodePrefab)) -> Self {
+impl From<(ResourceNodeSerde, &ResourceNodePrefab)> for ResourceNodeBundle {
+    fn from((save, prefab): (ResourceNodeSerde, &ResourceNodePrefab)) -> Self {
         Self {
-            object_type: ResourceNode::default().into(),
-            asset_type: ResourceNode::default().into(),
-            snowflake: save.snowflake.unwrap_or_else(|| Snowflake::new()),
-            resource_node: save.resource_node.unwrap_or_else(|| ResourceNode::default()),
+            resource_node_marker: ResourceNodeMarker,
+            resource_node_platforms: save.serde_resource_node.unwrap_or_else(|| ResourceNodePlatforms::default()),
+            object_type: ResourceNodeMarker.into(),
+            asset_type: ResourceNodeMarker.into(),
+            snowflake: save.serde_snowflake.unwrap_or_else(|| Snowflake::new()),
             team_player: save.team_player,
             collider: prefab.collider.clone(),
             visibility: Visibility::default(),
             computed_visibility: ComputedVisibility::default(),
-            transform: save.transform.into(),
+            transform: save.transform,
             global_transform: GlobalTransform::default(),
         }
     }
 }
 
-#[derive(Clone)]
-pub struct ResourceNodePrefab {
-    pub health: Health,
-    pub collider: Collider,
-}
+// #[derive(Clone)]
+// pub struct ResourceNodePrefab {
+//     pub health: Health,
+//     pub collider: Collider,
+// }
 
 impl TryFrom<&ObjectAsset> for ResourceNodePrefab {
     type Error = ContentError;
     fn try_from(prefab: &ObjectAsset) -> Result<Self, ContentError> {
-        let Some(health) = prefab.health else { return Err(ContentError::MissingHealth); };
+        // let Some(health) = prefab.health else { return Err(ContentError::MissingHealth); };
         let Some(collider_string) = prefab.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
         let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
 
         let collider = Collider::trimesh(vertices, indices);
 
         Ok(Self {
-            health,
+            // health,
             collider,
         })
     }
 }
 
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
-pub struct SerdeResourceNode {
-    pub snowflake: Option<Snowflake>,
-    pub resource_node: Option<ResourceNode>,
-    pub team_player: TeamPlayer,
-    pub transform: SerdeTransform,
-}
+// #[derive(Debug, Clone)]
+// #[derive(Serialize, Deserialize)]
+// pub struct SerdeResourceNode {
+//     pub snowflake: Option<Snowflake>,
+//     pub resource_node: Option<ResourceNodePlatforms>,
+//     pub team_player: TeamPlayer,
+//     pub transform: SerdeTransform,
+// }
 
-impl<'a> From<SerdeResourceNodeQuery<'a>> for SerdeResourceNode {
+impl<'a> From<SerdeResourceNodeQuery<'a>> for ResourceNodeSerde {
     fn from(object: SerdeResourceNodeQuery) -> Self {
         Self {
-            snowflake: object.0.saved(),
-            resource_node: object.1.saved(),
+            serde_snowflake: object.0.saved(),
+            serde_resource_node: object.1.saved(),
             team_player: *object.2,
-            transform: (*object.3).into(),
+            transform: *object.3,
         }
     }
 }
 
-impl From<SerdeResourceNode> for ObjectSpawnEvent {
-    fn from(value: SerdeResourceNode) -> Self {
+impl From<ResourceNodeSerde> for ObjectSpawnEvent {
+    fn from(value: ResourceNodeSerde) -> Self {
         Self(ObjectSpawnEventData{
             object_type: ObjectType::ResourceNode,
-            snowflake: Snowflake::new(),
-            teamplayer: value.team_player,
-            transform: value.transform.into(),
+            spawn_data: SpawnData {
+                snowflake: Snowflake::new(),
+                teamplayer: value.team_player,
+                transform: value.transform,
+            },
+            serde_data: Some(SerdeData {
+                resource_node: value.serde_resource_node,
+                ..default()
+            }),
         })
     }
 }
@@ -159,14 +183,20 @@ impl Default for ResourcePlatform {
     }
 }
 
-pub struct ResourceNodePlugin<T: StateData> {
-    state: T,
+pub struct ResourceNodePlugin<S: StateData> {
+    state: S,
 }
 
-impl<T: StateData> ResourceNodePlugin<T> {
+impl<S: StateData> ResourceNodePlugin<S> {
+    pub fn new(state: S) -> Self {
+        Self {
+            state
+        }
+    }
+
     pub fn resource_node_spawn(
         prefabs: Res<ObjectPrefabs>,
-        mut resource_nodes: Query<(Entity, &Transform, &ResourceNode), Added<ResourceNode>>,
+        mut resource_nodes: Query<(Entity, &Transform, &ResourceNodePlatforms), Added<ResourceNodePlatforms>>,
         mut commands: Commands,
     ) {
         resource_nodes.for_each_mut(|(entity, transform, resource_node)| {
@@ -175,25 +205,22 @@ impl<T: StateData> ResourceNodePlugin<T> {
                 let mut platform_transform = transform.mul_transform(Transform::from_rotation(Quat::from_rotation_y(rotation)));
                 platform_transform.translation += platform_transform.right() * 17.0;
                 let platform_type = resource_node.0[i];
+                let platform = ResourcePlatformOwner(Some((entity, i)));
                 match platform_type {
                     ResourcePlatform::Unclaimed => {
-                        let spawn_data = ObjectSpawnEventData {
-                            object_type: ObjectType::ResourcePlatformUnclaimed,
+                        let spawn_data = SpawnData {
                             snowflake: Snowflake::new(),
                             teamplayer: TeamPlayer::default(),
                             transform: platform_transform,
                         };
-                        let platform = ResourcePlatformUnclaimed(Some((entity, i)));
                         commands.spawn(ResourcePlatformUnclaimedBundle::from(prefabs.resource_platform_unclaimed_prefab.clone()).with_platform(platform).with_spawn_data(spawn_data));
                     }
                     ResourcePlatform::Claimed(snowflake, player) => {
-                        let spawn_data = ObjectSpawnEventData {
-                            object_type: ObjectType::ResourcePlatformClaimed,
+                        let spawn_data = SpawnData {
                             snowflake,
                             teamplayer: player,
                             transform: platform_transform,
                         };
-                        let platform = ResourcePlatformClaimed(Some((entity, i)));
                         commands.spawn(ResourcePlatformClaimedBundle::from(prefabs.resource_platform_claimed_prefab.clone()).with_platform(platform).with_spawn_data(spawn_data));
                     }
                 }
@@ -202,7 +229,7 @@ impl<T: StateData> ResourceNodePlugin<T> {
     }
 }
 
-impl<T: StateData> Plugin for ResourceNodePlugin<T> {
+impl<S: StateData> Plugin for ResourceNodePlugin<S> {
     fn build(&self, app: &mut App) {
         app
             .add_system_set(SystemSet::on_update(self.state.clone())

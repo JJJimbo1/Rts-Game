@@ -582,7 +582,7 @@ impl Menu for SkirmishUi {
     }
 }
 
-pub fn main_menu_button_event_writer_system(
+pub fn main_menu_ui_button_event_writer_system(
     mut main_menu_button_events : EventWriter<TopMenuButtonsEvent>,
     mut campaign_button_events : EventWriter<CampaignButtonsEvent>,
     mut skirmish_button_events : EventWriter<SkirmishButtonsEvent>,

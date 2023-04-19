@@ -72,12 +72,20 @@ pub fn play_game(asset_folder: String) {
             })
         )
         .add_plugins(CommonPlugins)
-        .add_plugin(CommonLoadingPlugin { loading_state: GameState::AssetLoading, next_state: GameState::Loading})
-        .add_plugin(ClientLoadingPlugin { loading_state: GameState::AssetLoading, next_state: GameState::Loading})
         .add_plugin(PhysicsPlugin)
         .add_plugin(DebugPlugin)
-
         .add_plugin(NinePatchPlugin::<()>::default())
+
+        .add_plugin(CommonLoadingPlugin { loading_state: GameState::AssetLoading, next_state: GameState::Loading})
+        .add_plugin(ClientLoadingPlugin { loading_state: GameState::AssetLoading, next_state: GameState::Loading})
+        .add_plugin(LoadingStatePlugin)
+        .add_plugin(MainMenuPlugin)
+        .add_plugin(MatchLoadingStatePlugin)
+        .add_plugin(SinglePlayerGamePlugin)
+
+        .add_plugin(ObjectPlugin::new(GameState::SingleplayerGame))
+        .add_plugin(ContextMenuPlugin::new(GameState::SingleplayerGame))
+        .add_plugin(CameraPlugin::new(GameState::SingleplayerGame))
         .add_plugin(SavePlugin)
         .add_plugin(HealthBarPlugin)
 
@@ -101,25 +109,25 @@ pub fn play_game(asset_folder: String) {
         .insert_resource(Manifest::default())
         // .insert_resource(PhysicsWorld::default())
 
-        .add_system_set(game_loading_state_on_enter_system_set())
-        .add_system_set(game_loading_state_on_update_system_set())
-        .add_system_set(game_loading_state_on_exit_system_set())
+        // .add_system_set(game_loading_state_on_enter_system_set())
+        // .add_system_set(game_loading_state_on_update_system_set())
+        // .add_system_set(game_loading_state_on_exit_system_set())
 
-        .add_system_set(main_menu_state_on_enter_system_set())
-        .add_system_set(main_menu_state_on_update_system_set())
-        .add_system_set(main_menu_state_on_exit_system_set())
+        // .add_system_set(main_menu_state_on_enter_system_set())
+        // .add_system_set(main_menu_state_on_update_system_set())
+        // .add_system_set(main_menu_state_on_exit_system_set())
 
-        .add_system_set(match_loading_state_on_enter_system_set())
-        .add_system_set(match_loading_state_on_update_system_set())
-        .add_system_set(match_loading_state_on_exit_system_set())
+        // .add_system_set(match_loading_state_on_enter_system_set())
+        // .add_system_set(match_loading_state_on_update_system_set())
+        // .add_system_set(match_loading_state_on_exit_system_set())
 
-        .add_system_set(singleplayer_game_state_on_enter_system_set())
-        .add_system_set(singleplayer_game_state_on_update_system_set())
-        .add_system_set(singleplayer_game_state_on_exit_system_set())
+        // .add_system_set(singleplayer_game_state_on_enter_system_set())
+        // .add_system_set(singleplayer_game_state_on_update_system_set())
+        // .add_system_set(singleplayer_game_state_on_exit_system_set())
 
-        .add_system_set(camera_setup_system_set(SystemSet::on_enter(GameState::SingleplayerGame)))
-        .add_system(ui_hit_detection_system)
-        .add_system_set(camera_system_set(SystemSet::on_update(GameState::SingleplayerGame).after(ui_hit_detection_system)))
+        // .add_system_set(camera_setup_system_set(SystemSet::on_enter(GameState::SingleplayerGame)))
+        // .add_system(ui_hit_detection_system)
+        // .add_system_set(camera_system_set(SystemSet::on_update(GameState::SingleplayerGame).after(ui_hit_detection_system)))
 
         .add_state(GameState::AssetLoading)
 

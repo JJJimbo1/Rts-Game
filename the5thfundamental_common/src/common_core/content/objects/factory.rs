@@ -1,12 +1,12 @@
 use bevy::{prelude::*, utils::HashMap, ecs::schedule::StateData};
 use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
-
+use superstruct::*;
 use crate::*;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[derive(Component)]
-pub struct Factory;
+pub struct FactoryMarker;
 
 // impl AssetId for Factory {
 //     fn id(&self) -> Option<&'static str> {
@@ -14,40 +14,63 @@ pub struct Factory;
 //     }
 // }
 
-impl From<Factory> for ObjectType {
-    fn from(_: Factory) -> Self {
+impl From<FactoryMarker> for ObjectType {
+    fn from(_: FactoryMarker) -> Self {
         ObjectType::Factory
     }
 }
 
-impl From<Factory> for AssetType {
-    fn from(_: Factory) -> Self {
+impl From<FactoryMarker> for AssetType {
+    fn from(_: FactoryMarker) -> Self {
         Self::Object(ObjectType::Factory)
     }
 }
 
-#[derive(Clone)]
-#[derive(Bundle)]
-pub struct FactoryBundle {
-    pub factory: Factory,
-    pub object_type: ObjectType,
-    pub asset_type: AssetType,
-    pub snowflake: Snowflake,
-    pub health: Health,
-    pub queues: Queues,
-    pub team_player: TeamPlayer,
-    pub selectable: Selectable,
-    pub collider: Collider,
-    pub visibility: Visibility,
-    pub computed_visibility: ComputedVisibility,
-    pub transform: Transform,
-    pub global_transform: GlobalTransform,
+#[superstruct{
+    variants(Bundle, Prefab, Serde),
+    variant_attributes(derive(Debug, Clone)),
+    specific_variant_attributes(
+        Bundle(derive(Bundle)),
+        Serde(derive(Serialize, Deserialize)),
+    ),
+}]
+#[derive(Debug, Clone)]
+pub struct Factory {
+    #[superstruct(only(Bundle, Prefab))]    pub health: Health,
+    #[superstruct(only(Bundle, Prefab))]    pub queues: Queues,
+    #[superstruct(only(Bundle, Prefab))]    pub collider: Collider,
+    #[superstruct(only(Bundle))]            pub factory: FactoryMarker,
+    #[superstruct(only(Bundle))]            pub object_type: ObjectType,
+    #[superstruct(only(Bundle))]            pub asset_type: AssetType,
+    #[superstruct(only(Bundle))]     pub snowflake: Snowflake,
+    #[superstruct(only(Bundle))]            pub selectable: Selectable,
+    #[superstruct(only(Bundle))]            pub visibility: Visibility,
+    #[superstruct(only(Bundle))]            pub computed_visibility: ComputedVisibility,
+    #[superstruct(only(Bundle))]            pub global_transform: GlobalTransform,
+    #[superstruct(only(Bundle, Serde))]     pub team_player: TeamPlayer,
+    #[superstruct(only(Bundle, Serde))]     pub transform: Transform,
+    #[superstruct(only(Serde))]             pub serde_snowflake: Option<Snowflake>,
+    #[superstruct(only(Serde))]             pub serde_health: Option<Health>,
+    #[superstruct(only(Serde))]             pub serde_queues: Option<Queues>,
 }
 
+/*
+    pub snowflake: Option<Snowflake>,
+    pub health: Option<Health>,
+    pub queues: Option<Queues>,
+ */
+
 impl FactoryBundle {
-    pub fn with_spawn_data(mut self, spawn_data: ObjectSpawnEventData) -> Self {
+    pub fn with_spawn_data(mut self, spawn_data: SpawnData) -> Self {
         self.team_player = spawn_data.teamplayer;
         self.transform = spawn_data.transform;
+        self
+    }
+
+    pub fn with_serde_data(mut self, serde_data: Option<SerdeData>) -> Self {
+        let Some(serde_data) = serde_data else { return self; };
+        if let Some(health) = serde_data.health { self.health = health; }
+        if let Some(queues) = serde_data.queues { self.queues = queues; }
         self
     }
 }
@@ -55,9 +78,9 @@ impl FactoryBundle {
 impl From<FactoryPrefab> for FactoryBundle {
     fn from(prefab: FactoryPrefab) -> Self {
         Self {
-            factory: Factory,
-            object_type: Factory.into(),
-            asset_type: Factory.into(),
+            factory: FactoryMarker,
+            object_type: FactoryMarker.into(),
+            asset_type: FactoryMarker.into(),
             snowflake: Snowflake::new(),
             health: prefab.health,
             queues: prefab.queues.clone(),
@@ -72,15 +95,15 @@ impl From<FactoryPrefab> for FactoryBundle {
     }
 }
 
-impl From<(SerdeFactory, &FactoryPrefab)> for FactoryBundle {
-    fn from((save, prefab): (SerdeFactory, &FactoryPrefab)) -> Self {
+impl From<(FactorySerde, &FactoryPrefab)> for FactoryBundle {
+    fn from((save, prefab): (FactorySerde, &FactoryPrefab)) -> Self {
         Self {
-            factory: Factory,
-            object_type: Factory.into(),
-            asset_type: Factory.into(),
-            snowflake: save.snowflake.unwrap_or_else(|| Snowflake::new()),
-            health: save.health.unwrap_or(prefab.health),
-            queues: save.queues.unwrap_or(prefab.queues.clone()),
+            factory: FactoryMarker,
+            object_type: FactoryMarker.into(),
+            asset_type: FactoryMarker.into(),
+            snowflake: save.serde_snowflake.unwrap_or(Snowflake::new()),
+            health: save.serde_health.unwrap_or(prefab.health),
+            queues: save.serde_queues.unwrap_or(prefab.queues.clone()),
             team_player: save.team_player,
             selectable: Selectable::single(),
             collider: prefab.collider.clone(),
@@ -90,13 +113,6 @@ impl From<(SerdeFactory, &FactoryPrefab)> for FactoryBundle {
             global_transform: GlobalTransform::default(),
         }
     }
-}
-
-#[derive(Clone)]
-pub struct FactoryPrefab {
-    pub health: Health,
-    pub queues: Queues,
-    pub collider: Collider,
 }
 
 impl TryFrom<(&ObjectAsset, &HashMap<ObjectType, (ActiveQueue, StackData)>)> for FactoryPrefab {
@@ -118,47 +134,50 @@ impl TryFrom<(&ObjectAsset, &HashMap<ObjectType, (ActiveQueue, StackData)>)> for
     }
 }
 
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
-pub struct SerdeFactory {
-    pub snowflake: Option<Snowflake>,
-    pub health: Option<Health>,
-    pub queues: Option<Queues>,
-    pub team_player: TeamPlayer,
-    pub transform: SerdeTransform,
-}
-
-impl<'a> From<SerdeFactoryQuery<'a>> for SerdeFactory {
+impl<'a> From<SerdeFactoryQuery<'a>> for FactorySerde {
     fn from(object: SerdeFactoryQuery) -> Self {
         Self {
-            snowflake: Some(*object.0),
-            health: object.1.saved(),
-            queues: object.2.saved(),
+            serde_snowflake: Some(*object.0),
+            serde_health: object.1.saved(),
+            serde_queues: object.2.saved(),
             team_player: *object.3,
             transform: (*object.4).into(),
         }
     }
 }
 
-impl From<SerdeFactory> for ObjectSpawnEvent {
-    fn from(value: SerdeFactory) -> Self {
+impl From<FactorySerde> for ObjectSpawnEvent {
+    fn from(value: FactorySerde) -> Self {
         Self(ObjectSpawnEventData{
             object_type: ObjectType::Factory,
-            snowflake: Snowflake::new(),
-            teamplayer: value.team_player,
-            transform: value.transform.into(),
+            spawn_data: SpawnData {
+                snowflake: Snowflake::new(),
+                teamplayer: value.team_player,
+                transform: value.transform.into(),
+            },
+            serde_data: Some(SerdeData {
+                health: value.serde_health,
+                queues: value.serde_queues,
+                ..default()
+            }),
         })
     }
 }
 
-pub struct FactoryPlugin<T: StateData> {
-    state: T,
+pub struct FactoryPlugin<S: StateData> {
+    state: S,
 }
 
-impl<T: StateData> FactoryPlugin<T> {
+impl<S: StateData> FactoryPlugin<S> {
+    pub fn new(state: S) -> Self {
+        Self {
+            state
+        }
+    }
+
     pub fn factory_system(
         mut spawn_events: EventWriter<ObjectSpawnEvent>,
-        mut queues: Query<(&Transform, &TeamPlayer, &mut Queues), With<Factory>>
+        mut queues: Query<(&Transform, &TeamPlayer, &mut Queues), With<FactoryMarker>>
     ) {
         queues.for_each_mut(|(transform, teamplayer, mut queues)| {
 
@@ -167,9 +186,12 @@ impl<T: StateData> FactoryPlugin<T> {
                 transform.translation += transform.forward() * 20.0;
                 let spawn_data = ObjectSpawnEventData {
                     object_type: data.object_type,
-                    snowflake: Snowflake::new(),
-                    teamplayer: *teamplayer,
-                    transform
+                    spawn_data: SpawnData {
+                        snowflake: Snowflake::new(),
+                        teamplayer: *teamplayer,
+                        transform
+                    },
+                    serde_data: None,
                 };
                 spawn_events.send(ObjectSpawnEvent(spawn_data));
             }
@@ -178,9 +200,12 @@ impl<T: StateData> FactoryPlugin<T> {
                 transform.translation += transform.forward() * 20.0;
                 let spawn_data = ObjectSpawnEventData {
                     object_type: data.object_type,
-                    snowflake: Snowflake::new(),
-                    teamplayer: *teamplayer,
-                    transform
+                    spawn_data: SpawnData {
+                        snowflake: Snowflake::new(),
+                        teamplayer: *teamplayer,
+                        transform,
+                    },
+                    serde_data: None,
                 };
                 spawn_events.send(ObjectSpawnEvent(spawn_data));
             }
@@ -191,7 +216,7 @@ impl<T: StateData> FactoryPlugin<T> {
     }
 }
 
-impl<T: StateData> Plugin for FactoryPlugin<T> {
+impl<S: StateData> Plugin for FactoryPlugin<S> {
     fn build(&self, app: &mut App) {
         app.add_system_set(SystemSet::on_update(self.state.clone())
             .with_system(Self::factory_system.label(QueueSystem))

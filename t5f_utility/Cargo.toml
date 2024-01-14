@@ -1,0 +1,12 @@
+[package]
+name = "t5f_utility"
+version = "0.0.1"
+authors = ["Alten Reeves"]
+edition = "2021"
+
+[dependencies]
+bevy = "0.12.*"
+serde = "1.0.191"
+base64 = "0.21.*"
+bincode = "1.3.3"
+easy-gltf = "1.1.1"

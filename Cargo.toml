@@ -1,10 +1,22 @@
 [workspace]
 resolver = "2"
 
+default-members = [
+    "t5f_base",
+    "t5f_client",
+    "t5f_common",
+    "t5f_net",
+    "t5f_server",
+    "t5f_utility",
+]
+
 members = [
-    "the5thfundamental_common",
-    "the5thfundamental_game",
-    # "the5thfundamental_server",
+    "t5f_base",
+    "t5f_client",
+    "t5f_common",
+    "t5f_net",
+    "t5f_server",
+    "t5f_utility",
 ]
 
 [profile.dev.package."*"]

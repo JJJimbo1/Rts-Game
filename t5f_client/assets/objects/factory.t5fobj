@@ -1,0 +1,36 @@
+#![enable(implicit_some)]
+(
+    stack: (
+        Structures,
+        (
+            object: "factory",
+            time_to_build: Duration (
+                secs : 2,
+                nanos : 0,
+            ),
+            cost: 100,
+            buffered: true,
+        )
+    ),
+    health : (
+        max_health : 3000,
+        health : 3000,
+        resistance : 0.0,
+        resistances : (
+            kinetic : 0.5,
+            fire : -0.8,
+            energy : 0.0,
+            sonic : 0.9,
+            explosive : -0.4,
+            shock : 0.0,
+            radioactivity : 0.9,
+        )
+    ),
+    asset_queues: (
+        objects: [
+            "tank_base",
+            "marine_squad",
+        ],
+    ),
+    collider_string: "GAAAAAAAAAACACBBwMzMvQAAIEECACBBwMzMvQAAIEECACBBwMzMvQAAIEEAACBBwMzMvQIAIMEAACBBwMzMvQIAIMEAACBBwMzMvQIAIMEAACBBZmY+QQIAIMEAACBBZmY+QQIAIMEAACBBZmY+QQIAIMEAACDBwMzMvQIAIEEAACDBwMzMvQIAIEEAACDBwMzMvQIAIEECACBBZmY+QQAAIEECACBBZmY+QQAAIEECACBBZmY+QQAAIEECACDBwMzMvQAAIMECACDBwMzMvQAAIMECACDBwMzMvQAAIMECACDBZmY+QQAAIMECACDBZmY+QQAAIMECACDBZmY+QQAAIMEAACDBZmY+QQIAIEEAACDBZmY+QQIAIEEAACDBZmY+QQIAIEEMAAAAAAAAABMAAAAGAAAAAwAAABMAAAADAAAAEAAAAAwAAAAHAAAAFAAAAAwAAAAUAAAAFgAAABUAAAASAAAADwAAABUAAAAPAAAACQAAABEAAAAEAAAAAAAAABEAAAAAAAAACgAAAAUAAAAIAAAADgAAAAUAAAAOAAAAAgAAAAEAAAANAAAAFwAAAAEAAAAXAAAACwAAAA=="
+)

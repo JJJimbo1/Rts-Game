@@ -1,0 +1,8 @@
+[package]
+name = "t5f_ai"
+version = "0.0.1"
+authors = ["Alten Reeves"]
+edition = "2021"
+
+[dependencies]
+bevy = "0.12.*"

@@ -17,7 +17,7 @@ impl CombatPlugin {
     ) {
 
         //TODO: Make sure weapons can only target the target if they are able to.
-        query.for_each_mut(|(transform, mut pathfinder, mut navigator, mut weapon_set, teamplayer)| {
+        query.iter_mut().for_each(|(transform, mut pathfinder, mut navigator, mut weapon_set, teamplayer)| {
             match navigator.pursue {
                 Some(target) => {
                     if let Ok(target_transform) = transforms.get(target) {
@@ -71,15 +71,14 @@ impl CombatPlugin {
         mut weapons : Query<&mut WeaponSet>,
         mut healths : Query<&mut Health>
     ) {
-        weapons.for_each_mut(|mut wep| {
+        weapons.iter_mut().for_each(|mut wep| {
             for weapon in wep.weapons.iter_mut() {
                 if weapon.cooldown > 0.0 {
-                    weapon.cooldown -= time.delta_seconds();
+                    weapon.cooldown -= time.delta_secs();
                 }
                 if weapon.cooldown > 0.0 {
                     continue;
                 }
-                println!("{:?}", weapon.target.get_target());
                 if let Some(mut health) = weapon.target.get_target().and_then(|target| healths.get_mut(target).ok()) {
                     health.damage(weapon.damage, weapon.damage_types);
                     weapon.cooldown = weapon.fire_rate;
@@ -93,7 +92,7 @@ impl CombatPlugin {
         query: Query<(Entity, &Health)>,
         mut commands: Commands,
     ) {
-        query.for_each(|(entity, health)| {
+        query.iter().for_each(|(entity, health)| {
             if health.is_dead() {
                 if let Some(entity_commands) = commands.get_entity(entity) {
                     entity_commands.despawn_recursive();

@@ -17,54 +17,43 @@ impl GameplayUi {
         let font = font_assets.roboto.clone();
         let font_size = FONT_SIZE_LARGE * settings.font_size;
 
-        let mut entity_commands = commands.spawn(NodeBundle {
-            style: Style {
+        let mut entity_commands = commands.spawn((
+            Node {
                 position_type : PositionType::Absolute,
                 right : Val::Px(0.0),
                 bottom : Val::Px(0.0),
                 width: Val::Px(600.0),
                 height: Val::Px(200.0),
-                ..Default::default()
+                ..default()
             },
-            background_color : DARK_BACKGROUND_COLOR.into(),
-            visibility : Visibility::Visible,
-            ..Default::default()
-        });
+            BackgroundColor(DARK_BACKGROUND_COLOR),
+            Visibility::Visible,
+        ));
 
         let container = entity_commands.id();
         let mut resources = None;
 
         entity_commands.with_children(|parent| {
-            resources = Some(parent.spawn(TextBundle {
-                style: Style {
+            resources = Some(parent.spawn((
+                Text::new("$ 0"),
+                TextFont {
+                    font : font.clone(),
+                    font_size,
+                    ..default()
+                },
+                Node {
                     position_type : PositionType::Absolute,
                     top : Val::Px(10.0),
                     left: Val::Px(10.0),
-                    ..Default::default()
+                    ..default()
                 },
-                text: Text::from_section(
-                    "Resources: 0",
-                    TextStyle {
-                        font : font.clone(),
-                        font_size,
-                        color: Color::WHITE,
-                    },
-                ),
-                visibility : Visibility::Inherited,
-                ..Default::default()
-            }).id());
+            )).id());
         });
 
         Self {
             container,
             resources : resources.unwrap(),
         }
-    }
-}
-
-impl Menu for GameplayUi {
-    fn main_container(&self) -> Entity {
-        self.container
     }
 }
 
@@ -88,7 +77,7 @@ impl GamePlayUIPlugin {
     ) {
 
         if let (Ok(mut text), Some(actor)) = (texts.get_mut(menu.resources), actors.commanders.get(&player.0)) {
-            text.sections[0].value = format!("Resources: {}", actor.economy.resources().round());
+            text.0 = format!("$ {}", actor.economy.resources().round());
         }
     }
 }

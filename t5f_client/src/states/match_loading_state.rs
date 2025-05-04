@@ -13,12 +13,10 @@ impl MatchLoadingStatePlugin {
         asset_server: Res<AssetServer>,
     ) {
         if let Some(file) = save_file.file() {
+            println!("FINGING LEVEL ASSET");
             let handle = asset_server.load::<SaveFile>(file);
             *save_file.as_mut() = SaveFile::Handle(handle);
         }
-        // commands.insert_resource(Player(TeamPlayer::new(1, 0)));
-        // let level = asset_loader.load(file.0.clone());
-        // load_event_write.send(LoadFile(level.clone()));
     }
 
     pub fn begin_loading(
@@ -28,17 +26,17 @@ impl MatchLoadingStatePlugin {
         mut load_event: EventWriter<LoadEvent>,
     ) {
         if let Some(handle) = save_file.handle() {
-            match asset_server.load_state(handle.clone()) {
+            match asset_server.load_state(&handle) {
                 LoadState::NotLoaded => { println!("NOT LOADED"); },
                 LoadState::Loading => { println!("LOADING"); },
                 LoadState::Loaded => {
                     println!("LOADED");
-                    if let Some(save) = save_file_assets.get(handle.clone()) {
+                    if let Some(save) = save_file_assets.get(&handle) {
                         *save_file.as_mut() = save.clone();
                         load_event.send(LoadEvent::Load("".to_string()));
                     }
                 },
-                LoadState::Failed => { println!("FAILED"); },
+                LoadState::Failed(_) => { println!("FAILED"); },
             }
         }
     }

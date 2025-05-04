@@ -1,11 +1,9 @@
 use std::time::Duration;
-use bevy::{prelude::Component, utils::HashMap};
-use serde::{Serialize, Deserialize,};
+use bevy::{utils::HashMap, prelude::*};
+use serde::{Serialize, Deserialize};
 use crate::*;
 
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
-#[derive(Component)]
+#[derive(Debug, Clone, Serialize, Deserialize, Component)]
 pub struct Queues {
     pub queues: HashMap<ActiveQueue, Queue>,
 }
@@ -26,8 +24,8 @@ impl Queues {
     }
 }
 
-impl From<(&AssetQueues, &HashMap<String, (ActiveQueue, StackData)>)> for Queues {
-    fn from((prefab, stacks): (&AssetQueues, &HashMap<String, (ActiveQueue, StackData)>)) -> Self {
+impl From<(&AssetQueues, &HashMap<ObjectType, (ActiveQueue, StackData)>)> for Queues {
+    fn from((prefab, stacks): (&AssetQueues, &HashMap<ObjectType, (ActiveQueue, StackData)>)) -> Self {
         let mut queues = Queues::new();
         for s in prefab.objects.iter() {
             let (active, data) = &stacks[s];
@@ -37,8 +35,17 @@ impl From<(&AssetQueues, &HashMap<String, (ActiveQueue, StackData)>)> for Queues
     }
 }
 
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
+impl Slim for Queues {
+    fn slim(&self) -> Option<Self> {
+        if self.is_empty() {
+            None
+        } else {
+            Some(self.clone())
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Queue {
     pub timer: f64,
     pub stacks: Vec<StackData>,
@@ -104,8 +111,7 @@ impl Queue {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct ZipQueue<S: Eq + Clone> {
     spine: Vec<S>,
 }
@@ -185,7 +191,7 @@ pub enum ActiveQueue {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
 pub struct StackData {
-    pub object: String,
+    pub object: ObjectType,
     pub time_to_build: Duration,
     pub cost: u128,
     pub buffered: bool,
@@ -201,7 +207,7 @@ pub struct QueueObject {
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 pub struct AssetQueues {
-    pub objects: Vec<String>
+    pub objects: Vec<ObjectType>
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

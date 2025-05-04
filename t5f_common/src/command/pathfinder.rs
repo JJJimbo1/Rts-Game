@@ -3,6 +3,8 @@ use serde::{Serialize, Deserialize};
 use crossbeam_channel::{unbounded, bounded, Sender, Receiver};
 use pathing::*;
 
+use crate::{Navigation, OptOut, Slim};
+
 #[derive(Resource, Deref)]
 pub struct PFStreamInput(Sender<(Entity, Vec2, Vec2)>);
 
@@ -107,6 +109,15 @@ impl PathFinder {
     }
 }
 
+impl Slim for PathFinder {
+    fn slim(&self) -> Option<Self> {
+        match self {
+            Self::Idle => None,
+            _ => Some(self.clone()),
+        }
+    }
+}
+
 pub struct PathFindingPlugin;
 
 impl PathFindingPlugin {
@@ -165,11 +176,11 @@ impl PathFindingPlugin {
         input: Res<PFStreamInput>,
         output: Res<PFStreamOutput>,
         mut path_finders: ParamSet<(
-            Query<(Entity, &PathFinder), Changed<PathFinder>>,
+            Query<(Entity, &PathFinder), (Changed<PathFinder>, Without<OptOut<Navigation>>)>,
             Query<&mut PathFinder>,
         )>,
     ) {
-        path_finders.p0().for_each(|(entity, pathfinder)| {
+        path_finders.p0().iter().for_each(|(entity, pathfinder)| {
             if let Some((start, end)) = pathfinder.trip() {
                 let _ = input.try_send((entity, start, end));
             }

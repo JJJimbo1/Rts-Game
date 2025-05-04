@@ -1,7 +1,17 @@
+use bevy_rapier3d::prelude::Velocity;
 pub use bevy_rapier3d::*;
 
 use bevy::prelude::*;
 use plugin::{RapierPhysicsPlugin, NoUserData};
+
+use crate::Slim;
+
+
+impl Slim for Velocity {
+    fn slim(&self) -> Option<Self> {
+        Some(self.clone())
+    }
+}
 
 #[derive(Default)]
 pub struct PhysicsPlugin;
@@ -25,7 +35,7 @@ pub struct LocalBounds {
 fn bound_system(
     mut bounded_query : Query<(&mut Transform, &LocalBounds)>,
 ) {
-    bounded_query.for_each_mut(|(mut tran, lob)| {
+    bounded_query.iter_mut().for_each(|(mut tran, lob)| {
         tran.translation.x = tran.translation.x.clamp(lob.x.x, lob.x.y);
         tran.translation.y = tran.translation.y.clamp(lob.y.x, lob.y.y);
         tran.translation.z = tran.translation.z.clamp(lob.z.x, lob.z.y);

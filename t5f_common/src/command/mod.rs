@@ -22,75 +22,48 @@ pub use teamplayer::*;
 
 pub use pathing::*;
 
-use bevy::{ecs::{event::Event, entity::Entity}, math::Vec2, utils::HashSet, transform::components::Transform};
+use bevy::{ecs::{event::Event, entity::Entity}, math::Vec2, transform::components::Transform};
+
+use crate::ObjectType;
 
 #[derive(Debug, Clone)]
 #[derive(Event)]
 pub struct CommandEvent {
     pub player: TeamPlayer,
-    pub object: Option<CommandObject>,
+    pub objects: Vec<Entity>,
     pub command: CommandType,
 }
 
 impl CommandEvent {
-    pub fn activate_command(&self) -> Option<Vec<Entity>> {
+    pub fn activate(&self) -> Option<&Vec<Entity>> {
         if self.command.is_activate() {
-            self.object.as_ref().and_then(|object| Some(object.entities().clone()))
+            Some(&self.objects)
         } else {
             None
         }
     }
 
-    pub fn attack_command(&self) -> Option<Vec<Entity>> {
+    pub fn attack(&self) -> Option<&Vec<Entity>> {
         if self.command.is_attack() {
-            self.object.as_ref().and_then(|object| Some(object.entities().clone()))
+            Some(&self.objects)
         } else {
             None
         }
     }
 
-    pub fn build_command(&self) -> Option<Vec<Entity>> {
+    pub fn build(&self) -> Option<&Vec<Entity>> {
         if self.command.is_build() {
-            self.object.as_ref().and_then(|object| Some(object.entities().clone()))
+            Some(&self.objects)
         } else {
             None
         }
     }
 
-    pub fn move_command(&self) -> Option<Vec<Entity>> {
+    pub fn r#move(&self) -> Option<&Vec<Entity>> {
         if self.command.is_move() {
-            self.object.as_ref().and_then(|object| Some(object.entities().clone()))
+            Some(&self.objects)
         } else {
             None
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum CommandObject {
-    Structure(Entity),
-    Units(HashSet<Entity>)
-}
-
-impl CommandObject {
-    pub fn structure(&self) -> Option<Entity> {
-        match self {
-            Self::Structure(entity) => { Some(*entity) }
-            _ => { None }
-        }
-    }
-
-    pub fn units(&self) -> Option<Vec<Entity>> {
-        match self {
-            Self::Units(entities) => { Some(entities.iter().cloned().collect()) }
-            _ => { None }
-        }
-    }
-
-    pub fn entities(&self) -> Vec<Entity> {
-        match self {
-            Self::Structure(entity) => { vec![*entity] }
-            Self::Units(entities) => { entities.iter().cloned().collect() }
         }
     }
 }
@@ -135,6 +108,6 @@ impl CommandType {
 
 #[derive(Debug, Clone)]
 pub enum BuildStatus {
-    Begin(String),
+    Begin(ObjectType),
     Finish(Transform),
 }

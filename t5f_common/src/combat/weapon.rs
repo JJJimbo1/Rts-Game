@@ -1,6 +1,8 @@
 use bevy::prelude::{Component, Entity};
 use serde::{Serialize, Deserialize};
 
+use crate::Slim;
+
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
@@ -24,7 +26,7 @@ impl Target {
 pub enum TargetForce {
     Mine,
     Ally,
-    MineOrAlly,
+    Team,
     Enemy,
 }
 
@@ -38,13 +40,11 @@ pub enum TargetType {
 #[derive(Debug, Clone, Copy)]
 #[derive(Serialize, Deserialize)]
 pub struct DamageTypes {
-    pub kinetic : f32,
-    pub fire : f32,
-    pub energy : f32,
-    pub sonic : f32,
-    pub explosive : f32,
-    pub shock : f32,
-    pub radioactivity : f32,
+    pub kinetic: f32,
+    pub fire: f32,
+    pub explosive: f32,
+    pub laser: f32,
+    pub shock: f32,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -86,5 +86,21 @@ impl WeaponSet {
         //     }
         // }
         // true
+    }
+}
+
+impl Slim for WeaponSet {
+    fn slim(&self) -> Option<Self> {
+        let mut cooled = true;
+        for weapon in self.weapons.iter() {
+            if weapon.cooldown > 0.0 {
+                cooled = false;
+            }
+        }
+        if self.no_targets().unwrap_or(true) && cooled {
+            None
+        } else {
+            Some(self.clone())
+        }
     }
 }

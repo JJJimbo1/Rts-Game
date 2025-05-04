@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use serde::{Serialize, Deserialize,};
 use t5f_utility::mathfu::d2;
-use xtrees::quad::*;
+use xtrees::*;
 use crate::{weapon::{TargetForce, Weapon}, commander::Commanders};
 
 #[derive(Debug, Default, Clone, Copy, Hash, Eq)]
@@ -67,7 +67,7 @@ impl TeamPlayerWorld {
             layers : HashMap::new(),
         };
         for a in actors.commanders.keys() {
-            tpw.layers.insert(*a, QuadTree::new(Quad::new(0.0, 0.0, map.0.x as f32, map.0.y as f32), 17, 8));
+            tpw.layers.insert(*a, QuadTree::new(Quad::new(0.0, 0.0, map.0.x as f32, map.0.y as f32)));
         }
         tpw
     }
@@ -75,7 +75,7 @@ impl TeamPlayerWorld {
     pub fn sort(tps : Query<&TeamPlayer>) -> Vec<Vec<usize>> {
         let mut team_capacity : usize = 0;
 
-        tps.for_each(|tp| {
+        tps.iter().for_each(|tp| {
             if tp.team() + 1 > team_capacity {
                 team_capacity = tp.team() + 1;
             }
@@ -87,7 +87,7 @@ impl TeamPlayerWorld {
             player_capacities.insert(i, 0);
         }
 
-        tps.for_each(|tp| {
+        tps.iter().for_each(|tp| {
             if tp.player() + 1 > player_capacities[tp.team()] {
                 player_capacities[tp.team()] = tp.player() + 1;
             }
@@ -124,7 +124,7 @@ impl TeamPlayerWorld {
         team_players.get(e).is_ok()
     }
 
-    pub fn is_mine(&self, e : Entity, player_id : TeamPlayer, team_players : Query<&TeamPlayer>) -> Result<bool, String> {
+    pub fn is_players(&self, e : Entity, player_id : TeamPlayer, team_players : Query<&TeamPlayer>) -> Result<bool, String> {
         match team_players.get(e) {
             Ok(x) => {
                 Ok(x.team() == player_id.team() && x.player() == player_id.player())
@@ -146,7 +146,7 @@ impl TeamPlayerWorld {
         }
     }
 
-    pub fn is_mine_or_ally(&self, e : Entity, player_id : TeamPlayer, team_players : Query<&TeamPlayer>) -> Result<bool, String> {
+    pub fn is_players_or_ally(&self, e : Entity, player_id : TeamPlayer, team_players : Query<&TeamPlayer>) -> Result<bool, String> {
         match team_players.get(e) {
             Ok(x) => {
                 Ok(x.team() == player_id.team())
@@ -173,7 +173,7 @@ impl TeamPlayerWorld {
         match weapon.target_force {
             TargetForce::Mine => { self.search_mine(id, pos, weapon.range) },
             TargetForce::Ally => { self.search_allies(id, pos, weapon.range) },
-            TargetForce::MineOrAlly => { self.search_mine_or_allies(id, pos, weapon.range) },
+            TargetForce::Team => { self.search_mine_or_allies(id, pos, weapon.range) },
             TargetForce::Enemy => { self.search_enemies(id, pos, weapon.range) },
         }.iter().filter_map(|(e, pos)| if d2::distance_magnitude((position.x, position.z), (pos.x, pos.y)) <= weapon.range.powi(2) { Some(*e) } else { None}).collect()
 
@@ -184,7 +184,7 @@ impl TeamPlayerWorld {
         let mut results : Vec<(Entity, Vec2)> = Vec::new();
         for i in self.layers.iter() {
             if i.0.team() == id.team() && i.0.player() == id.player() {
-                for sr in i.1.search_simple(&Quad::new(position.x, position.y, range, range)).iter() {
+                for sr in i.1.search(&Quad::new(position.x, position.y, range, range)).iter() {
                     results.push((sr.0, Vec2::new(sr.1.x, sr.1.y)));
                 }
             }
@@ -196,7 +196,7 @@ impl TeamPlayerWorld {
         let mut results : Vec<(Entity, Vec2)> = Vec::new();
         for i in self.layers.iter() {
             if i.0.team() == id.team() && i.0.player() != id.player() {
-                for sr in i.1.search_simple(&Quad::new(position.x, position.y, range, range)).iter() {
+                for sr in i.1.search(&Quad::new(position.x, position.y, range, range)).iter() {
                     results.push((sr.0, Vec2::new(sr.1.x, sr.1.y)));
                 }
             }
@@ -208,7 +208,7 @@ impl TeamPlayerWorld {
         let mut results : Vec<(Entity, Vec2)> = Vec::new();
         for i in self.layers.iter() {
             if i.0.team() == id.team() {
-                for sr in i.1.search_simple(&Quad::new(position.x, position.y, range, range)).iter() {
+                for sr in i.1.search(&Quad::new(position.x, position.y, range, range)).iter() {
                     results.push((sr.0, Vec2::new(sr.1.x, sr.1.y)));
                 }
             }
@@ -220,7 +220,7 @@ impl TeamPlayerWorld {
         let mut results : Vec<(Entity, Vec2)> = Vec::new();
         for i in self.layers.iter() {
             if i.0.team() != id.team() {
-                for sr in i.1.search_simple(&Quad::new(position.x, position.y, range, range)).iter() {
+                for sr in i.1.search(&Quad::new(position.x, position.y, range, range)).iter() {
                     results.push((sr.0, Vec2::new(sr.1.x, sr.1.y)));
                 }
             }
@@ -242,7 +242,7 @@ impl TeamPlayerWorld {
     pub fn under_player_count(team_player : TeamPlayer, tps : Query<&TeamPlayer>) -> usize {
         let mut count : usize = 0;
 
-        tps.for_each(|tp| {
+        tps.iter().for_each(|tp| {
             if *tp == team_player {
                 count += 1;
             }

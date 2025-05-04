@@ -1,26 +1,16 @@
 use bevy::app::AppExit;
 use crate::*;
 
-// #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
-// enum MainMenuSystems {
-//     Update,
-//     ButtonUpdater,
-//     MainMenuEventUpdater,
-//     // MainMenuEventReader,
-// }
+pub struct MainMenuPlugin;
 
-
-
-pub struct MainUIPlugin;
-
-impl MainUIPlugin {
+impl MainMenuPlugin {
     pub fn spawn_camera(
         mut commands: Commands
     ) {
-        commands.spawn(Camera3dBundle::default()).insert(DeleteOnStateChange);
+        commands.spawn(Camera3d::default()).insert(DeleteOnStateChange);
     }
 
-    pub fn handle_buttons(
+    pub fn main_menu_ui_button_event_reader(
         mut main_menu_button_event_reader : EventReader<TopMenuButtonsEvent>,
         mut campaign_button_event_reader : EventReader<CampaignButtonsEvent>,
         mut skirmish_button_event_reader : EventReader<SkirmishButtonsEvent>,
@@ -33,15 +23,15 @@ impl MainUIPlugin {
         for event in main_menu_button_event_reader.read() {
             match *event {
                 TopMenuButtonsEvent::Campaign => {
-                    main_menu.skirmish.close(&mut visible_query);
-                    main_menu.campaign.toggle(&mut visible_query);
+                    close(&mut visible_query, main_menu.custom_game.container);
+                    toggle(&mut visible_query, main_menu.campaign.container);
                 },
                 TopMenuButtonsEvent::Skirmish => {
-                    main_menu.campaign.close(&mut visible_query);
-                    main_menu.skirmish.toggle(&mut visible_query);
+                    close(&mut visible_query, main_menu.campaign.container);
+                    toggle(&mut visible_query, main_menu.custom_game.container);
                 }
                 TopMenuButtonsEvent::Quit => {
-                    quit_app.send(AppExit);
+                    quit_app.send(AppExit::Success);
                 },
                 _ => { }
             }
@@ -50,15 +40,15 @@ impl MainUIPlugin {
         for event in campaign_button_event_reader.read() {
             match *event {
                 CampaignButtonsEvent::Continue => {
-                    commands.insert_resource(SaveFile::File("saves/developer_test.t5fsav".to_string()));
+                    commands.insert_resource(SaveFile::File("saves/developer.ron".to_string()));
                     state.set(GameState::MatchLoadingState);
                 },
                 CampaignButtonsEvent::LevelSelect => {
-                    commands.insert_resource(SaveFile::File("levels/developer.t5flvl".to_string()));
+                    commands.insert_resource(SaveFile::File("levels/developer.ron".to_string()));
                     state.set(GameState::MatchLoadingState);
                 }
                 CampaignButtonsEvent::Back => {
-                    main_menu.campaign.close(&mut visible_query);
+                    close(&mut visible_query, main_menu.campaign.container);
                 }
                 _ => { }
             }
@@ -67,24 +57,25 @@ impl MainUIPlugin {
         for event in skirmish_button_event_reader.read() {
             match *event {
                 SkirmishButtonsEvent::Back => {
-                    main_menu.skirmish.close(&mut visible_query);
+                    close(&mut visible_query, main_menu.custom_game.container);
                 },
+                SkirmishButtonsEvent::NewGame => {
+                    state.set(GameState::CustomGame);
+                }
                 _ => { }
             }
         }
     }
 }
 
-impl Plugin for MainUIPlugin {
+impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_systems(OnEnter(GameState::MainMenu), (
                 Self::spawn_camera,
-                create_main_menu,
             ))
             .add_systems(Update, (
-                main_menu_ui_button_event_writer_system.after(button_updater_system),
-                Self::handle_buttons.after(main_menu_ui_button_event_writer_system)
+                Self::main_menu_ui_button_event_reader.after(MainMenuUIPlugin::main_menu_ui_button_event_writer)
             ).run_if(in_state(GameState::MainMenu)))
             .add_systems(OnExit(GameState::MainMenu), cleanup_entities)
         ;

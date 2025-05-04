@@ -12,24 +12,24 @@ impl ClientUIPlugin {
             (&Interaction, &Children, &InheritedVisibility),
             (Changed<Interaction>, With<Button>, Without<InactiveButton>),
         >,
-        mut text_query: Query<&mut Text>,
+        mut text_query: Query<&mut TextColor>,
     ) {
-        interaction_query.for_each(|(interaction, children, visible)| {
+        interaction_query.iter().for_each(|(interaction, children, visible)| {
             children.iter().for_each(|e| {
                 if let Ok(mut text) = text_query.get_mut(*e) {
                     match *interaction {
                         Interaction::Pressed => {
                             if visible.get() {
-                                text.sections.iter_mut().for_each(|ts| ts.style.color = TEXT_COLOR_PRESS);
+                                text.0 = TEXT_COLOR_PRESS;
                             }
                         }
                         Interaction::Hovered => {
                             if visible.get() {
-                                text.sections.iter_mut().for_each(|ts| ts.style.color = TEXT_COLOR_HOVER);
+                                text.0 = TEXT_COLOR_HOVER;
                             }
                         }
                         Interaction::None => {
-                            text.sections.iter_mut().for_each(|ts| ts.style.color = TEXT_COLOR_NORMAL);
+                            text.0 = TEXT_COLOR_NORMAL;
                         }
                     }
                 }
@@ -55,7 +55,7 @@ impl PluginGroup for ClientUIPlugins {
             .add(DebugUIPlugin)
             .add(GamePlayUIPlugin)
             .add(HealthBarUIPlugin)
-            .add(MainUIPlugin);
+            .add(MainMenuUIPlugin);
 
         group
     }

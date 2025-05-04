@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-// use log::info;
 use crate::*;
 
 pub struct LoadingStatePlugin;
@@ -13,9 +12,9 @@ impl LoadingStatePlugin {
         commands.insert_resource(CameraSettings::default());
         commands.insert_resource(MenuSettings { font_size : 1.0 });
         commands.insert_resource(ButtonMaterials {
-            normal: materials.add(TEXT_COLOR_NORMAL.into()),
-            hovered: materials.add(TEXT_COLOR_HOVER.into()),
-            pressed: materials.add(TEXT_COLOR_PRESS.into()),
+            normal: materials.add(TEXT_COLOR_NORMAL),
+            hovered: materials.add(TEXT_COLOR_HOVER),
+            pressed: materials.add(TEXT_COLOR_PRESS),
         });
         commands.insert_resource(CameraRaycast::default());
         commands.insert_resource(ContextFocus(None));

@@ -77,7 +77,9 @@ pub enum CommanderType {
 #[derive(Debug, Clone, Copy)]
 #[derive(Serialize, Deserialize)]
 pub enum AIDifficulty {
-    Easy, Normal, Hard,
+    Easy,
+    Normal,
+    Hard,
     // Brutal, WurtziteBoronNitride, Custom
 }
 

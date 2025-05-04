@@ -17,19 +17,19 @@ impl CommandPlugin {
         mut pathfinders: Query<(Entity, &Transform, &mut PathFinder, &mut Navigator)>,
     ) {
         for command in commands.read() {
-            match (&command.command, &command.object) {
-                (CommandType::Move(destination), Some(CommandObject::Units(units))) => {
-                    let spread = (units.len() as f32).sqrt();
-                    pathfinders.iter_mut().filter(|(entity, _, _, _)| units.contains(entity)).for_each(|(_, transform, mut pathfinder, mut navigator)| {
+            match command.command {
+                CommandType::Move(destination) => {
+                    let spread = (command.objects.len() as f32).sqrt();
+                    pathfinders.iter_mut().filter(|(entity, _, _, _)| command.objects.contains(entity)).for_each(|(_, transform, mut pathfinder, mut navigator)| {
                         let start = transform.translation.xz();
-                        let end = *destination + Vec2::new(rand.range(-spread, spread), rand.range(-spread, spread));
+                        let end = destination + Vec2::new(rand.range(-spread, spread), rand.range(-spread, spread));
                         pathfinder.set_trip((start, end));
                         navigator.pursue = None;
                     });
                 },
-                (CommandType::Attack(target), Some(CommandObject::Units(units))) => {
-                    pathfinders.iter_mut().filter(|(entity, _, _, _)| units.contains(entity)).for_each(|(_, _, _, mut navigator)| {
-                        navigator.pursue = Some(*target);
+                CommandType::Attack(target) => {
+                    pathfinders.iter_mut().filter(|(entity, _, _, _)| command.objects.contains(entity)).for_each(|(_, _, _, mut navigator)| {
+                        navigator.pursue = Some(target);
                     });
                 }
                 _ => { },
@@ -48,7 +48,7 @@ impl CommandPlugin {
         } else {
             teamplayer_world.clear_trees();
         }
-        query.for_each(|(ent, tran, _, tp)| {
+        query.iter().for_each(|(ent, tran, _, tp)| {
             //TODO: Fix Extents
             let quad = Quad::new(tran.translation.x, tran.translation.z, 0.5, 0.5);
             teamplayer_world.insert(*tp, ent, quad);
@@ -57,31 +57,30 @@ impl CommandPlugin {
 
     fn follow_path(
         mut gizmos: Gizmos,
+        time: Res<Time>,
         mut followers : Query<(&mut PathFinder, &mut Transform, &mut Velocity, &Navigator)>,
     ) {
-        followers.for_each_mut(|(pathfinder, tran, _, _)| {
+        followers.iter_mut().for_each(|(pathfinder, tran, _, _)| {
             let Some(path) = pathfinder.path() else { return; };
             if let Some(x) = path.first() {
-                gizmos.line(tran.translation.xz().extend(1.0).xzy(), x.extend(1.0).xzy(), Color::Rgba{ red : 1.0, green : 0.2, blue : 0.2, alpha : 1.0});
+                gizmos.line(tran.translation.xz().extend(1.0).xzy(), x.extend(1.0).xzy(), Color::srgba( 1.0, 0.2, 0.2, 1.0));
             }
             for path in path.windows(2) {
                 let previous = path[0];
                 let current = path[1];
-                gizmos.line(previous.extend(1.0).xzy(), current.extend(1.0).xzy(), Color::Rgba{ red : 1.0, green : 0.2, blue : 0.2, alpha : 1.0});
+                gizmos.line(previous.extend(1.0).xzy(), current.extend(1.0).xzy(), Color::srgba(1.0, 0.2, 0.2, 1.0));
             }
         });
 
-        //TODO: Fix fucked turning.
         //TODO: Implement nice looking driving behaviour.
-        followers.for_each_mut(|(mut pathfinder, mut transform, mut velocity, navigator)| {
+        followers.iter_mut().for_each(|(mut pathfinder, mut transform, mut velocity, navigator)| {
             let Some(path) = pathfinder.path_mut() else { return; };
             let y = transform.translation.y;
             match (path.get(0).cloned(), path.get(1).cloned()) {
                 (Some(first), Some(_second)) => {
                     let desired_rotation = transform.looking_at(first.extend(y).xzy(), Vec3::Y).rotation;
-                    // println!("{}", desired_rotation);
                     let difference = transform.rotation.angle_between(desired_rotation);
-                    let speed = 0.025 / difference;
+                    let speed = (1.5 / difference) * time.delta_secs();
                     let new_rotation = transform.rotation.slerp(desired_rotation, speed.clamp(0.0, 1.0));
                     transform.rotation = new_rotation;
 
@@ -93,15 +92,10 @@ impl CommandPlugin {
                     }
                 },
                 (Some(first), None) => {
-                    // println!();
                     let desired_rotation = transform.looking_at(first.extend(y).xzy(), Vec3::Y).rotation;
-                    // println!("{}", desired_rotation);
                     let difference = transform.rotation.angle_between(desired_rotation);
-                    // println!("{}", difference);
-                    let speed = 0.025 / difference;
-                    // println!("{}", speed);
+                    let speed = (1.5 / difference) * time.delta_secs();
                     let new_rotation = transform.rotation.slerp(desired_rotation, speed.clamp(0.0, 1.0));
-                    // println!("{}", new_rotation);
                     transform.rotation = new_rotation;
 
                     let distance = first.distance(transform.translation.xz());
@@ -128,12 +122,12 @@ pub struct CommandSystems;
 impl Plugin for CommandPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<CommandEvent>();
-        let commanders = app.world.get_resource_or_insert_with(|| Commanders::default()).clone();
-        let bounds = app.world.get_resource_or_insert_with(|| MapBounds::default()).clone();
-        app.world.get_resource_or_insert_with(|| TeamPlayerWorld::new(&commanders, &bounds));
+        let commanders = app.world_mut().get_resource_or_insert_with(|| Commanders::default()).clone();
+        let bounds = app.world_mut().get_resource_or_insert_with(|| MapBounds::default()).clone();
+        app.world_mut().get_resource_or_insert_with(|| TeamPlayerWorld::new(&commanders, &bounds));
 
-        app.world.get_resource_or_insert_with(|| GridMap(DS2Map::new()));
-        app.world.get_resource_or_insert_with(|| GridSpace::default());
+        app.world_mut().get_resource_or_insert_with(|| GridMap(DS2Map::new()));
+        app.world_mut().get_resource_or_insert_with(|| GridSpace::default());
 
         app
             .add_plugins(PathFindingPlugin)

@@ -22,12 +22,8 @@ pub struct ImageAssets {
     pub white_dotted_box: Handle<Image>,
     #[asset(path = "textures/ui/gold_dotted_box.png")]
     pub gold_dotted_box: Handle<Image>,
-    #[asset(path = "textures/ui/health_bar_start.png")]
-    pub health_bar_start: Handle<Image>,
-    #[asset(path = "textures/ui/health_bar_middle.png")]
-    pub health_bar_middle: Handle<Image>,
-    #[asset(path = "textures/ui/health_bar_end.png")]
-    pub health_bar_end: Handle<Image>,
+    #[asset(path = "textures/ui/health_bar.png")]
+    pub health_bar: Handle<Image>,
     #[asset(path = "textures/ui/health_bar_green.png")]
     pub health_bar_green: Handle<Image>,
     #[asset(path = "textures/ui/selection_box.png")]

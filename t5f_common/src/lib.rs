@@ -1,18 +1,21 @@
+pub mod base;
 pub mod combat;
 pub mod command;
+pub mod disk;
+pub mod net;
 pub mod production;
-pub mod identifier;
 pub mod physics;
-pub mod saveload;
 
+pub use base::*;
 pub use combat::*;
 pub use command::*;
+pub use disk::*;
+pub use net::*;
 pub use production::*;
-pub use identifier::*;
 pub use physics::*;
-pub use saveload::*;
 
-use bevy::{ecs::{schedule::{SystemSet, States}, component::Component}, app::PluginGroup};
+use std::marker::PhantomData;
+use bevy::prelude::*;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(States)]
@@ -21,6 +24,7 @@ pub enum GameState {
     AssetLoading,
     Loading,
     MainMenu,
+    CustomGame,
     MatchLoadingState,
     // MatchLoadingState(String),
     SingleplayerGame,
@@ -31,6 +35,25 @@ pub enum GameState {
 pub struct DeleteOnStateChange;
 #[derive(Debug, Clone, Copy, Component)]
 pub struct DontDeleteOnStateChange;
+
+
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct OptOut<T: OptOutSytem>(PhantomData<T>);
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct Navigation;
+
+impl OptOutSytem for Navigation { }
+
+#[derive(Debug, Clone, Copy, Component)]
+pub struct Targeting;
+
+impl OptOutSytem for Targeting { }
+
+pub trait OptOutSytem { }
+
+
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
 pub enum CommonSystemSets {

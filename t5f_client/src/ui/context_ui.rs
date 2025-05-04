@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, ui::widget::NodeImageMode};
 use serde::{Serialize, Deserialize};
 use t5f_common::*;
 use crate::*;
@@ -43,8 +43,6 @@ pub struct ContextFocus(pub Option<Entity>);
 #[derive(Resource)]
 pub struct ContextMenu {
     container : Entity,
-    // building_tab : Entity,
-    // unit_tab : Entity,
     active_tab : ActiveTab,
     list_container : Entity,
     list_icons : Vec<Entity>,
@@ -60,12 +58,12 @@ impl ContextMenu {
         mut visible_query: Query<(&mut Visibility, &InheritedVisibility)>,
         children_query: Query<&Children>,
     ) {
-        set_visible(true, self.list_container, &mut visible_query);
+        set_visibility(&mut visible_query, self.list_container, true);
         let stacks = &queue.stacks;
         let count = stacks.len().clamp(0, 9);
         for i in 0..count {
             let stack_data = stacks[i].clone();
-            set_visible(true, self.list_icons[i], &mut visible_query);
+            set_visibility(&mut visible_query, self.list_icons[i], true);
 
             if let (Ok(children), Ok(mut but)) = (children_query.get(self.list_icons[i]), context_menu_buttons.get_mut(self.list_icons[i])) {
                 let empty = queue.buffer.height(&stack_data) == 0;
@@ -76,7 +74,7 @@ impl ContextMenu {
                 }
                 for child in children.iter() {
                     if let Ok(mut text) = texts.get_mut(*child) {
-                        text.sections[0].value = format!("{}: {}", stack_data.object, queue.zip_queue.height(&stack_data));
+                        text.0 = format!("{}: {}", stack_data.object, queue.zip_queue.height(&stack_data));
                     } else if let Ok(mut texture) = ui_colors.get_mut(*child) {
                         if !empty && stack_data.buffered {
                             *texture = GREEN.into();
@@ -88,14 +86,8 @@ impl ContextMenu {
             }
         }
         for i in count..9 {
-            set_visible(false, self.list_icons[i], &mut visible_query);
+            set_visibility(&mut visible_query, self.list_icons[i], false);
         }
-    }
-}
-
-impl Menu for ContextMenu {
-    fn main_container(&self) -> Entity {
-        self.container
     }
 }
 
@@ -106,28 +98,27 @@ impl ContextUIPlugin {
         settings : Res<MenuSettings>,
         font_assets: Res<FontAssets>,
         image_assets: Res<ImageAssets>,
-        mut nine_patches : ResMut<Assets<NinePatchBuilder<()>>>,
         mut materials : ResMut<Assets<ColorMaterial>>,
         mut commands : Commands,
     ) {
         let font = font_assets.roboto.clone();
         let font_size = FONT_SIZE_SMALL * settings.font_size / 1.5;
 
-        let mut entity_commands = commands.spawn(NodeBundle {
-            style : Style {
+        let mut entity_commands = commands.spawn((
+            Node {
                 position_type : PositionType::Absolute,
                 top : Val::Px(50.0),
                 right : Val::Px(50.0),
                 width: Val::Px(300.0),
                 height: Val::Px(600.0),
                 justify_content: JustifyContent::Center,
-                ..Default::default()
+                ..default()
             },
-            background_color : DARK_BACKGROUND_COLOR.into(),
-            visibility : Visibility::Visible,
-            ..Default::default()
-        });
-        entity_commands.insert(BlocksRaycast);
+            Interaction::None,
+            BackgroundColor(DARK_BACKGROUND_COLOR),
+            Visibility::Visible,
+            BlocksRaycast,
+        ));
 
         let container_entity = entity_commands.id();
 
@@ -160,57 +151,60 @@ impl ContextUIPlugin {
         let mut y : f32 = 10.0;
         let mut roll : u8 = 0;
         let mut icons = Vec::new();
-        //*Buildings
+
+        let width = 80.0;
+        let height = 80.0;
 
         for _ in 0..9 {
             commands.entity(list_entity.unwrap()).with_children(|parent| {
-                let icon = parent.spawn(ButtonBundle {
-                    style : Style {
+                let icon = parent.spawn( (
+                    Button,
+                    Node {
                         position_type : PositionType::Absolute,
                         left : Val::Px(x),
                         top : Val::Px(y),
-                        width: Val::Px(80.0),
-                        height: Val::Px(80.0),
+                        width: Val::Px(width),
+                        height: Val::Px(height),
                         justify_content : JustifyContent::Center,
                         align_items : AlignItems::Center,
-                        ..Default::default()
+                        ..default()
                     },
-                    background_color : BLACK.into(),
-                    visibility : Visibility::Inherited,
-                    ..Default::default()
-                }).insert(ContextMenuButtonsEvent::BeginButton(None)).insert(BlocksRaycast)
+                    BackgroundColor(Color::BLACK.into()),
+                    Visibility::Inherited,
+                    ContextMenuButtonsEvent::BeginButton(None),
+                    BlocksRaycast
+                ))
                 .with_children(|parent| {
-                    parent.spawn(NinePatchBundle {
-                        style: Style {
-                            position_type: PositionType::Absolute,
-                            width: Val::Percent(100.0),
-                            height: Val::Percent(100.0),
-                            ..Default::default()
+
+                    parent.spawn((
+                        ImageNode {
+                        image: image_assets.white_box.clone(),
+                        image_mode: NodeImageMode::Sliced(WhiteBoxUI::slicer()),
+                        ..default()
+                    },
+                    Node {
+                        position_type: PositionType::Absolute,
+                        width: Val::Percent(100.0),
+                        height: Val::Percent(100.0),
+                        ..default()
+                    },
+                    BlocksRaycast));
+
+                    parent.spawn((
+                        Text::new(""),
+                        TextFont {
+                            font: font.clone(),
+                            font_size,
+                            ..default()
                         },
-                        nine_patch_data : NinePatchData {
-                            texture: image_assets.white_box.clone(),
-                            nine_patch: nine_patches.add(NinePatchBuilder::by_margins(2, 2, 2, 2)),
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    }).insert(BlocksRaycast);
-                    parent.spawn(TextBundle {
-                        style : Style {
+                        TextColor(TEXT_COLOR_NORMAL),
+                        Node {
                             position_type : PositionType::Absolute,
                             ..Default::default()
                         },
-                        text : Text::from_section(
-                            "",
-                            TextStyle {
-                                font : font.clone(),
-                                font_size,
-                                color : TEXT_COLOR_NORMAL,
-                            },
-                        ),
-                        visibility : Visibility::Inherited,
-                        ..Default::default()
-                    });
-                }).insert(BlocksRaycast).id();
+                        BlocksRaycast,
+                    ));
+                }).id();
                 icons.push(icon);
             });
 
@@ -225,10 +219,10 @@ impl ContextUIPlugin {
         }
 
         commands.insert_resource(ContextMenu{
-            container : container_entity,
-            active_tab : ActiveTab::None,
-            list_container : list_entity.unwrap(),
-            list_icons : icons,
+            container: container_entity,
+            active_tab: ActiveTab::None,
+            list_container: list_entity.unwrap(),
+            list_icons: icons,
         })
     }
 
@@ -239,8 +233,10 @@ impl ContextUIPlugin {
         y: f32,
         button : ContextMenuButtonsEvent,
     ) -> Entity {
-        let tab = parent.spawn((ButtonBundle {
-            style: Style {
+
+        parent.spawn((
+            Button,
+            Node {
                 position_type: PositionType::Absolute,
                 left: Val::Px(x),
                 top: Val::Px(y),
@@ -248,11 +244,10 @@ impl ContextUIPlugin {
                 height: Val::Px(30.0),
                 ..Default::default()
             },
-            background_color : LIGHT_BACKGROUND_COLOR.into(),
-            ..Default::default()
-        }, button)).insert(BlocksRaycast).id();
-        // *x += 72.5;
-        tab
+            BackgroundColor(LIGHT_BACKGROUND_COLOR),
+            button,
+            BlocksRaycast,
+        )).id()
     }
 
     fn create_list(
@@ -260,8 +255,8 @@ impl ContextUIPlugin {
         _materials: &mut Assets<ColorMaterial>,
         y: f32
     ) -> Entity {
-        parent.spawn(NodeBundle {
-            style: Style {
+        parent.spawn((
+            Node {
                 position_type: PositionType::Absolute,
                 left: Val::Px(10.0),
                 top: Val::Px(y),
@@ -271,47 +266,46 @@ impl ContextUIPlugin {
                 align_items: AlignItems::Center,
                 ..Default::default()
             },
-            background_color : LIGHT_BACKGROUND_COLOR.into(),
-            ..Default::default()
-        }).insert(BlocksRaycast).id()
+            BackgroundColor(LIGHT_BACKGROUND_COLOR),
+            BlocksRaycast,
+        )).id()
     }
 
     pub fn context_menu_update(
-        menu : Res<ContextMenu>,
-        focus : Res<ContextFocus>,
-        queueses : Query<&Queues>,
+        menu: Res<ContextMenu>,
+        focus: Res<ContextFocus>,
+        queueses: Query<&Queues>,
 
-        texts : Query<&mut Text>,
-        colors : Query<&mut BackgroundColor>,
-        ctx_buttons : Query<&mut ContextMenuButtonsEvent>,
+        texts: Query<&mut Text>,
+        colors: Query<&mut BackgroundColor>,
+        ctx_buttons: Query<&mut ContextMenuButtonsEvent>,
 
         mut visible_query: Query<(&mut Visibility, &InheritedVisibility)>,
         children_query: Query<&Children>,
     ) {
         if let Some((entity, queues)) = focus.0.and_then(|e| queueses.get(e).map_or(None, |q| Some((e, q)))) {
-            menu.open(&mut visible_query);
+            open(&mut visible_query, menu.container);
             match get_queue(queues, menu.active_tab) {
                 Some(x) => {
                     menu.show_items(entity, x, texts, colors, ctx_buttons, visible_query, children_query);
                 },
                 None => {
-                    set_visible(false, menu.list_container, &mut visible_query);
+                    set_visibility(&mut visible_query, menu.list_container, false);
                 }
             }
         } else {
-            menu.close(&mut visible_query);
+            close(&mut visible_query, menu.container);
         }
     }
 
     pub fn context_menu_event_writer(
-        // mut menu : ResMut<ContextMenu>,
-        mut context_menu_events : EventWriter<ContextMenuButtonsEvent>,
+        mut context_menu_events: EventWriter<ContextMenuButtonsEvent>,
         interaction_query: Query<
             (&Interaction, &ContextMenuButtonsEvent, &InheritedVisibility),
             (Changed<Interaction>, With<Button>)
         >,
     ) {
-        interaction_query.for_each(|(int, but, visible)| {
+        interaction_query.iter().for_each(|(int, but, visible)| {
             if !visible.get() { return; }
             match int {
                 Interaction::Pressed => {
@@ -324,7 +318,7 @@ impl ContextUIPlugin {
     }
 
     pub fn context_menu_event_reader(
-        input: Res<Input<KeyCode>>,
+        input: Res<ButtonInput<KeyCode>>,
         mut context_menu_events : EventReader<ContextMenuButtonsEvent>,
         mut menu : ResMut<ContextMenu>,
         mut current_placement : ResMut<CurrentPlacement<CLICK_BUFFER>>,

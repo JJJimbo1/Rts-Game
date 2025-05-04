@@ -1,23 +1,24 @@
-// use std::time::Duration;
+use std::{io::Write, net::TcpListener};
 
-// mod server_core;
-// use crate::server_core::*;
+use bevy::prelude::*;
+use t5f_server::ServerPlugin;
 
 fn main() {
-    // amethyst::start_logger(Default::default());
+    // let listener = TcpListener::bind("0.0.0.0:40256").unwrap();
 
-    // let listener = TcpListener::bind("0.0.0.0:50150")?;
-    // listener.set_nonblocking(true)?;
+    // for stream in listener.incoming() {
+    //     match stream {
+    //         Ok(mut stream) => {
+    //             stream.write(&[9, 23, 5]).unwrap();
 
-    // let assets_dir = application_root_dir()?.join("./");
+    //         },
+    //         Err(_) => { }
+    //     }
 
-    // let game_data = GameDataBuilder::default()
-    //     .with_bundle(TcpNetworkBundle::new(Some(listener), 40096))?;
+    //     println!("Connection established!");
+    // }
+    App::new()
 
-    // let mut game = Application::build(assets_dir, LobbyState::default())?
-    //     .with_frame_limit(FrameRateLimitStrategy::Unlimited, u32::MAX)
-    //     .with_fixed_step_length(Duration::new(0, 20_000_000))
-    //     .build(game_data)?;
-    // game.run();
-    // Ok(())
+    .add_plugins((MinimalPlugins, ServerPlugin))
+    .run();
 }

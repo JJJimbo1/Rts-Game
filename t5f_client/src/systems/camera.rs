@@ -1,15 +1,13 @@
 use std::f32::{NEG_INFINITY, INFINITY,};
 
-use bevy::{input::{mouse::{MouseWheel, MouseButtonInput}, ButtonState}, prelude::*, render::camera::Camera, math::Vec3Swizzles, window::PrimaryWindow};
-// use bevy_ninepatch::*;
-use bevy_rapier3d::{prelude::CollisionGroups, plugin::RapierContext};
+use bevy::{input::{mouse::{MouseButtonInput, MouseWheel}, ButtonState}, math::Vec3Swizzles, prelude::*, render::camera::Camera, ui::widget::NodeImageMode, window::PrimaryWindow};
+use bevy_rapier3d::prelude::{CollisionGroups, ReadRapierContext};
 use serde::{Serialize, Deserialize};
-use t5f_common::*;
 use t5f_utility::mathfu::*;
 use crate::*;
 
-pub static CLEAR_COLOR : Color = Color::rgba_linear(0.0, 0.2, 0.7, 1.0);
-pub const CLICK_BUFFER : usize = 8;
+pub static CLEAR_COLOR : Color = Color::linear_rgba(0.0, 0.2, 0.7, 1.0);
+pub const CLICK_BUFFER : usize = 1;
 
 #[derive(Debug)]
 #[derive(Resource)]
@@ -34,14 +32,14 @@ pub struct CameraSettings {
     pub offset_z: (f32, f32),
     pub curve_power: (f32, f32),
 
-    //Settings relating to Rotation.
+    //* Settings relating to Rotation.
     pub max_rotation_speed: f32,
     pub rotation_acceleration: f32,
     pub rotation_deceleration: f32,
     pub slow_rotation_multiplier: f32,
     pub rotation_acceleration_curve: f32,
 
-    //Setting relating to Scrolling.
+    //* Setting relating to Scrolling.
     pub thresholds: (f32, f32),
     pub max_scroll_speed: f32,
     pub scroll_acceleration: f32,
@@ -54,7 +52,7 @@ pub struct CameraSettings {
     pub scroll_button_speed_multiplier: f32,
     pub post_action_stall: bool,
 
-    //Settings relating to Zooming.
+    //* Settings relating to Zooming.
     pub max_zoom_speed: f32,
     pub zoom_acceleration: f32,
     pub zoom_deceleration: f32,
@@ -67,7 +65,7 @@ pub struct CameraSettings {
     pub zoom_ratio: f32,
     pub zoom_curve_weight: f32,
 
-    //Settings relating to Rotation, Scroll and Zoom.
+    //* Settings relating to Rotation, Scroll and Zoom.
     pub minimum_fps_for_deltatime : u16,
 }
 
@@ -120,8 +118,8 @@ impl Default for CameraSettings {
             zoom_deceleration: 15.0,
             slow_zoom_multiplier: 0.125,
             zoom_acceleration_curve: 2.0,
-            min_zoom: 60.,
-            max_zoom: 120.,
+            min_zoom: 50.,
+            max_zoom: 150.,
             default_zoom: 0.8,
             zoom_base: 10.0,
             zoom_ratio: 5.0,
@@ -175,19 +173,12 @@ impl CameraSelector {
     }
 }
 
-impl Menu for CameraSelector {
-    fn main_container(&self) -> Entity {
-        self.selection_box_entity
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum PlacementStatus {
     Idle,
     Began(PrePlacementInfo),
     Placing(PlacementInfo),
     Rotating(PlacementInfo),
-    // Stopped(Entity),
     Canceled(PlacementInfo),
     Completed(PlacementInfo),
 }
@@ -252,7 +243,6 @@ impl CameraPlugin {
         map: Res<MapBounds>,
         mut commands: Commands
     ) {
-        println!("CREATING CAMERA");
         let (direction, distance) = settings.default_direction_and_distance();
 
         let z = direction.z * distance;
@@ -271,10 +261,7 @@ impl CameraPlugin {
             },
         )).id();
 
-        let camera_entity = commands.spawn(Camera3dBundle {
-            transform,
-            ..Default::default()
-        }).id();
+        let camera_entity = commands.spawn((Camera3d::default(), transform)).id();
 
         commands.entity(root_entity).add_child(camera_entity);
 
@@ -295,69 +282,42 @@ impl CameraPlugin {
 
     pub fn create_selector(
         image_assets : Res<ImageAssets>,
-        // textures : Res<QLoader<ImageAsset, AssetServer>>,
-        // mut nine_patches: ResMut<Assets<NinePatchBuilder<()>>>,
         mut commands : Commands
     ) {
-        let select = image_assets.selection_box.clone();
-        let entity = commands.spawn(ImageBundle {
-            style: Style {
-                position_type : PositionType::Absolute,
-                width: Val::Px(0.0),
-                height: Val::Px(0.0),
-                ..Default::default()
-            },
-            image: UiImage::new(select),
-            visibility: Visibility::Inherited,
-            ..Default::default()
-        }).id();
+        let entity = commands.spawn((ImageNode {
+            image: image_assets.selection_box.clone(),
+            image_mode: NodeImageMode::Sliced(SelectBoxUI::slicer()),
+            ..default()
+        }, Node {
+            position_type: PositionType::Absolute,
+            ..default()
+        })).id();
 
-        //TODO: Use this when Ninepatch gets patched.
-        // let nine_patch: Handle<NinePatchBuilder> = nine_patches.add(NinePatchBuilder::by_margins(2, 2, 2, 2));
-        // let entity = commands.spawn((NinePatchBundle {
-        //     style: Style {
-        //         position_type : PositionType::Absolute,
-        //         width: Val::Px(0.0),
-        //         // height: Val::Percent(0.0),
-        //         height: Val::Px(0.0),
-        //         // size: Size::new(Val::Px(0.0), Val::Percent(0.0)),
-        //         // justify_content: JustifyContent::Center,
-        //         ..Default::default()
-        //     },
-        //     nine_patch_data : NinePatchData {
-        //         nine_patch,
-        //         texture : select,
-        //         ..Default::default()
-        //     },
-        //     ..Default::default()
-        // }, Visibility::Inherited)).id();
-
-        let container_entity = entity;
         commands.insert_resource(CameraSelector {
-            selection_box_entity : container_entity,
-            mouse_start_pos : Vec2::ZERO,
-            mouse_end_pos : Vec2::ZERO,
+            selection_box_entity: entity,
+            mouse_start_pos: Vec2::ZERO,
+            mouse_end_pos: Vec2::ZERO,
             //TODO: Add setting for this
             minimum_distance: 40.0,
             status: BoxSelectStatus::Idle,
         });
 
         commands.insert_resource(CurrentPlacement::<CLICK_BUFFER> {
-            status : PlacementStatus::Idle,
-            placing : [false; CLICK_BUFFER],
+            status: PlacementStatus::Idle,
+            placing: [false; CLICK_BUFFER],
         });
     }
 
     //TODO: Abstract out key bindings.
     pub fn camera_control_system(
-        settings : Res<CameraSettings>,
-        mut camera_controller : ResMut<CameraController>,
+        settings: Res<CameraSettings>,
+        mut camera_controller: ResMut<CameraController>,
         mut scroll_event_reader: EventReader<MouseWheel>,
-        mouse_buttons : Res<Input<MouseButton>>,
-        key_input : Res<Input<KeyCode>>,
-        window : Query<&Window, With<PrimaryWindow>>,
-        time : Res<Time>,
-        mut trans : Query<&mut Transform>,
+        mouse_buttons: Res<ButtonInput<MouseButton>>,
+        key_input: Res<ButtonInput<KeyCode>>,
+        window: Query<&Window, With<PrimaryWindow>>,
+        time: Res<Time>,
+        mut trans: Query<&mut Transform>,
     ) {
         let window = window.get_single().unwrap();
         let half_size = Vec2::new(window.width() / 2.0, window.height() / 2.0);
@@ -392,13 +352,13 @@ impl CameraPlugin {
             settings.zoom_base, settings.zoom_base * settings.zoom_ratio).clamp(settings.zoom_base, settings.zoom_base * settings.zoom_ratio)
         });
 
-        let slow = if key_input.pressed(KeyCode::C) {
+        let slow = if key_input.pressed(KeyCode::KeyC) {
             (settings.slow_rotation_multiplier, settings.slow_scroll_multiplier, settings.slow_zoom_multiplier)
         } else {
             (1., 1., 1.)
         };
 
-        let mouse_dir = Vec3::new(adjusted_mouse_pos.x, 0.0, -adjusted_mouse_pos.y).normalize_or_zero();
+        let mouse_dir = Vec3::new(adjusted_mouse_pos.x, 0.0, adjusted_mouse_pos.y).normalize_or_zero();
 
         let mags : (f32,f32) = (
             d1::powf_sign(d1::normalize_to_01(adjusted_mouse_pos.x.abs(), threshholds.0, half_size.x).clamp(0.0, 1.0), settings.scroll_acceleration_curve),
@@ -407,15 +367,15 @@ impl CameraPlugin {
 
         let hor = {
             let mut h = 0.0;
-            if key_input.pressed(KeyCode::D) { h += 1.0; }
-            if key_input.pressed(KeyCode::A) { h -= 1.0; }
+            if key_input.pressed(KeyCode::KeyD) { h += 1.0; }
+            if key_input.pressed(KeyCode::KeyA) { h -= 1.0; }
             h * settings.scroll_button_speed_multiplier
         };
 
         let vert = {
             let mut v = 0.0;
-            if key_input.pressed(KeyCode::W) { v -= 1.0; }
-            if key_input.pressed(KeyCode::S) { v += 1.0; }
+            if key_input.pressed(KeyCode::KeyW) { v -= 1.0; }
+            if key_input.pressed(KeyCode::KeyS) { v += 1.0; }
             v * settings.scroll_button_speed_multiplier
         };
 
@@ -427,29 +387,29 @@ impl CameraPlugin {
             ((scroll_dir_z + vert) * slow.1 * settings.max_scroll_speed * height).clamp(-settings.max_scroll_speed * height, settings.max_scroll_speed * height),
         );
 
-        let delta = (time.delta_seconds()).clamp(0.0, 1.0 / settings.minimum_fps_for_deltatime as f32);
+        let delta = (time.delta_secs()).clamp(0.0, 1.0 / settings.minimum_fps_for_deltatime as f32);
 
         if let Ok(mut tran) = trans.get_mut(camera_controller.camera_root) {
-            //*Rotation
+            //* Rotation
             let mut dir = 0.;
-            if key_input.pressed(KeyCode::Q) {
+            if key_input.pressed(KeyCode::KeyQ) {
                 camera_controller.rotation_velocity = camera_controller.rotation_velocity.clamp(0., INFINITY);
-                dir += 0.01;
+                dir += 1.0;
             }
 
-            if key_input.pressed(KeyCode::E) {
+            if key_input.pressed(KeyCode::KeyE) {
                 camera_controller.rotation_velocity = camera_controller.rotation_velocity.clamp(NEG_INFINITY, 0.);
-                dir -= 0.01;
+                dir -= 1.0;
             }
 
             if dir != 0. {
-                camera_controller.rotation_velocity = d1::lerp(camera_controller.rotation_velocity, dir * settings.max_rotation_speed * slow.0, (settings.rotation_acceleration * delta).clamp(0.0, 1.0));
+                camera_controller.rotation_velocity = d1::lerp(camera_controller.rotation_velocity, dir * delta * settings.max_rotation_speed * slow.0, (settings.rotation_acceleration * delta).clamp(0.0, 1.0));
             } else {
                 camera_controller.rotation_velocity = d1::lerp(camera_controller.rotation_velocity, 0.0, (settings.rotation_deceleration * delta).clamp(0.0, 1.0));
             }
             tran.rotate(Quat::from_rotation_y(camera_controller.rotation_velocity));
 
-            //*Scrolling
+            //* Scrolling
             if x.is_normal() {
                 if x.signum() == camera_controller.root_velocity.x.signum() {
                     if d1::farther_from_zero(x, camera_controller.root_velocity.x) {
@@ -509,7 +469,7 @@ impl CameraPlugin {
             let movement = tran.rotation * camera_controller.root_velocity * delta;
             tran.translation += movement;
 
-            if key_input.just_pressed(KeyCode::Grave) {
+            if key_input.just_pressed(KeyCode::Backquote) {
                 tran.rotation = Quat::default();
             }
         }
@@ -517,16 +477,16 @@ impl CameraPlugin {
         if let Ok(mut tran) = trans.get_mut(camera_controller.camera) {
             let mut zoom_add = 0.0;
             for ev in scroll_event_reader.read() {
-                zoom_add = -ev.y;
+                zoom_add = (0.01 * -ev.y.signum()) / delta;
             }
 
-            if zoom_add > 0. {
+            if zoom_add > 0.0 {
                 zoom_add = zoom_add.clamp(0.0, INFINITY);
             } else if zoom_add < 0. {
                 zoom_add = zoom_add.clamp(NEG_INFINITY, 0.0);
             }
 
-            if zoom_add != 0. {
+            if zoom_add != 0.0 {
                 camera_controller.zoom_velocity = d1::lerp(camera_controller.zoom_velocity, zoom_add * height * settings.max_zoom_speed * slow.2, (settings.zoom_acceleration * delta).clamp(0.0, 1.0));
             } else {
                 camera_controller.zoom_velocity = d1::lerp(camera_controller.zoom_velocity, 0., (settings.zoom_deceleration * delta).clamp(0.0, 1.0));
@@ -539,7 +499,7 @@ impl CameraPlugin {
             let distance = d1::normalize_from_01(camera_controller.zoom_precentage, settings.min_zoom, settings.max_zoom);
             tran.translation = direction * distance;
 
-            if key_input.just_pressed(KeyCode::Grave) {
+            if key_input.just_pressed(KeyCode::Backquote) {
                 let (direction, distance) = settings.default_direction_and_distance();
                 tran.translation = direction * distance;
                 camera_controller.zoom_velocity = 0.0;
@@ -567,32 +527,20 @@ impl CameraPlugin {
             ui_hit.hitting[b-1] = ui_hit.hitting[b]
         }
 
-        interaction_query.for_each(|(interaction, visibility)| {
-            if visibility.get() {
-                match interaction {
-                    Interaction::Pressed => {
-                        for b in 0..ui_hit.hitting.len() {
-                            ui_hit.hitting[b] = true;
-                        }
-                        ui_hit.holding = true;
-                    },
-                    _ => { }
+        interaction_query.iter().for_each(|(interaction, visibility)| {
+            if visibility.get() && *interaction == Interaction::Pressed {
+                for b in 0..ui_hit.hitting.len() {
+                    ui_hit.hitting[b] = true;
                 }
+                ui_hit.holding = true;
             }
         });
         for event in input.read() {
-            match event.state {
-                ButtonState::Released => {
-                    if event.button == MouseButton::Left {
-                        if ui_hit.holding {
-                            ui_hit.holding = false;
-                            for b in 0..ui_hit.hitting.len() {
-                                ui_hit.hitting[b] = true;
-                            }
-                        }
-                    }
-                },
-                _ => { }
+            if event.state == ButtonState::Released && event.button == MouseButton::Left && ui_hit.holding {
+                ui_hit.holding = false;
+                for b in 0..ui_hit.hitting.len() {
+                    ui_hit.hitting[b] = true;
+                }
             }
         }
     }
@@ -600,7 +548,7 @@ impl CameraPlugin {
     pub fn camera_raycast_system(
         controller : Res<CameraController>,
         ui_hit : Res<UiHit<CLICK_BUFFER>>,
-        context : Res<RapierContext>,
+        context : ReadRapierContext,
         mut cast : ResMut<CameraRaycast>,
         windows : Query<&Window, With<PrimaryWindow>>,
         cameras : Query<(&GlobalTransform, &Camera)>,
@@ -611,8 +559,8 @@ impl CameraPlugin {
         if let Ok((gl_transform, camera)) = cameras.get(controller.camera) {
             let Ok(window) = windows.get_single() else { return; };
             let Some(cursor) = window.cursor_position() else { return; };
-            let Some(ray) = camera.viewport_to_world(gl_transform, cursor) else { return; };
-            if let Some((entity, len)) = context.cast_ray(ray.origin, ray.direction, f32::MAX, true, CollisionGroups::default().into()) {
+            let Ok(ray) = camera.viewport_to_world(gl_transform, cursor) else { return; };
+            if let Some((entity, len)) = context.single().cast_ray(ray.origin, ray.direction.into(), f32::MAX, true, CollisionGroups::default().into()) {
                 let point = ray.origin + ray.direction * len;
                 let cam_cast = RayCastResult { entity, point, len};
                 cast.last_valid_cast = Some(cam_cast);
@@ -626,7 +574,7 @@ impl CameraPlugin {
         mut selector : ResMut<CameraSelector>,
         ui_hit : Res<UiHit<CLICK_BUFFER>>,
         placement : Res<CurrentPlacement<CLICK_BUFFER>>,
-        mouse_input : Res<Input<MouseButton>>,
+        mouse_input : Res<ButtonInput<MouseButton>>,
         window : Query<&Window, With<PrimaryWindow>>,
     ) {
         if ui_hit.hit()
@@ -643,11 +591,10 @@ impl CameraPlugin {
             },
             BoxSelectStatus::Dragging => {
                 if let Some(p) = window.get_single().ok().and_then(|w| w.cursor_position()) { selector.mouse_end_pos = p; }
-                // selector.mouse_end_pos = window.get_single().ok().and_then(|w| w.cursor_position()).unwrap_or(Vec2::new(0.0, 0.0));
                 if mouse_input.just_released(MouseButton::Left) {
                     selector.status = BoxSelectStatus::Idle;
                     if selector.showing() {
-                        selection_events.send(SelectionEvent::Box(selector.mouse_start_pos, selector.mouse_end_pos))
+                        selection_events.send(SelectionEvent::Box(selector.mouse_start_pos, selector.mouse_end_pos));
                     } else {
                         selection_events.send(SelectionEvent::Single);
                     }
@@ -660,18 +607,22 @@ impl CameraPlugin {
         selector : Res<CameraSelector>,
         placement : Res<CurrentPlacement<CLICK_BUFFER>>,
 
-        mut styles : Query<&mut Style>,
+        mut nodes : Query<&mut Node>,
         mut visible_query: Query<(&mut Visibility, &InheritedVisibility)>,
     ) {
         if placement.placing() { return; };
         match selector.status {
             BoxSelectStatus::Idle => {
-                selector.close(&mut visible_query);
+                close(&mut visible_query, selector.selection_box_entity);
             },
             BoxSelectStatus::Dragging => {
-                if let Ok(mut style) = styles.get_mut(selector.selection_box_entity) {
-                    let extents = (selector.mouse_start_pos.x.min(selector.mouse_end_pos.x), selector.mouse_start_pos.x.max(selector.mouse_end_pos.x),
-                        selector.mouse_start_pos.y.min(selector.mouse_end_pos.y), selector.mouse_start_pos.y.max(selector.mouse_end_pos.y));
+                if let Ok(mut style) = nodes.get_mut(selector.selection_box_entity) {
+                    let extents = (
+                        selector.mouse_start_pos.x.min(selector.mouse_end_pos.x),
+                        selector.mouse_start_pos.x.max(selector.mouse_end_pos.x),
+                        selector.mouse_start_pos.y.min(selector.mouse_end_pos.y),
+                        selector.mouse_start_pos.y.max(selector.mouse_end_pos.y),
+                    );
 
                     style.left = Val::Px(extents.0);
                     style.top = Val::Px(extents.2);
@@ -680,9 +631,9 @@ impl CameraPlugin {
                 }
 
                 if selector.showing() {
-                    selector.open(&mut visible_query);
+                    open(&mut visible_query, selector.selection_box_entity);
                 } else {
-                    selector.close(&mut visible_query);
+                    close(&mut visible_query, selector.selection_box_entity);
                 }
             }
         }
@@ -695,7 +646,7 @@ impl CameraPlugin {
         cast : Res<CameraRaycast>,
         player : Res<Player>,
 
-        key_input : Res<Input<KeyCode>>,
+        key_input : Res<ButtonInput<KeyCode>>,
 
         mut objects : Query<(Entity, &GlobalTransform, &mut Selectable, &TeamPlayer)>,
         cameras : Query<(&GlobalTransform, &Camera)>,
@@ -703,7 +654,7 @@ impl CameraPlugin {
         for event in selection_event.read() {
             let add_to_selection = key_input.pressed(KeyCode::ShiftLeft) || key_input.pressed(KeyCode::ShiftRight);
             let mut empty = true;
-            objects.for_each(|(_, _, sel, _)| {
+            objects.iter().for_each(|(_, _, sel, _)| {
                 if sel.selected {
                     empty = false;
                 }
@@ -717,9 +668,9 @@ impl CameraPlugin {
                         .and_then(|(ent, _, _, _,)| Some(ent))
                     );
                     if let Some(ent) = entity {
-                        let clear = objects.get_mut(ent).unwrap().2.context == SelectableContext::Clear;
+                        let clear = objects.get_mut(ent).unwrap().2.context == SelectableType::Clear;
                         if clear && !add_to_selection {
-                            objects.for_each_mut(|(_, _, mut selectable, team_player)| {
+                            objects.iter_mut().for_each(|(_, _, mut selectable, team_player)| {
                                 if *team_player == player.0 {
                                     selectable.selected = false;
                                 }
@@ -728,13 +679,13 @@ impl CameraPlugin {
                         }
                         if !empty && add_to_selection {
                             let (_, _, mut sel, tp) = objects.get_mut(ent).unwrap();
-                            if sel.context == SelectableContext::MultiSelect {
+                            if sel.context == SelectableType::MultiSelect {
                                 if *tp == player.0 {
                                     sel.selected = true;
                                 }
                             }
                         } else {
-                            objects.for_each_mut(|(_, _, mut selectable, team_player)| {
+                            objects.iter_mut().for_each(|(_, _, mut selectable, team_player)| {
                                 if *team_player == player.0 {
                                     selectable.selected = false;
                                 }
@@ -746,14 +697,13 @@ impl CameraPlugin {
                         }
                         let command_event = CommandEvent {
                             player: player.0,
-                            object: Some(CommandObject::Structure(ent)),
+                            objects: vec![ent],
                             command: CommandType::Activate,
                         };
                         command_events.send(command_event);
-                        // command_events.send(ActivationEvent { entity: ent, player: player.0 });
                     } else {
                         if !add_to_selection {
-                            objects.for_each_mut(|(_, _, mut selectable, team_player)| {
+                            objects.iter_mut().for_each(|(_, _, mut selectable, team_player)| {
                                 if *team_player == player.0 {
                                     selectable.selected = false;
                                 }
@@ -766,7 +716,7 @@ impl CameraPlugin {
                     if let Ok((cam_tran, camera)) = cameras.get(camera.camera) {
 
                         if !add_to_selection {
-                            objects.for_each_mut(|(_, _, mut selectable, team_player)| {
+                            objects.iter_mut().for_each(|(_, _, mut selectable, team_player)| {
                                 if *team_player == player.0 {
                                     selectable.selected = false;
                                 }
@@ -775,9 +725,9 @@ impl CameraPlugin {
 
                         let mut ents = Vec::new();
 
-                        objects.for_each(|(ent, gl_tran, _, tp)| {
+                        objects.iter().for_each(|(ent, gl_tran, _, tp)| {
                             if *tp == player.0 {
-                                if let Some(center) = camera.world_to_viewport(cam_tran, gl_tran.translation()) {
+                                if let Ok(center) = camera.world_to_viewport(cam_tran, gl_tran.translation()) {
                                     if center.x > min.x && center.x < max.x
                                     && center.y > min.y && center.y < max.y {
                                         ents.push(ent);
@@ -789,12 +739,12 @@ impl CameraPlugin {
                         for e in ents.iter() {
                             let (_, _, mut sel, _) = objects.get_mut(*e).unwrap();
                             match sel.context {
-                                SelectableContext::Single => {
+                                SelectableType::Single => {
                                     if ents.len() == 1 {
                                         sel.selected = true;
                                     }
                                 },
-                                SelectableContext::MultiSelect => {
+                                SelectableType::MultiSelect => {
                                     sel.selected = true;
                                 },
                                 _ => { }
@@ -810,7 +760,7 @@ impl CameraPlugin {
         mut focus : ResMut<ContextFocus>,
         selectables : Query<(Entity, &Selectable)>
     ) {
-        let selects = selectables.iter().filter_map(|(e, s)| if s.selected && s.context == SelectableContext::Single { Some(e) } else { None}).collect::<Vec<Entity>>();
+        let selects = selectables.iter().filter_map(|(e, s)| if s.selected && s.context == SelectableType::Single { Some(e) } else { None}).collect::<Vec<Entity>>();
         if selects.len() == 1 {
             focus.0 = selects.first().cloned();
         } else {
@@ -831,17 +781,17 @@ impl CameraPlugin {
             gizmos.line(
                 tr.translation,
                 tr.translation + Vec3::Y * 25.0,
-                Color::rgba(0.1, 0.35, 0.45, 1.0),
+                Color::srgba(0.1, 0.35, 0.45, 1.0),
             );
         }
 
-        query.for_each(|(glt, sel)| {
+        query.iter().for_each(|(glt, sel)| {
             let tr = Transform::from(*glt);
             if sel.selected {
                 gizmos.line(
                     tr.translation,
                     tr.translation + Vec3::Y * 5.0,
-                    Color::rgba(0.1, 0.35, 0.45, 1.0),
+                    Color::srgba(0.1, 0.35, 0.45, 1.0),
                 );
             }
         });
@@ -852,7 +802,7 @@ impl CameraPlugin {
         player : Res<Player>,
         cast : Res<CameraRaycast>,
         current_placement : Res<CurrentPlacement<CLICK_BUFFER>>,
-        input : Res<Input<MouseButton>>,
+        input : Res<ButtonInput<MouseButton>>,
 
         units : Query<(Entity, &Selectable), With<t5f_common::PathFinder>>,
         team_players : Query<&TeamPlayer>,
@@ -861,19 +811,18 @@ impl CameraPlugin {
         if current_placement.placing() { return; }
         if input.just_released(MouseButton::Right) {
             if let Some(ray_cast) = cast.current_cast {
-                // if idents.get_entity(ray_cast.entity)
                 if teamplayer_world.is_enemy(ray_cast.entity, player.0, &team_players)
                     .map_or(false, |t| t) {
                     let command = CommandEvent{
                         player: player.0,
-                        object : Some(CommandObject::Units(units.iter().filter_map(|(id, sel)| if sel.selected { Some(id) } else { None }).collect())),
+                        objects : units.iter().filter_map(|(id, sel)| if sel.selected { Some(id) } else { None }).collect(),
                         command: CommandType::Attack(ray_cast.entity),
                     };
                     unit_commands.send(command);
                 } else {
                     unit_commands.send(CommandEvent {
                         player: player.0,
-                        object : Some(CommandObject::Units(units.iter().filter_map(|(id, sel)| if sel.selected { Some(id) } else { None }).collect())),
+                        objects : units.iter().filter_map(|(id, sel)| if sel.selected { Some(id) } else { None }).collect(),
                         command: CommandType::Move(ray_cast.point.xz()),
                     });
                 }
@@ -884,7 +833,7 @@ impl CameraPlugin {
     pub fn building_placement_system(
         mut command_events: EventWriter<CommandEvent>,
         mut current_placement : ResMut<CurrentPlacement::<CLICK_BUFFER>>,
-        input : Res<Input<MouseButton>>,
+        input : Res<ButtonInput<MouseButton>>,
         cast : Res<CameraRaycast>,
         team_players : Query<&TeamPlayer>,
         mut queueses: Query<&mut Queues>,
@@ -903,15 +852,12 @@ impl CameraPlugin {
         let up = input.just_released(MouseButton::Left);
         match current_placement.status.clone() {
             PlacementStatus::Began(info) => {
-                let ghost = commands.spawn(SpatialBundle {
-                    visibility: Visibility::Inherited,
-                    ..default()
-                }).id();
+                let ghost = commands.spawn((Transform::default(), Visibility::default())).id();
 
                 if let Ok(teamplayer) = team_players.get(info.constructor) {
                     let command_event = CommandEvent {
                         player: *teamplayer,
-                        object: Some(CommandObject::Structure(ghost)),
+                        objects: vec![ghost],
                         command: CommandType::Build(BuildStatus::Begin(info.data.object.clone())),
                     };
                     command_events.send(command_event);
@@ -924,7 +870,6 @@ impl CameraPlugin {
                         *t = Transform::from_xyz(cc.point.x, cc.point.y, cc.point.z);
                         *v = Visibility::Visible;
                     } else {
-                        // *t = Transform::from_xyz(0.0, -10000000000.0, 0.0);
                         *v = Visibility::Hidden;
                     }
                 }
@@ -955,7 +900,7 @@ impl CameraPlugin {
                     if let Ok(teamplayer) = team_players.get(info.constructor) {
                         let command_event = CommandEvent {
                             player: *teamplayer,
-                            object: Some(CommandObject::Structure(info.ghost)),
+                            objects: vec![info.ghost],
                             command: CommandType::Build(BuildStatus::Finish(*tran)),
                         };
                         command_events.send(command_event);
@@ -963,18 +908,12 @@ impl CameraPlugin {
                     current_placement.status = PlacementStatus::Completed(info);
                 }
             },
-            // PlacementStatus::Stopped(e) => {
-
-            // },
             // TODO: Not yet implemented
             PlacementStatus::Canceled(info) => {
                 commands.entity(info.ghost).despawn();
                 current_placement.status = PlacementStatus::Idle;
             }
             PlacementStatus::Completed(info) => {
-
-                // command_events.send(ObjectSpawnEvent(spawn_data.clone(), PhantomData));
-                // requests.request(ObjectType::Building, current_placement.data.clone().unwrap().id.clone(), current_placement.spawn_data.clone().unwrap(), Some(e));
                 if let Ok(mut x) = queueses.get_mut(info.constructor) {
                     x.queues.get_mut(&info.queue).unwrap().remove_from_buffer(&info.data);
                 }

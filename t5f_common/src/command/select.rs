@@ -2,7 +2,7 @@ use bevy::prelude::Component;
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-pub enum SelectableContext {
+pub enum SelectableType {
     ///This entity cannot be selected at the same time as other entities.
     Single,
     ///This entity can be selected at the same time as other entities.
@@ -15,28 +15,28 @@ pub enum SelectableContext {
 #[derive(Component)]
 pub struct Selectable {
     pub selected : bool,
-    pub context : SelectableContext,
+    pub context : SelectableType,
 }
 
 impl Selectable {
     pub fn single() -> Self {
         Self {
             selected: false,
-            context: SelectableContext::Single
+            context: SelectableType::Single
         }
     }
 
     pub fn multiselect() -> Self {
         Self {
             selected: false,
-            context: SelectableContext::MultiSelect
+            context: SelectableType::MultiSelect
         }
     }
 
     pub fn clear() -> Self {
         Self {
             selected: false,
-            context: SelectableContext::Clear
+            context: SelectableType::Clear
         }
     }
 }

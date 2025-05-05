@@ -9,6 +9,7 @@ pub mod server_m;
 pub mod production;
 pub mod physics;
 pub mod utility;
+pub mod mainmenu;
 
 pub use base::*;
 pub use client::*;
@@ -21,6 +22,7 @@ pub use server_m::*;
 pub use production::*;
 pub use physics::*;
 pub use utility::*;
+pub use mainmenu::*;
 
 use std::marker::PhantomData;
 use bevy::prelude::*;

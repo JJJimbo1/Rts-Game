@@ -1,19 +1,11 @@
-[workspace]
-resolver = "2"
+[package]
+name = "t5f"
+version = "0.0.1"
+authors = ["JJJimbo1"]
+edition = "2024"
 
-members = [
-    "t5f_client",
-    "t5f_common",
-    "t5f_server",
-    "t5f_utility",
-]
-
-default-members = [
-    "t5f_client",
-    "t5f_server",
-]
-
-[workspace.dependencies]
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
 bevy = "0.16"
 avian3d = { git = "https://github.com/Jondolf/avian.git", features = ["serialize"]}
 bevy_renet = { git = "https://github.com/lucaspoffo/renet.git" }
@@ -34,7 +26,7 @@ chrono = "0.4"
 superstruct = "0.9"
 xtrees = { git = "https://github.com/JJJimbo1/xtrees.git" }
 pathing = { git = "https://github.com/JJJimbo1/pathing.git", features = ["serde"] }
-bevy_mod_event_group = { git = "https://github.com/JJJimbo1/bevy_mod_event_group.git", features = ["serde"] }
+bevy_mod_event_group = { git = "https://github.com/JJJimbo1/bevy_mod_event_group.git", branch = "bevy_0.16", features = ["serde"] }
 
 [profile.dev.package."*"]
 opt-level = 3

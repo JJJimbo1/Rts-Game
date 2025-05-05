@@ -1,5 +1,5 @@
 use std::time::Duration;
-use bevy::{utils::HashMap, prelude::*};
+use bevy::{platform::collections::HashMap, prelude::*};
 use serde::{Serialize, Deserialize};
 use crate::*;
 

@@ -14,9 +14,8 @@ pub use tank::*;
 
 use std::fmt::Display;
 use serde::{Serialize, Deserialize};
-use bevy::{prelude::*, asset::{AssetLoader, io::Reader}, utils::HashMap, reflect::TypePath};
+use bevy::{prelude::*, asset::{AssetLoader, io::Reader}, platform::collections::HashMap, reflect::TypePath};
 use bevy_asset_loader::prelude::AssetCollection;
-use bevy_rapier3d::prelude::{Collider, Velocity};
 use bevy_mod_event_group::{event_group, EventGroupAppExt};
 use crate::*;
 

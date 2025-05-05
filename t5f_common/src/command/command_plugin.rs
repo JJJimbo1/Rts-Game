@@ -1,6 +1,6 @@
 
+use avian3d::prelude::{Collider, LinearVelocity};
 use bevy::prelude::*;
-use bevy_rapier3d::{geometry::Collider, dynamics::Velocity};
 use pathing::DS2Map;
 use t5f_utility::random::Random;
 use xtrees::Quad;
@@ -58,7 +58,7 @@ impl CommandPlugin {
     fn follow_path(
         mut gizmos: Gizmos,
         time: Res<Time>,
-        mut followers : Query<(&mut PathFinder, &mut Transform, &mut Velocity, &Navigator)>,
+        mut followers : Query<(&mut PathFinder, &mut Transform, &mut LinearVelocity, &Navigator)>,
     ) {
         followers.iter_mut().for_each(|(pathfinder, tran, _, _)| {
             let Some(path) = pathfinder.path() else { return; };
@@ -86,7 +86,7 @@ impl CommandPlugin {
 
                     let distance = first.distance(transform.translation.xz());
                     if distance > 1.0 {
-                        velocity.linvel = transform.rotation * -Vec3::Z * navigator.max_forward_speed.abs();
+                        velocity = transform.rotation * -Vec3::Z * navigator.max_forward_speed.abs();
                     } else {
                         path.remove(0);
                     }
@@ -100,15 +100,15 @@ impl CommandPlugin {
 
                     let distance = first.distance(transform.translation.xz());
                     if distance > 0.05 {
-                        velocity.linvel = transform.rotation * -Vec3::Z  * navigator.max_forward_speed.abs().min(distance * 3.0);
+                        velocity = transform.rotation * -Vec3::Z  * navigator.max_forward_speed.abs().min(distance * 3.0);
                     } else {
                         transform.translation = first.extend(y).xzy();
                         path.remove(0);
                     }
                 },
                 _ => {
-                    velocity.linvel.x = 0.0;
-                    velocity.linvel.z = 0.0;
+                    velocity.x = 0.0;
+                    velocity.z = 0.0;
                     *pathfinder = PathFinder::Idle;
                 }
             }

@@ -1,5 +1,4 @@
-use bevy::{prelude::*, utils::HashMap};
-use bevy_rapier3d::prelude::Collider;
+use bevy::{prelude::*, platform::collections::HashMap};
 use serde::{Serialize, Deserialize};
 use superstruct::*;
 use t5f_utility::colliders::decode;

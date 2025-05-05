@@ -94,7 +94,7 @@ impl CombatPlugin {
     ) {
         query.iter().for_each(|(entity, health)| {
             if health.is_dead() {
-                if let Some(entity_commands) = commands.get_entity(entity) {
+                if let Ok(entity_commands) = commands.get_entity(entity) {
                     entity_commands.despawn_recursive();
                 }
                 objects_killed_writer.send(ObjectKilledEvent(entity));

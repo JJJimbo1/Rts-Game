@@ -1,5 +1,4 @@
-use bevy::{prelude::*, utils::HashMap};
-use bevy_rapier3d::prelude::Collider;
+use bevy::{prelude::*, platform::collections::HashMap};
 use serde::{Serialize, Deserialize};
 use superstruct::*;
 use t5f_utility::colliders::decode;
@@ -192,7 +191,7 @@ impl BarracksPlugin {
             match build {
                 BuildStatus::Begin(building) => {
                     let Ok(ObjectType::Barracks) = ObjectType::try_from(building.clone()) else { continue; };
-                    let Some(mut ghost_commands) = commands.get_entity(*entity) else { continue; };
+                    let Ok(mut ghost_commands) = commands.get_entity(entity) else { continue; };
                     ghost_commands.insert(BarracksGhost::new());
                     *ghost = Some(ghost_commands.id());
                 }

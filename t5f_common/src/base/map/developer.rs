@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
 use superstruct::superstruct;
 use t5f_utility::colliders::decode;

@@ -1,9 +1,4 @@
-use bevy_rapier3d::prelude::Velocity;
-pub use bevy_rapier3d::*;
-
 use bevy::prelude::*;
-use plugin::{RapierPhysicsPlugin, NoUserData};
-
 use crate::Slim;
 
 

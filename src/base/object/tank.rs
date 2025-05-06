@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use bevy::prelude::*;
-use avian3d::prelude::{Collider, RigidBody, LinearVelocity};
+use bevy_rapier3d::prelude::{Collider, RigidBody, Velocity};
 use superstruct::*;
 use serde::{Serialize, Deserialize};
 use crate::*;
@@ -35,7 +35,7 @@ pub struct TankBase {
     #[superstruct(only(Bundle))]            pub tank_marker: TankBase,
     #[superstruct(only(Bundle))]            pub object_type: ObjectType,
     #[superstruct(only(Bundle))]            pub snowflake: Snowflake,
-    #[superstruct(only(Bundle))]            pub velocity: LinearVelocity,
+    #[superstruct(only(Bundle))]            pub velocity: Velocity,
     #[superstruct(only(Bundle))]            pub path_finder: PathFinder,
     #[superstruct(only(Bundle))]            pub selectable: Selectable,
     #[superstruct(only(Bundle))]            pub rigid_body: RigidBody,
@@ -47,7 +47,7 @@ pub struct TankBase {
     #[superstruct(only(Disk))]              pub disk_path_finder: Option<PathFinder>,
     #[superstruct(only(Disk))]              pub disk_controller: Option<Navigator>,
     #[superstruct(only(Disk))]              pub disk_weapon_set: Option<WeaponSet>,
-    #[superstruct(only(Disk))]              pub disk_velocity: Option<LinearVelocity>,
+    #[superstruct(only(Disk))]              pub disk_velocity: Option<Velocity>,
     #[superstruct(only(Disk))]              pub disk_reference: Option<Reference>,
 }
 
@@ -61,7 +61,7 @@ impl TryFrom<&ObjectAsset> for TankBasePrefab {
         let Some(reference) = prefab.reference.clone() else { return Err(ContentError::MissingReference); };
         let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
 
-        let collider = Collider::trimesh(vertices, indices);
+        let Ok(collider) = Collider::trimesh(vertices, indices) else { return Err(ContentError::ColliderDecodeError); };
 
         Ok(Self {
             health,
@@ -111,8 +111,8 @@ impl From<TankBasePrefab> for TankBaseBundle {
             reference: prefab.reference.into(),
             team_player: TeamPlayer::default(),
             selectable: Selectable::multiselect(),
-            velocity: LinearVelocity::default(),
-            rigid_body: RigidBody::Kinematic,
+            velocity: Velocity::default(),
+            rigid_body: RigidBody::KinematicVelocityBased,
             collider: prefab.collider.clone(),
             visibility: Visibility::default(),
             transform: Transform::default(),
@@ -132,8 +132,8 @@ impl From<(TankBaseDisk, &TankBasePrefab)> for TankBaseBundle {
             weapon_set: save.disk_weapon_set.unwrap_or(prefab.weapon_set.clone()),
             reference: save.disk_reference.unwrap_or(prefab.reference.clone()),
             team_player: save.team_player,
-            velocity: save.disk_velocity.unwrap_or(LinearVelocity::default()),
-            rigid_body: RigidBody::Kinematic,
+            velocity: save.disk_velocity.unwrap_or(Velocity::default()),
+            rigid_body: RigidBody::KinematicVelocityBased,
             collider: prefab.collider.clone(),
             selectable: Selectable::multiselect(),
             visibility: Visibility::default(),
@@ -229,7 +229,6 @@ impl TankPlugin {
     pub fn load(
         mut load_events: EventReader<LoadObject<TankBase>>,
         prefabs: Res<ObjectPrefabs>,
-        mut identifiers: ResMut<Identifiers>,
         mut status: ResMut<LoadingStatus>,
         mut commands: Commands,
     ) {
@@ -244,11 +243,9 @@ impl TankPlugin {
             };
             let turret = TankGunBundle::default().with_spawn_data(&gun_spawn_data);
             let turret_entity = commands.spawn(turret).id();
-            identifiers.insert(gun_spawn_data.snowflake, turret_entity);
 
             let tank = TankBaseBundle::from(prefabs.tank_prefab.clone()).with_spawn_data(event.spawn_data.clone()).with_disk_data(event.disk_data.clone()).with_reference(turret_entity);
             let tank_entity = commands.spawn(tank).id();
-            identifiers.insert(event.spawn_data.snowflake, tank_entity);
             commands.entity(tank_entity).add_child(turret_entity);
             status.tanks_loaded = Some(true);
         }
@@ -257,7 +254,6 @@ impl TankPlugin {
     pub fn spawn(
         mut spawn_events: EventReader<SpawnObject<TankBase>>,
         prefabs: Res<ObjectPrefabs>,
-        mut identifiers: ResMut<Identifiers>,
         mut commands: Commands,
     ) {
         for event in spawn_events.read() {
@@ -271,11 +267,9 @@ impl TankPlugin {
             };
             let turret = TankGunBundle::default().with_spawn_data(&gun_spawn_data);
             let turret_entity = commands.spawn(turret).id();
-            identifiers.insert(gun_spawn_data.snowflake, turret_entity);
 
             let tank = TankBaseBundle::from(prefabs.tank_prefab.clone()).with_spawn_data(event.spawn_data.clone()).with_reference(turret_entity);
             let tank_entity = commands.spawn(tank).id();
-            identifiers.insert(event.spawn_data.snowflake, tank_entity);
             commands.entity(tank_entity).add_child(turret_entity);
         }
     }

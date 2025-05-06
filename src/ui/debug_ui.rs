@@ -31,9 +31,9 @@ pub struct DebugUIPlugin;
 
 impl DebugUIPlugin {
     pub fn spawn(
-        settings : Res<MenuSettings>,
+        settings: Res<MenuSettings>,
         font_assets: Res<FontAssets>,
-        mut commands : Commands,
+        mut commands: Commands,
     ) {
         let font = font_assets.roboto.clone();
         let font_size = FONT_SIZE_SMALL * settings.font_size;
@@ -56,7 +56,7 @@ impl DebugUIPlugin {
                 FPSCounter::default(),
                 Text::new("FPS: 0"),
                 TextFont {
-                    font : font.clone(),
+                    font: font.clone(),
                     font_size,
                     ..default()
                 },
@@ -69,7 +69,7 @@ impl DebugUIPlugin {
                 FrameCounter::default(),
                 Text::new("FRAME: 0"),
                 TextFont {
-                    font : font.clone(),
+                    font: font.clone(),
                     font_size,
                     ..default()
                 },

@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 use crossbeam_channel::{unbounded, bounded, Sender, Receiver};
 use pathing::*;
 
-use crate::{Navigation, OptOut, Slim};
+use crate::*;
 
 #[derive(Resource, Deref)]
 pub struct PFStreamInput(Sender<(Entity, Vec2, Vec2)>);
@@ -20,9 +20,7 @@ pub enum PathFindingSystems {
     PathFindingSystem,
 }
 
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
-#[derive(Resource)]
+#[derive(Debug, Clone, Serialize, Deserialize, Resource)]
 pub struct GridMap(pub DS2Map);
 
 impl GridMap {
@@ -31,9 +29,7 @@ impl GridMap {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-#[derive(Serialize, Deserialize)]
-#[derive(Resource)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Resource)]
 pub struct GridSpace {
     pub offset: Vec2,
     pub scale: Vec2,
@@ -67,8 +63,7 @@ impl Default for GridSpace {
     }
 }
 
-#[derive(Debug, Default, Clone, Component)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, Component)]
 pub enum PathFinder {
     #[default]
     Idle,
@@ -176,7 +171,7 @@ impl PathFindingPlugin {
         input: Res<PFStreamInput>,
         output: Res<PFStreamOutput>,
         mut path_finders: ParamSet<(
-            Query<(Entity, &PathFinder), (Changed<PathFinder>, Without<OptOut<Navigation>>)>,
+            Query<(Entity, &PathFinder), Changed<PathFinder>>,
             Query<&mut PathFinder>,
         )>,
     ) {

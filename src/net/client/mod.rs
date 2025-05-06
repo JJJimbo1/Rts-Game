@@ -67,7 +67,6 @@ impl ClientPlugin {
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        println!("CKLasdfjkl;ahsdkl; adhjkafhsd");
         let (client, transport) = new_renet_client();
         app
             .add_event::<ClientRequest>()

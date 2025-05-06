@@ -1,12 +1,12 @@
 pub mod developer;
 
-use bevy_asset_loader::prelude::AssetCollection;
 pub use developer::*;
 
 use std::fmt::Display;
 use bevy::{prelude::*, reflect::TypePath, asset::{AssetLoader, io::Reader}};
 use serde::{Serialize, Deserialize};
-
+use bevy_asset_loader::prelude::AssetCollection;
+use pathing::DS2Map;
 use crate::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -120,12 +120,10 @@ impl MapPlugin {
         mut load_events: EventReader<MapLoadEvent>,
         map_assets: Res<MapAssets>,
         maps: Res<Assets<MapAsset>>,
-        // mut identifiers: ResMut<Identifiers>,
         mut status: ResMut<LoadingStatus>,
         mut commands: Commands,
     ) {
         for event in load_events.read() {
-            println!("MAP LOADING");
             commands.insert_resource(event.map_serde.clone());
 
             let map_handle: Handle<MapAsset> = map_assets.from_serde_map(&event.map_serde).clone();
@@ -138,9 +136,23 @@ impl MapPlugin {
             match event.map_serde {
                 MapSerde::Developer(developer) => { commands.spawn(DeveloperBundle::from((developer, &map_asset.try_into().unwrap()))); }
             }
-            println!("Map Loaded");
             status.map_loaded = true;
         }
+    }
+
+    pub fn spawn_map(
+        gltf_assets: Res<GltfAssets>,
+        maps: Query<(Entity, &MapType), Added<MapType>>,
+        mut commands: Commands,
+    ) {
+        maps.iter().for_each(|(entity, map)| {
+            let Some(scene) = gltf_assets.get_map(*map) else { return; };
+            commands.entity(entity).with_children(|parent| {
+                parent.spawn(
+                    SceneRoot(scene.clone())
+                );
+            });
+        });
     }
 }
 
@@ -148,10 +160,7 @@ impl Plugin for MapPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_event::<MapLoadEvent>()
-            .add_systems(Update,
-                Self::load_map.run_if(resource_exists::<MapAssets>)
-                // Self::load_map
-            )
+            .add_systems(Update, (Self::load_map.run_if(resource_exists::<MapAssets>), Self::spawn_map.run_if(resource_exists::<GltfAssets>)))
         ;
     }
 }

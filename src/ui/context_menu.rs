@@ -41,19 +41,19 @@ pub struct ContextFocus(pub Option<Entity>);
 #[derive(Debug, Clone)]
 #[derive(Resource)]
 pub struct ContextMenu {
-    container : Entity,
-    active_tab : ActiveTab,
-    list_container : Entity,
-    list_icons : Vec<Entity>,
+    container: Entity,
+    active_tab: ActiveTab,
+    list_container: Entity,
+    list_icons: Vec<Entity>,
 }
 
 impl ContextMenu {
     pub fn show_items(&self,
-        entity : Entity,
-        queue : &Queue,
-        mut texts : Query<&mut Text>,
-        mut ui_colors : Query<&mut BackgroundColor>,
-        mut context_menu_buttons : Query<&mut ContextMenuButtonsEvent>,
+        entity: Entity,
+        queue: &Queue,
+        mut texts: Query<&mut Text>,
+        mut ui_colors: Query<&mut BackgroundColor>,
+        mut context_menu_buttons: Query<&mut ContextMenuButtonsEvent>,
         mut visible_query: Query<(&mut Visibility, &InheritedVisibility)>,
         children_query: Query<&Children>,
     ) {
@@ -90,24 +90,24 @@ impl ContextMenu {
     }
 }
 
-pub struct ContextUIPlugin;
+pub struct ContextMenuPlugin;
 
-impl ContextUIPlugin {
+impl ContextMenuPlugin {
     pub fn create_context_menu(
-        settings : Res<MenuSettings>,
+        settings: Res<MenuSettings>,
         font_assets: Res<FontAssets>,
         image_assets: Res<ImageAssets>,
-        mut materials : ResMut<Assets<ColorMaterial>>,
-        mut commands : Commands,
+        mut materials: ResMut<Assets<ColorMaterial>>,
+        mut commands: Commands,
     ) {
         let font = font_assets.roboto.clone();
         let font_size = FONT_SIZE_SMALL * settings.font_size / 1.5;
 
         let mut entity_commands = commands.spawn((
             Node {
-                position_type : PositionType::Absolute,
-                top : Val::Px(50.0),
-                right : Val::Px(50.0),
+                position_type: PositionType::Absolute,
+                top: Val::Px(50.0),
+                right: Val::Px(50.0),
                 width: Val::Px(300.0),
                 height: Val::Px(600.0),
                 justify_content: JustifyContent::Center,
@@ -121,17 +121,14 @@ impl ContextUIPlugin {
 
         let container_entity = entity_commands.id();
 
-        let mut x_value : f32 = 10.0;
-        let mut y_value : f32 = 10.0;
+        let mut x_value: f32 = 10.0;
+        let mut y_value: f32 = 10.0;
 
         let mut structures_tab = None;
         let mut support_structures_tab = None;
         let mut infantry_tab = None;
         let mut vehicle_tab = None;
         let mut aircraft_tab = None;
-        let mut watercraft_tab = None;
-        let mut technology_tab = None;
-        let mut transformation_entity = None;
         let mut list_entity = None;
 
         entity_commands.with_children(|parent| {
@@ -140,15 +137,12 @@ impl ContextUIPlugin {
             infantry_tab = Some(Self::create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtonsEvent::InfantryTab)); y_value += 40.0;
             vehicle_tab = Some(Self::create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtonsEvent::VehiclesTab)); x_value += 72.5; y_value -= 40.0;
             aircraft_tab = Some(Self::create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtonsEvent::AircraftTab)); y_value += 40.0;
-            watercraft_tab = Some(Self::create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtonsEvent::WatercraftTab)); x_value += 72.5; y_value -= 40.0;
-            technology_tab = Some(Self::create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtonsEvent::TechnologyTab)); y_value += 40.0;
-            transformation_entity = Some(Self::create_tab(parent, &mut materials, x_value, y_value, ContextMenuButtonsEvent::TranformationTab)); y_value += 40.0;
             list_entity = Some(Self::create_list(parent, &mut materials, y_value));
         });
 
-        let mut x : f32 = 10.0;
-        let mut y : f32 = 10.0;
-        let mut roll : u8 = 0;
+        let mut x: f32 = 10.0;
+        let mut y: f32 = 10.0;
+        let mut roll: u8 = 0;
         let mut icons = Vec::new();
 
         let width = 80.0;
@@ -159,13 +153,13 @@ impl ContextUIPlugin {
                 let icon = parent.spawn( (
                     Button,
                     Node {
-                        position_type : PositionType::Absolute,
-                        left : Val::Px(x),
-                        top : Val::Px(y),
+                        position_type: PositionType::Absolute,
+                        left: Val::Px(x),
+                        top: Val::Px(y),
                         width: Val::Px(width),
                         height: Val::Px(height),
-                        justify_content : JustifyContent::Center,
-                        align_items : AlignItems::Center,
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
                         ..default()
                     },
                     BackgroundColor(Color::BLACK.into()),
@@ -198,7 +192,7 @@ impl ContextUIPlugin {
                         },
                         TextColor(TEXT_COLOR_NORMAL),
                         Node {
-                            position_type : PositionType::Absolute,
+                            position_type: PositionType::Absolute,
                             ..Default::default()
                         },
                         BlocksRaycast,
@@ -230,7 +224,7 @@ impl ContextUIPlugin {
         _materials: &mut Assets<ColorMaterial>,
         x: f32,
         y: f32,
-        button : ContextMenuButtonsEvent,
+        button: ContextMenuButtonsEvent,
     ) -> Entity {
 
         parent.spawn((
@@ -318,10 +312,10 @@ impl ContextUIPlugin {
 
     pub fn context_menu_event_reader(
         input: Res<ButtonInput<KeyCode>>,
-        mut context_menu_events : EventReader<ContextMenuButtonsEvent>,
-        mut menu : ResMut<ContextMenu>,
-        mut current_placement : ResMut<CurrentPlacement<CLICK_BUFFER>>,
-        mut queueses : Query<&mut Queues>,
+        mut context_menu_events: EventReader<ContextMenuButtonsEvent>,
+        mut menu: ResMut<ContextMenu>,
+        mut current_placement: ResMut<CurrentPlacement<CLICK_BUFFER>>,
+        mut queueses: Query<&mut Queues>,
     ) {
         let shift = input.pressed(KeyCode::ShiftLeft) || input.pressed(KeyCode::ShiftRight);
         for event in context_menu_events.read() {
@@ -331,9 +325,6 @@ impl ContextUIPlugin {
                 ContextMenuButtonsEvent::InfantryTab => { menu.active_tab = ActiveQueue::Infantry.into(); }
                 ContextMenuButtonsEvent::VehiclesTab => { menu.active_tab = ActiveQueue::Vehicles.into(); }
                 ContextMenuButtonsEvent::AircraftTab => { menu.active_tab = ActiveQueue::Aircraft.into(); }
-                ContextMenuButtonsEvent::WatercraftTab => { menu.active_tab = ActiveQueue::Watercraft.into(); }
-                ContextMenuButtonsEvent::TechnologyTab => { menu.active_tab = ActiveQueue::Technology.into(); }
-                ContextMenuButtonsEvent::TranformationTab => { menu.active_tab = ActiveQueue::Transformation.into(); }
                 ContextMenuButtonsEvent::BeginButton(id) => {
                     if let Some((entity, tab, stack_data)) = id {
                         if let Ok(mut queues) = queueses.get_mut(entity) {
@@ -366,7 +357,7 @@ impl ContextUIPlugin {
     }
 }
 
-impl Plugin for ContextUIPlugin {
+impl Plugin for ContextMenuPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_systems(OnEnter(GameState::SingleplayerGame),

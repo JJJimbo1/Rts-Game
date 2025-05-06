@@ -61,15 +61,15 @@ impl Default for Queue {
 }
 
 impl Queue {
-    pub fn set_timer(&mut self, time : f64) {
+    pub fn set_timer(&mut self, time: f64) {
         self.timer = time;
     }
 
-    pub fn time_left(&self, timer : f64) -> f64 {
+    pub fn time_left(&self, timer: f64) -> f64 {
         self.timer.min(timer)
     }
 
-    pub fn update(&mut self, delta : f64) {
+    pub fn update(&mut self, delta: f64) {
         if self.timer > 0.0 {
             self.timer -= delta;
         }
@@ -115,27 +115,27 @@ pub struct ZipQueue<S> {
 impl<S: Eq + Clone> ZipQueue<S> {
     pub fn new() -> Self {
         Self {
-            spine : Vec::new(),
+            spine: Vec::new(),
         }
     }
 
-    pub fn with_capacity(capacity : usize) -> Self {
+    pub fn with_capacity(capacity: usize) -> Self {
         Self {
-            spine : Vec::with_capacity(capacity),
+            spine: Vec::with_capacity(capacity),
         }
     }
 
-    pub fn push(&mut self, stack : S) {
+    pub fn push(&mut self, stack: S) {
         self.spine.push(stack);
     }
 
-    pub fn remove(&mut self, stack : &S) {
+    pub fn remove(&mut self, stack: &S) {
         let Some(mut i) = self.spine.iter().rev().position(|s| s == stack) else { return; };
         i = self.spine.len() - i - 1;
         self.spine.remove(i);
     }
 
-    pub fn remove_all(&mut self, stack : &S) {
+    pub fn remove_all(&mut self, stack: &S) {
         self.spine.retain(|s| s != stack);
     }
 
@@ -158,7 +158,7 @@ impl<S: Eq + Clone> ZipQueue<S> {
         &mut self.spine
     }
 
-    pub fn height(&self, stack : &S) -> usize {
+    pub fn height(&self, stack: &S) -> usize {
         self.spine.iter().filter(|s| *s == stack).count()
     }
 

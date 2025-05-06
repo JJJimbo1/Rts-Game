@@ -1,5 +1,5 @@
-use avian3d::prelude::{Collider, LinearVelocity, RigidBody};
 use bevy::prelude::*;
+use bevy_rapier3d::prelude::{Collider, RigidBody, Velocity};
 use serde::{Serialize, Deserialize};
 use superstruct::*;
 use crate::*;
@@ -33,7 +33,7 @@ pub struct MarineSquad {
     #[superstruct(only(Bundle))]            pub marker: MarineSquad,
     #[superstruct(only(Bundle))]            pub object_type: ObjectType,
     #[superstruct(only(Bundle))]            pub snowflake: Snowflake,
-    #[superstruct(only(Bundle))]            pub velocity: LinearVelocity,
+    #[superstruct(only(Bundle))]            pub velocity: Velocity,
     #[superstruct(only(Bundle))]            pub path_finder: PathFinder,
     #[superstruct(only(Bundle))]            pub selectable: Selectable,
     #[superstruct(only(Bundle))]            pub rigid_body: RigidBody,
@@ -46,7 +46,7 @@ pub struct MarineSquad {
     #[superstruct(only(Disk))]              pub disk_path_finder: Option<PathFinder>,
     #[superstruct(only(Disk))]              pub disk_controller: Option<Navigator>,
     #[superstruct(only(Disk))]              pub disk_weapon_set: Option<WeaponSet>,
-    #[superstruct(only(Disk))]              pub disk_velocity: Option<LinearVelocity>,
+    #[superstruct(only(Disk))]              pub disk_velocity: Option<Velocity>,
 }
 
 impl TryFrom<&ObjectAsset> for MarineSquadPrefab {
@@ -59,7 +59,8 @@ impl TryFrom<&ObjectAsset> for MarineSquadPrefab {
         let Some(collider_string) = asset.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
         let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
 
-        let collider = Collider::trimesh(vertices, indices);
+
+        let Ok(collider) = Collider::trimesh(vertices, indices) else { return Err(ContentError::ColliderDecodeError); };
 
         Ok(Self {
             health,
@@ -105,8 +106,8 @@ impl From<MarineSquadPrefab> for MarineSquadBundle {
             weapon_set: prefab.weapon_set,
             team_player: TeamPlayer::default(),
             selectable: Selectable::multiselect(),
-            velocity: LinearVelocity::default(),
-            rigid_body: RigidBody::Kinematic,
+            velocity: Velocity::default(),
+            rigid_body: RigidBody::KinematicVelocityBased,
             collider: prefab.collider.clone(),
             transform: Transform::default(),
             visibility: Visibility::default(),
@@ -128,8 +129,8 @@ impl From<(MarineSquadDisk, &MarineSquadPrefab)> for MarineSquadBundle {
             weapon_set: save.disk_weapon_set.unwrap_or(prefab.weapon_set.clone()),
             team_player: save.team_player,
             selectable: Selectable::multiselect(),
-            velocity: save.disk_velocity.unwrap_or(LinearVelocity::default()),
-            rigid_body: RigidBody::Kinematic,
+            velocity: save.disk_velocity.unwrap_or(Velocity::default()),
+            rigid_body: RigidBody::KinematicVelocityBased,
             collider: prefab.collider.clone(),
             transform: save.transform.into(),
             visibility: Visibility::default(),

@@ -1,4 +1,5 @@
 pub mod base;
+pub mod camera;
 pub mod client;
 pub mod client_m;
 pub mod combat;
@@ -8,10 +9,11 @@ pub mod net;
 pub mod server_m;
 pub mod production;
 pub mod physics;
+pub mod ui;
 pub mod utility;
-pub mod mainmenu;
 
 pub use base::*;
+pub use camera::*;
 pub use client::*;
 pub use client_m::*;
 pub use combat::*;
@@ -21,14 +23,15 @@ pub use net::*;
 pub use server_m::*;
 pub use production::*;
 pub use physics::*;
+pub use ui::*;
 pub use utility::*;
-pub use mainmenu::*;
 
-use std::marker::PhantomData;
-use bevy::prelude::*;
+use bevy::{app::PluginGroupBuilder, prelude::*};
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(States)]
+#[derive(Debug, Copy, Clone, Resource)]
+pub struct LocalPlayer(pub TeamPlayer);
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, States)]
 pub enum GameState {
     #[default]
     AssetLoading,
@@ -36,49 +39,15 @@ pub enum GameState {
     MainMenu,
     CustomGame,
     MatchLoadingState,
-    // MatchLoadingState(String),
     SingleplayerGame,
     MultiplayerGame,
 }
 
-#[derive(Debug, Clone, Copy, Component)]
-pub struct DeleteOnStateChange;
-#[derive(Debug, Clone, Copy, Component)]
-pub struct DontDeleteOnStateChange;
+pub struct GamePlugins;
 
-
-
-#[derive(Debug, Clone, Copy, Component)]
-pub struct OptOut<T: OptOutSytem>(PhantomData<T>);
-
-#[derive(Debug, Clone, Copy, Component)]
-pub struct Navigation;
-
-impl OptOutSytem for Navigation { }
-
-#[derive(Debug, Clone, Copy, Component)]
-pub struct Targeting;
-
-impl OptOutSytem for Targeting { }
-
-pub trait OptOutSytem { }
-
-
-
-#[derive(Debug, Hash, PartialEq, Eq, Clone)]
-pub enum CommonSystemSets {
-    Combat,
-    Command,
-    Economy,
-    Physics,
-}
-
-pub struct CommonPlugins;
-
-impl PluginGroup for CommonPlugins {
+impl PluginGroup for GamePlugins {
     fn build(self) -> bevy::app::PluginGroupBuilder {
-        let group = bevy::app::PluginGroupBuilder::start::<CommonPlugins>();
-        group
+        PluginGroupBuilder::start::<GamePlugins>()
             .add(CommandPlugin)
             .add(ProductionPlugin)
             .add(CombatPlugin)

@@ -14,8 +14,8 @@ pub enum SelectableType {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[derive(Component)]
 pub struct Selectable {
-    pub selected : bool,
-    pub context : SelectableType,
+    pub selected: bool,
+    pub context: SelectableType,
 }
 
 impl Selectable {

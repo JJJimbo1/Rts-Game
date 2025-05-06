@@ -18,11 +18,6 @@ impl Commanders {
             commanders: HashMap::new(),
         }
     }
-    // pub fn assign_building(&mut self, actor : TeamPlayer, queues : Snowflake) {
-    //     if let Some(x) = self.actors.get_mut(&actor) {
-    //         x.buildings.push(queues);
-    //     }
-    // }
 
     pub fn reset_ratings(&mut self) {
         for a in self.commanders.values_mut() {
@@ -35,17 +30,17 @@ impl Commanders {
 #[derive(Debug, Clone, Copy)]
 #[derive(Serialize, Deserialize)]
 pub struct Commander {
-    pub commander_type : CommanderType,
-    pub rating : Rating,
-    pub economy : Economy,
+    pub commander_type: CommanderType,
+    pub rating: Rating,
+    pub economy: Economy,
 }
 
 impl Commander {
-    pub fn new(actor_type : CommanderType) -> Self {
+    pub fn new(actor_type: CommanderType) -> Self {
         Self {
             commander_type: actor_type,
-            rating : Rating::default(),
-            economy : Economy::default(),
+            rating: Rating::default(),
+            economy: Economy::default(),
         }
     }
 
@@ -70,7 +65,7 @@ impl Commander {
 #[derive(Debug, Clone, Copy)]
 #[derive(Serialize, Deserialize)]
 pub enum CommanderType {
-    AI{difficulty : AIDifficulty, settings : AISettings},
+    AI{difficulty: AIDifficulty, settings: AISettings},
     Player,
 }
 
@@ -86,15 +81,15 @@ pub enum AIDifficulty {
 #[derive(Debug, Clone, Copy)]
 #[derive(Serialize, Deserialize)]
 pub struct AISettings {
-    dynamic : Option<(f32, f32)>,
+    dynamic: Option<(f32, f32)>,
 }
 
 #[derive(Debug, Default, Clone, Copy)]
 #[derive(Serialize, Deserialize)]
 pub struct Rating {
-    pub economy_score : f64,
-    pub production_score : f64,
-    pub power_score : f64,
+    pub economy_score: f64,
+    pub production_score: f64,
+    pub power_score: f64,
 }
 
 impl Rating {
@@ -108,8 +103,8 @@ impl Rating {
 #[derive(Debug, Clone, Copy)]
 #[derive(Serialize, Deserialize)]
 pub struct Economy {
-    resources : f64,
-    settings : EconomySettings,
+    resources: f64,
+    settings: EconomySettings,
 }
 
 impl Economy {
@@ -121,7 +116,7 @@ impl Economy {
         self.resources() > cost
     }
 
-    pub fn add_resources(&mut self, stat : (u32, f64)) {
+    pub fn add_resources(&mut self, stat: (u32, f64)) {
 
         let amount = {
             if stat.0 <= self.settings.tipping_point {
@@ -136,7 +131,7 @@ impl Economy {
 
     }
 
-    pub fn remove_resources(&mut self, amount : f64) -> bool {
+    pub fn remove_resources(&mut self, amount: f64) -> bool {
         if self.resources > amount {
             self.resources -= amount;
             return true;
@@ -148,8 +143,8 @@ impl Economy {
 impl Default for Economy {
     fn default() -> Self {
         Self {
-            resources : DEFAULT_STARTING_MONEY,
-            settings : EconomySettings::default(),
+            resources: DEFAULT_STARTING_MONEY,
+            settings: EconomySettings::default(),
         }
     }
 }

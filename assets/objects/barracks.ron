@@ -5,23 +5,23 @@
         (
             object: Barracks,
             time_to_build: Duration (
-                secs : 10,
-                nanos : 0,
+                secs: 10,
+                nanos: 0,
             ),
             cost: 500,
             buffered: true,
         )
     ),
-    health : (
-        max_health : 3000,
-        health : 3000,
-        resistance : 0.0,
-        resistances : (
-            kinetic : 0.5,
-            fire : -1.0,
-            explosive : -1.0,
-            laser : 0.5,
-            shock : 0.5,
+    health: (
+        max_health: 3000,
+        health: 3000,
+        resistance: 0.0,
+        resistances: (
+            kinetic: 0.5,
+            fire: -1.0,
+            explosive: -1.0,
+            laser: 0.5,
+            shock: 0.5,
         ),
         dense: true,
     ),

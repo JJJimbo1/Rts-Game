@@ -95,7 +95,7 @@ use serde::Serialize;
 use ron::{ser::{PrettyConfig, to_string_pretty}, extensions::Extensions};
 use log::error;
 
-pub fn save_to_file<S : Serialize, P : AsRef<Path>>(item : &S, path : P) -> Result<(), SaveLoadError> {
+pub fn save_to_file<S: Serialize, P: AsRef<Path>>(item: &S, path: P) -> Result<(), SaveLoadError> {
     let mut _f = match OpenOptions::new()
         .create(true)
         .write(true)
@@ -129,7 +129,7 @@ pub fn save_to_file<S : Serialize, P : AsRef<Path>>(item : &S, path : P) -> Resu
     };
 }
 /*
-pub fn load_from_file<D, P : AsRef<Path>>(path : P) -> Result<D, SaveLoadError> where for<'de> D : Deserialize<'de> {
+pub fn load_from_file<D, P: AsRef<Path>>(path: P) -> Result<D, SaveLoadError> where for<'de> D: Deserialize<'de> {
     match OpenOptions::new()
         .read(true)
         .write(false)

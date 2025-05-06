@@ -1,5 +1,5 @@
-use avian3d::prelude::Collider;
 use bevy::prelude::*;
+use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
 use superstruct::*;
 use crate::*;
@@ -70,7 +70,7 @@ impl TryFrom<&ObjectAsset> for ResourceNodePrefab {
         let Some(collider_string) = prefab.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
         let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
 
-        let collider = Collider::trimesh(vertices, indices);
+        let Ok(collider) = Collider::trimesh(vertices, indices) else { return Err(ContentError::ColliderDecodeError); };
 
         Ok(Self {
             collider,
@@ -199,7 +199,7 @@ impl TryFrom<&ObjectAsset> for ResourcePlatformClaimedPrefab {
         let Some(collider_string) = asset.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
         let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
 
-        let collider = Collider::trimesh(vertices, indices);
+        let Ok(collider) = Collider::trimesh(vertices, indices) else { return Err(ContentError::ColliderDecodeError); };
 
         Ok(Self {
             stack,
@@ -280,7 +280,7 @@ impl TryFrom<&ObjectAsset> for ResourcePlatformUnclaimedPrefab {
         let Some(collider_string) = asset.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
         let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
 
-        let collider = Collider::trimesh(vertices, indices);
+        let Ok(collider) = Collider::trimesh(vertices, indices) else { return Err(ContentError::ColliderDecodeError); };
 
         Ok(Self {
             collider,
@@ -336,7 +336,6 @@ impl ResourceNodePlugin {
     pub fn load(
         mut load_events: EventReader<LoadObject<ResourceNode>>,
         prefabs: Res<ObjectPrefabs>,
-        mut identifiers: ResMut<Identifiers>,
         mut status: ResMut<LoadingStatus>,
         mut commands: Commands,
     ) {
@@ -360,7 +359,6 @@ impl ResourceNodePlugin {
                             transform: platform_transform,
                         };
                         commands.spawn(ResourcePlatformUnclaimedBundle::from(prefabs.resource_platform_unclaimed_prefab.clone()).with_platform(platform).with_spawn_data(spawn_data));
-                        identifiers.insert(event.spawn_data.snowflake, entity);
                     }
                     ResourcePlatform::Claimed(snowflake, player) => {
                         let spawn_data = ObjectSpawnData {
@@ -372,7 +370,6 @@ impl ResourceNodePlugin {
                     }
                 }
             }
-            println!("Resource Nodes Loaded");
             status.resource_nodes_loaded = Some(true);
         }
     }
@@ -380,13 +377,11 @@ impl ResourceNodePlugin {
     pub fn spawn(
         mut spawn_events: EventReader<SpawnObject<ResourceNode>>,
         prefabs: Res<ObjectPrefabs>,
-        mut identifiers: ResMut<Identifiers>,
         mut commands: Commands,
     ) {
         for event in spawn_events.read() {
             let resource_node = ResourceNodeBundle::from(prefabs.resource_node_prefab.clone()).with_spawn_data(event.spawn_data.clone());
-            let entity = commands.spawn(resource_node).id();
-            identifiers.insert(event.spawn_data.snowflake, entity);
+            commands.spawn(resource_node);
             let transform = event.spawn_data.transform;
             let resource_node = ResourceNodePlatforms::default();
 
@@ -401,8 +396,7 @@ impl ResourceNodePlugin {
                     transform: platform_transform,
                 };
                 let platform = ResourcePlatformUnclaimedBundle::from(prefabs.resource_platform_unclaimed_prefab.clone()).with_spawn_data(spawn_data);
-                let entity = commands.spawn(platform).id();
-                identifiers.insert(snowflake, entity);
+                commands.spawn(platform);
             }
         }
     }

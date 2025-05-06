@@ -9,57 +9,13 @@ pub use map::*;
 pub use object::*;
 pub use error::*;
 
-use bevy::prelude::*;
+use bevy::{app::PluginGroupBuilder, prelude::*};
 
 use crate::{DiskPlugin, GameState};
 
 pub static BASE_LABEL: &'static str = "base";
 
-pub struct BaseLoadingPlugin;
-
-impl Plugin for BaseLoadingPlugin {
-    fn build(&self, app: &mut App) {
-        app
-            .init_asset::<LevelAsset>()
-            .init_asset::<MapAsset>()
-            .init_asset::<ObjectAsset>()
-
-            .init_asset_loader::<LevelLoader>()
-            .init_asset_loader::<MapAssetLoader>()
-            .init_asset_loader::<ObjectAssetLoader>()
-
-            .add_loading_state(LoadingState::new(GameState::AssetLoading)
-                .continue_to_state(GameState::Loading)
-                .load_collection::<MapAssets>()
-                .load_collection::<ObjectAssets>()
-                .finally_init_resource::<ObjectPrefabs>()
-            )
-        ;
-    }
-}
-
-
-pub struct BasePlugins;
-
-impl PluginGroup for BasePlugins {
-    fn build(self) -> bevy::app::PluginGroupBuilder {
-        let group = bevy::app::PluginGroupBuilder::start::<BasePlugins>();
-        let group = group
-            .add(BaseLoadingPlugin)
-            .add(LevelPlugin)
-            .add(MapPlugin)
-            .add(ObjectPlugin)
-            .add(DiskPlugin)
-            .add(BaseClientPlugin);
-
-        group
-    }
-}
-
-
-#[derive(Debug, Default, Clone)]
-#[derive(Resource)]
-#[derive(AssetCollection)]
+#[derive(Debug, Default, Clone, Resource, AssetCollection)]
 pub struct GltfAssets {
     #[asset(path = "models/developer.glb#Scene0")]
     pub developer: Handle<Scene>,
@@ -107,45 +63,40 @@ impl GltfAssets {
     }
 }
 
-pub struct BaseClientPlugin;
+pub struct BaseLoadingPlugin;
 
-impl BaseClientPlugin {
-    pub fn client_spawn(
-        gltf_assets: Res<GltfAssets>,
-        maps: Query<(Entity, &MapType), Added<MapType>>,
-        objects: Query<(Entity, &ObjectType), Added<ObjectType>>,
-        mut commands: Commands,
-    ) {
-        maps.iter().for_each(|(entity, map)| {
-            let Some(scene) = gltf_assets.get_map(*map) else { return; };
-            commands.entity(entity).with_children(|parent| {
-                parent.spawn(
-                    SceneRoot(scene.clone())
-                );
-            });
-        });
-        objects.iter().for_each(|(entity, object)| {
-            let Some(scene) = gltf_assets.get_object(*object) else { return; };
-            commands.entity(entity).with_children(|parent| {
-                parent.spawn(
-                    SceneRoot(scene.clone())
-                );
-            });
-        });
+impl Plugin for BaseLoadingPlugin {
+    fn build(&self, app: &mut App) {
+        app
+            .init_asset::<LevelAsset>()
+            .init_asset::<MapAsset>()
+            .init_asset::<ObjectAsset>()
+
+            .init_asset_loader::<LevelLoader>()
+            .init_asset_loader::<MapAssetLoader>()
+            .init_asset_loader::<ObjectAssetLoader>()
+
+            .add_loading_state(LoadingState::new(GameState::AssetLoading)
+                .load_collection::<MapAssets>()
+                .load_collection::<ObjectAssets>()
+                .load_collection::<GltfAssets>()
+                .finally_init_resource::<ObjectPrefabs>()
+                .continue_to_state(GameState::Loading)
+            )
+        ;
     }
 }
 
-impl Plugin for BaseClientPlugin {
-    fn build(&self, app: &mut bevy::prelude::App) {
-        println!("BASE CLIENT PLUGIN");
-        app
-            .add_loading_state(LoadingState::new(GameState::AssetLoading)
-                .continue_to_state(GameState::Loading)
-                .load_collection::<GltfAssets>()
-            )
 
+pub struct BasePlugins;
 
-        .add_systems(Update, Self::client_spawn.run_if(resource_exists::<GltfAssets>));
-        // .add_systems(Update, Self::client_object_spawn);
+impl PluginGroup for BasePlugins {
+    fn build(self) -> bevy::app::PluginGroupBuilder {
+        PluginGroupBuilder::start::<BasePlugins>()
+            .add(BaseLoadingPlugin)
+            .add(LevelPlugin)
+            .add(MapPlugin)
+            .add(ObjectPlugin)
+            .add(DiskPlugin)
     }
 }

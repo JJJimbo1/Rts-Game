@@ -55,25 +55,25 @@ Data({
             objects: (
                 crane_yards: [
                     (
-                        transform : (
+                        transform: (
                             translation: (0., 0., 150.,),
-                            rotation : (0., 1., 0., 0.),
-                            scale : (1., 1., 1.,),
+                            rotation: (0., 1., 0., 0.),
+                            scale: (1., 1., 1.,),
                         ),
-                        team_player : (
-                            team : 1,
-                            player : 0,
+                        team_player: (
+                            team: 1,
+                            player: 0,
                         ),
                     ),
                     (
-                        transform : (
-                            translation : (0., 0., -150.,),
-                            rotation : (0., 0., 0., 1.),
-                            scale : (1., 1., 1.,),
+                        transform: (
+                            translation: (0., 0., -150.,),
+                            rotation: (0., 0., 0., 1.),
+                            scale: (1., 1., 1.,),
                         ),
-                        team_player : (
-                            team : 2,
-                            player : 0,
+                        team_player: (
+                            team: 2,
+                            player: 0,
                         ),
                     ),
                 ],
@@ -81,116 +81,116 @@ Data({
                 factories: [],
                 resource_nodes: [
                     (
-                        transform : (
-                            translation : (50., 0., 160.,),
-                            rotation : (0., 1., 0., 0.),
-                            scale : (1., 1., 1.,),
+                        transform: (
+                            translation: (50., 0., 160.,),
+                            rotation: (0., 1., 0., 0.),
+                            scale: (1., 1., 1.,),
                         ),
-                        team_player : (
-                            team : 0,
-                            player : 0,
+                        team_player: (
+                            team: 0,
+                            player: 0,
                         ),
                     ),
                     (
-                        transform : (
-                            translation : (-50., 0., 160.,),
-                            rotation : (0., 1., 0., 0.),
-                            scale : (1., 1., 1.,),
+                        transform: (
+                            translation: (-50., 0., 160.,),
+                            rotation: (0., 1., 0., 0.),
+                            scale: (1., 1., 1.,),
                         ),
-                        team_player : (
-                            team : 0,
-                            player : 0,
+                        team_player: (
+                            team: 0,
+                            player: 0,
                         ),
                     ),
                 ],
                 marine_squads: [],
                 tanks: [
                     (
-                        transform : (
-                            translation : (5., 0., 120.,),
-                            rotation : (0., 0., 0., 1.),
-                            scale : (1., 1., 1.,),
+                        transform: (
+                            translation: (5., 0., 120.,),
+                            rotation: (0., 0., 0., 1.),
+                            scale: (1., 1., 1.,),
                         ),
-                        team_player : (
-                            team : 1,
-                            player : 0,
-                        ),
-                    ),
-                    (
-                        transform : (
-                            translation : (-5., 0., 120.,),
-                            rotation : (0., 0., 0., 1.0),
-                            scale : (1., 1., 1.,),
-                        ),
-                        team_player : (
-                            team : 1,
-                            player : 0,
+                        team_player: (
+                            team: 1,
+                            player: 0,
                         ),
                     ),
                     (
-                        transform : (
-                            translation : (15., 0., 120.,),
-                            rotation : (0., 0., 0., 1.0),
-                            scale : (1., 1., 1.,),
+                        transform: (
+                            translation: (-5., 0., 120.,),
+                            rotation: (0., 0., 0., 1.0),
+                            scale: (1., 1., 1.,),
                         ),
-                        team_player : (
-                            team : 1,
-                            player : 0,
-                        ),
-                    ),
-                    (
-                        transform : (
-                            translation : (-15., 0., 120.,),
-                            rotation : (0., 0., 0., 1.0),
-                            scale : (1., 1., 1.,),
-                        ),
-                        team_player : (
-                            team : 1,
-                            player : 0,
+                        team_player: (
+                            team: 1,
+                            player: 0,
                         ),
                     ),
                     (
-                        transform : (
-                            translation : (5., 0., -120.,),
-                            rotation : (0., 1., 0., 0.),
-                            scale : (1., 1., 1.,),
+                        transform: (
+                            translation: (15., 0., 120.,),
+                            rotation: (0., 0., 0., 1.0),
+                            scale: (1., 1., 1.,),
                         ),
-                        team_player : (
-                            team : 2,
-                            player : 0,
-                        ),
-                    ),
-                    (
-                        transform : (
-                            translation : (-5., 0., -120.,),
-                            rotation : (0., 1., 0., 0.),
-                            scale : (1., 1., 1.,),
-                        ),
-                        team_player : (
-                            team : 2,
-                            player : 0,
+                        team_player: (
+                            team: 1,
+                            player: 0,
                         ),
                     ),
                     (
-                        transform : (
-                            translation : (15., 0., -120.,),
-                            rotation : (0., 1., 0., 0.),
-                            scale : (1., 1., 1.,),
+                        transform: (
+                            translation: (-15., 0., 120.,),
+                            rotation: (0., 0., 0., 1.0),
+                            scale: (1., 1., 1.,),
                         ),
-                        team_player : (
-                            team : 2,
-                            player : 0,
+                        team_player: (
+                            team: 1,
+                            player: 0,
                         ),
                     ),
                     (
-                        transform : (
-                            translation : (-15., 0., -120.,),
-                            rotation : (0., 1., 0., 0.),
-                            scale : (1., 1., 1.,),
+                        transform: (
+                            translation: (5., 0., -120.,),
+                            rotation: (0., 1., 0., 0.),
+                            scale: (1., 1., 1.,),
                         ),
-                        team_player : (
-                            team : 2,
-                            player : 0,
+                        team_player: (
+                            team: 2,
+                            player: 0,
+                        ),
+                    ),
+                    (
+                        transform: (
+                            translation: (-5., 0., -120.,),
+                            rotation: (0., 1., 0., 0.),
+                            scale: (1., 1., 1.,),
+                        ),
+                        team_player: (
+                            team: 2,
+                            player: 0,
+                        ),
+                    ),
+                    (
+                        transform: (
+                            translation: (15., 0., -120.,),
+                            rotation: (0., 1., 0., 0.),
+                            scale: (1., 1., 1.,),
+                        ),
+                        team_player: (
+                            team: 2,
+                            player: 0,
+                        ),
+                    ),
+                    (
+                        transform: (
+                            translation: (-15., 0., -120.,),
+                            rotation: (0., 1., 0., 0.),
+                            scale: (1., 1., 1.,),
+                        ),
+                        team_player: (
+                            team: 2,
+                            player: 0,
                         ),
                     ),
                 ],

@@ -31,7 +31,6 @@ impl ServerPlugin {
     fn read_messages(
         mut server: ResMut<RenetServer>,
     ) {
-        // println!("READING MESSAGES");
         for id in server.clients_id() {
             let mut loop_count = 0;
             while let Some(Some(bytes)) = (loop_count < 50).then(|| server.receive_message(id, DefaultChannel::ReliableOrdered)) {

@@ -50,15 +50,15 @@ pub struct DamageTypes {
 #[derive(Debug, Clone, Copy)]
 #[derive(Serialize, Deserialize)]
 pub struct Weapon {
-    pub target : Target,
-    pub target_force : TargetForce,
-    pub target_type : TargetType,
-    pub range : f32,
-    pub damage : f32,
-    pub damage_types : DamageTypes,
-    pub fire_rate : f32,
+    pub target: Target,
+    pub target_force: TargetForce,
+    pub target_type: TargetType,
+    pub range: f32,
+    pub damage: f32,
+    pub damage_types: DamageTypes,
+    pub fire_rate: f32,
     // #[serde(skip)]
-    pub cooldown : f32,
+    pub cooldown: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -66,8 +66,8 @@ pub struct Weapon {
 #[derive(Component)]
 pub struct WeaponSet {
     ///This value should be slightly lower (~*0.98) than a weapons range.
-    pub closing_range : f32,
-    pub weapons : Vec<Weapon>,
+    pub closing_range: f32,
+    pub weapons: Vec<Weapon>,
 }
 
 impl WeaponSet {

@@ -4,7 +4,7 @@ pub struct SinglePlayerGamePlugin;
 
 impl SinglePlayerGamePlugin {
     pub fn create_light(
-        mut commands : Commands
+        mut commands: Commands
     ) {
         commands.spawn((
             DirectionalLight::default(),
@@ -13,7 +13,7 @@ impl SinglePlayerGamePlugin {
     }
 
     pub fn save_game(
-        input : Res<ButtonInput<KeyCode>>,
+        input: Res<ButtonInput<KeyCode>>,
         mut save_events: ParamSet<(
             EventWriter<SaveEvent>,
             EventReader<SaveEvent>,
@@ -38,14 +38,13 @@ impl SinglePlayerGamePlugin {
 impl Plugin for SinglePlayerGamePlugin {
     fn build(&self, app: &mut App) {
         app
-            .insert_resource(Player(TeamPlayer::PLAYER_ID))
+            .insert_resource(LocalPlayer(TeamPlayer::PLAYER_ID))
             .add_systems(OnEnter(GameState::SingleplayerGame), (
                 Self::create_light,
             ))
             .add_systems(Update, (
                 Self::save_game,
             ).run_if(in_state(GameState::SingleplayerGame)))
-            .add_systems(OnExit(GameState::SingleplayerGame), cleanup_entities)
         ;
     }
 }

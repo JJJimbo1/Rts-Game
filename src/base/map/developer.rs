@@ -1,5 +1,5 @@
-use avian3d::prelude::Collider;
 use bevy::prelude::*;
+use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
 use superstruct::superstruct;
 use crate::*;
@@ -35,12 +35,12 @@ pub struct Developer {
 
 impl TryFrom<&MapAsset> for DeveloperPrefab {
     type Error = ContentError;
-    fn try_from(map : &MapAsset) -> Result<Self, ContentError> {
+    fn try_from(map: &MapAsset) -> Result<Self, ContentError> {
         let Some(bounds) = map.bounds else { return Err(ContentError::MissingBounds); };
         let Some(collider_string) = map.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
         let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
 
-        let collider = Collider::trimesh(vertices, indices);
+        let Ok(collider) = Collider::trimesh(vertices, indices) else { return Err(ContentError::ColliderDecodeError); };
 
         Ok(Self {
             bounds,

@@ -2,8 +2,8 @@ use bevy::prelude::Component;
 use serde::{Serialize, Deserialize};
 use crate::*;
 
-const MIN_VALUE : f32 = -9.0;
-const MAX_VALUE : f32 = 0.9;
+const MIN_VALUE: f32 = -9.0;
+const MAX_VALUE: f32 = 0.9;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[derive(Component)]
@@ -46,7 +46,7 @@ impl Health {
         !self.is_full_health()
     }
 
-    pub fn damage(&mut self, damage : f32, dmg_types : DamageTypes) {
+    pub fn damage(&mut self, damage: f32, dmg_types: DamageTypes) {
         self.health -= (damage * dmg_types.kinetic - (damage * dmg_types.kinetic * (self.resistances.kinetic + self.resistance).clamp(MIN_VALUE, MAX_VALUE)))
             + (damage * dmg_types.fire - (damage * dmg_types.fire * (self.resistances.fire + self.resistance).clamp(MIN_VALUE, MAX_VALUE)))
             + (damage * dmg_types.explosive - (damage * dmg_types.explosive * (self.resistances.explosive + self.resistance).clamp(MIN_VALUE, MAX_VALUE)))

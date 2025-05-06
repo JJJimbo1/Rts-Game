@@ -2,12 +2,10 @@ use bevy::ecs::event::Event;
 use serde::{Serialize, Deserialize};
 
 pub mod lobby;
-pub mod identifier;
 pub mod client;
 pub mod server;
 
 pub use lobby::*;
-pub use identifier::*;
 pub use client::*;
 pub use server::*;
 

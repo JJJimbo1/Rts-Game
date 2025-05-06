@@ -5,8 +5,8 @@ pub mod marine_squad;
 pub mod resource_node;
 pub mod tank;
 
-use avian3d::prelude::{Collider, LinearVelocity};
 pub use barracks::*;
+use bevy_rapier3d::prelude::{Collider, Velocity};
 pub use crane_yard::*;
 pub use factory::*;
 pub use marine_squad::*;
@@ -148,7 +148,7 @@ pub struct ObjectDiskData {
     pub weapon_set: Option<WeaponSet>,
     pub reference: Option<Reference>,
     pub squad: Option<Squad>,
-    pub velocity: Option<LinearVelocity>,
+    pub velocity: Option<Velocity>,
     pub resource_node: Option<ResourceNodePlatforms>
 }
 
@@ -229,7 +229,6 @@ pub struct ObjectPrefabs {
 
 impl FromWorld for ObjectPrefabs {
     fn from_world(world: &mut World) -> Self {
-        println!("CREATING OBJECTPREFABS");
         let cell = world.as_unsafe_world_cell();
         let assets = unsafe {
             cell.get_resource_mut::<Assets<ObjectAsset>>().expect("Failed to get Assets<ObjectAsset>")
@@ -250,7 +249,7 @@ impl FromWorld for ObjectPrefabs {
         let marine_squad_prefab_asset = assets.get(&object_assets.marine_squad).expect("Failed to load marine_squad");
         let tank_prefab_asset = assets.get(&object_assets.tank).expect("Failed to load tank");
 
-        let mut stacks : HashMap<ObjectType, (ActiveQueue, StackData)> = HashMap::new();
+        let mut stacks: HashMap<ObjectType, (ActiveQueue, StackData)> = HashMap::new();
 
         stacks.insert(ObjectType::Barracks, barracks_prefab_asset.stack.clone().unwrap());
         stacks.insert(ObjectType::Factory, factory_prefab_asset.stack.clone().unwrap());
@@ -363,6 +362,21 @@ impl ObjectPlugin {
         }
 
     }
+
+    pub fn spawn_object(
+        gltf_assets: Res<GltfAssets>,
+        objects: Query<(Entity, &ObjectType), Added<ObjectType>>,
+        mut commands: Commands,
+    ) {
+        objects.iter().for_each(|(entity, object)| {
+            let Some(scene) = gltf_assets.get_object(*object) else { return; };
+            commands.entity(entity).with_children(|parent| {
+                parent.spawn(
+                    SceneRoot(scene.clone())
+                );
+            });
+        });
+    }
 }
 
 impl Plugin for ObjectPlugin {
@@ -378,9 +392,9 @@ impl Plugin for ObjectPlugin {
                 BarracksPlugin,
                 FactoryPlugin,
                 MarineSquadPlugin,
-                TankPlugin
+                TankPlugin,
             ))
-            .add_systems(Update, (Self::patch_grid_spawn, Self::patch_grid_kill, Self::show_grid))
+            .add_systems(Update, (Self::patch_grid_spawn, Self::patch_grid_kill, Self::show_grid, Self::spawn_object.run_if(resource_exists::<GltfAssets>)))
         ;
     }
 }

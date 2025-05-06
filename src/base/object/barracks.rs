@@ -1,5 +1,5 @@
-use avian3d::prelude::Collider;
 use bevy::{prelude::*, platform::collections::HashMap};
+use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
 use superstruct::*;
 use crate::*;
@@ -30,12 +30,12 @@ pub struct Barracks {
     #[superstruct(only(Prefab, Bundle))]        pub queues: Queues,
     #[superstruct(only(Prefab, Bundle))]        pub collider: Collider,
     #[superstruct(only(Bundle))]                pub factory: Barracks,
-    #[superstruct(only(Bundle, Ghost))]         pub object_type: ObjectType,
     #[superstruct(only(Bundle))]                pub snowflake: Snowflake,
     #[superstruct(only(Bundle))]                pub selectable: Selectable,
+    #[superstruct(only(Bundle, Ghost))]         pub object_type: ObjectType,
     #[superstruct(only(Bundle, Ghost))]         pub visibility: Visibility,
-    #[superstruct(only(Bundle, Disk))]          pub team_player: TeamPlayer,
     #[superstruct(only(Bundle, Ghost, Disk))]   pub transform: Transform,
+    #[superstruct(only(Bundle, Disk))]          pub team_player: TeamPlayer,
     #[superstruct(only(Disk))]                  pub disk_snowflake: Option<Snowflake>,
     #[superstruct(only(Disk))]                  pub disk_health: Option<Health>,
     #[superstruct(only(Disk))]                  pub disk_queues: Option<Queues>,
@@ -50,7 +50,7 @@ impl TryFrom<(&ObjectAsset, &HashMap<ObjectType, (ActiveQueue, StackData)>)> for
         let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
 
         let queues = Queues::from((&asset_queues, stacks));
-        let collider = Collider::trimesh(vertices, indices);
+        let Ok(collider) = Collider::trimesh(vertices, indices) else { return Err(ContentError::ColliderDecodeError); };
 
         Ok(Self {
             health,

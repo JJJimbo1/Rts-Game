@@ -1,15 +1,15 @@
 (
-    axes : {
-        Vertical : Emulated(pos: Key(W), neg: Key(S)),
-        Horizontal : Emulated(pos: Key(D), neg: Key(A)),
-        Rotation : Emulated(pos: Key(Q), neg: Key(E)),
+    axes: {
+        Vertical: Emulated(pos: Key(W), neg: Key(S)),
+        Horizontal: Emulated(pos: Key(D), neg: Key(A)),
+        Rotation: Emulated(pos: Key(Q), neg: Key(E)),
     },
-    actions : {
-        Slow : [[Key(LControl)], [Key(RControl)]],
-        Reset : [[Key(Grave)]],
-        AngleUp : [],
-        AngleDown : [],
-        AddToSelection : [[Key(LShift)], [Key(RShift)]],
-        IgnoreContext : [[Key(C)]],
+    actions: {
+        Slow: [[Key(LControl)], [Key(RControl)]],
+        Reset: [[Key(Grave)]],
+        AngleUp: [],
+        AngleDown: [],
+        AddToSelection: [[Key(LShift)], [Key(RShift)]],
+        IgnoreContext: [[Key(C)]],
     },
 )

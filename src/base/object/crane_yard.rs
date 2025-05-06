@@ -1,5 +1,5 @@
-use avian3d::prelude::Collider;
 use bevy::{prelude::*, platform::collections::HashMap};
+use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
 use superstruct::*;
 use crate::*;
@@ -67,7 +67,7 @@ impl TryFrom<(&ObjectAsset, &HashMap<ObjectType, (ActiveQueue, StackData)>)> for
         let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
 
         let queues = Queues::from((&asset_queues, stacks));
-        let collider = Collider::trimesh(vertices, indices);
+        let Ok(collider) = Collider::trimesh(vertices, indices) else { return Err(ContentError::ColliderDecodeError); };
 
         Ok(Self {
             health,

@@ -8,15 +8,15 @@ use crate::*;
 #[derive(Serialize, Deserialize)]
 #[derive(Component)]
 pub struct TeamPlayer {
-    pub team : usize,
-    pub player : usize,
+    pub team: usize,
+    pub player: usize,
 }
 
 impl TeamPlayer {
 
-    pub const PLAYER_ID : TeamPlayer = TeamPlayer { team : 1, player : 0};
+    pub const PLAYER_ID: TeamPlayer = TeamPlayer { team: 1, player: 0};
 
-    pub fn new(team : usize, player : usize) -> Self {
+    pub fn new(team: usize, player: usize) -> Self {
         Self {
             team,
             player,
@@ -31,7 +31,7 @@ impl TeamPlayer {
         self.player
     }
 
-    pub fn reassign(&mut self, team : usize, player : usize) {
+    pub fn reassign(&mut self, team: usize, player: usize) {
         self.team = team;
         self.player = player;
     }
@@ -57,13 +57,13 @@ impl Default for MapBounds {
 #[derive(Debug, Default, Clone)]
 #[derive(Resource)]
 pub struct TeamPlayerWorld {
-    pub layers : HashMap<TeamPlayer, QuadTree<Entity>>
+    pub layers: HashMap<TeamPlayer, QuadTree<Entity>>
 }
 
 impl TeamPlayerWorld {
-    pub fn new(actors : &Commanders , map : &MapBounds) -> Self {
+    pub fn new(actors: &Commanders , map: &MapBounds) -> Self {
         let mut tpw = Self {
-            layers : HashMap::new(),
+            layers: HashMap::new(),
         };
         for a in actors.commanders.keys() {
             tpw.layers.insert(*a, QuadTree::new(Quad::new(0.0, 0.0, map.0.x as f32, map.0.y as f32)));
@@ -71,8 +71,8 @@ impl TeamPlayerWorld {
         tpw
     }
 
-    pub fn sort(tps : Query<&TeamPlayer>) -> Vec<Vec<usize>> {
-        let mut team_capacity : usize = 0;
+    pub fn sort(tps: Query<&TeamPlayer>) -> Vec<Vec<usize>> {
+        let mut team_capacity: usize = 0;
 
         tps.iter().for_each(|tp| {
             if tp.team() + 1 > team_capacity {
@@ -80,7 +80,7 @@ impl TeamPlayerWorld {
             }
         });
 
-        let mut player_capacities : Vec<usize> = Vec::with_capacity(team_capacity);
+        let mut player_capacities: Vec<usize> = Vec::with_capacity(team_capacity);
 
         for i in 0..player_capacities.capacity() {
             player_capacities.insert(i, 0);
@@ -92,7 +92,7 @@ impl TeamPlayerWorld {
             }
         });
 
-        let mut team_player_capacities : Vec<Vec<usize>> = Vec::<Vec<usize>>::with_capacity(team_capacity);
+        let mut team_player_capacities: Vec<Vec<usize>> = Vec::<Vec<usize>>::with_capacity(team_capacity);
 
         for i in 0..team_player_capacities.capacity() {
             team_player_capacities.insert(i, Vec::<usize>::with_capacity(player_capacities[i]));
@@ -104,7 +104,7 @@ impl TeamPlayerWorld {
         return team_player_capacities;
     }
 
-    pub fn insert(&mut self, tp : TeamPlayer, ent : Entity, quad : Quad) {
+    pub fn insert(&mut self, tp: TeamPlayer, ent: Entity, quad: Quad) {
         match self.layers.get_mut(&tp) {
             Some(x) => {
                 x.insert(ent, quad);
@@ -119,11 +119,11 @@ impl TeamPlayerWorld {
         }
     }
 
-    pub fn is_owned(&self, e : Entity, team_players : Query<&TeamPlayer>) -> bool {
+    pub fn is_owned(&self, e: Entity, team_players: Query<&TeamPlayer>) -> bool {
         team_players.get(e).is_ok()
     }
 
-    pub fn is_players(&self, e : Entity, player_id : TeamPlayer, team_players : Query<&TeamPlayer>) -> Result<bool, String> {
+    pub fn is_players(&self, e: Entity, player_id: TeamPlayer, team_players: Query<&TeamPlayer>) -> Result<bool, String> {
         match team_players.get(e) {
             Ok(x) => {
                 Ok(x.team() == player_id.team() && x.player() == player_id.player())
@@ -134,7 +134,7 @@ impl TeamPlayerWorld {
         }
     }
 
-    pub fn is_ally(&self, e : Entity, player_id : TeamPlayer, team_players : Query<&TeamPlayer>) -> Result<bool, String> {
+    pub fn is_ally(&self, e: Entity, player_id: TeamPlayer, team_players: Query<&TeamPlayer>) -> Result<bool, String> {
         match team_players.get(e) {
             Ok(x) => {
                 Ok(x.team() == player_id.team() && x.player() != player_id.player())
@@ -145,7 +145,7 @@ impl TeamPlayerWorld {
         }
     }
 
-    pub fn is_players_or_ally(&self, e : Entity, player_id : TeamPlayer, team_players : Query<&TeamPlayer>) -> Result<bool, String> {
+    pub fn is_players_or_ally(&self, e: Entity, player_id: TeamPlayer, team_players: Query<&TeamPlayer>) -> Result<bool, String> {
         match team_players.get(e) {
             Ok(x) => {
                 Ok(x.team() == player_id.team())
@@ -156,7 +156,7 @@ impl TeamPlayerWorld {
         }
     }
 
-    pub fn is_enemy(&self, e : Entity, player_id : TeamPlayer, team_players : &Query<&TeamPlayer>) -> Result<bool, String> {
+    pub fn is_enemy(&self, e: Entity, player_id: TeamPlayer, team_players: &Query<&TeamPlayer>) -> Result<bool, String> {
         match team_players.get(e) {
             Ok(x) => {
                 Ok(x.team() != player_id.team())
@@ -167,7 +167,7 @@ impl TeamPlayerWorld {
         }
     }
 
-    pub fn search_targets(&self, id : TeamPlayer, position : Vec3, weapon : &Weapon) -> Vec<Entity> {
+    pub fn search_targets(&self, id: TeamPlayer, position: Vec3, weapon: &Weapon) -> Vec<Entity> {
         let pos = Vec2::new(position.x, position.z);
         match weapon.target_force {
             TargetForce::Mine => { self.search_mine(id, pos, weapon.range) },
@@ -179,8 +179,8 @@ impl TeamPlayerWorld {
         // results
     }
 
-    pub fn search_mine(&self, id : TeamPlayer, position : Vec2, range : f32) -> Vec<(Entity, Vec2)> {
-        let mut results : Vec<(Entity, Vec2)> = Vec::new();
+    pub fn search_mine(&self, id: TeamPlayer, position: Vec2, range: f32) -> Vec<(Entity, Vec2)> {
+        let mut results: Vec<(Entity, Vec2)> = Vec::new();
         for i in self.layers.iter() {
             if i.0.team() == id.team() && i.0.player() == id.player() {
                 for sr in i.1.search(&Quad::new(position.x, position.y, range, range)).iter() {
@@ -191,8 +191,8 @@ impl TeamPlayerWorld {
         results
     }
 
-    pub fn search_allies(&self, id : TeamPlayer, position : Vec2, range : f32) -> Vec<(Entity, Vec2)> {
-        let mut results : Vec<(Entity, Vec2)> = Vec::new();
+    pub fn search_allies(&self, id: TeamPlayer, position: Vec2, range: f32) -> Vec<(Entity, Vec2)> {
+        let mut results: Vec<(Entity, Vec2)> = Vec::new();
         for i in self.layers.iter() {
             if i.0.team() == id.team() && i.0.player() != id.player() {
                 for sr in i.1.search(&Quad::new(position.x, position.y, range, range)).iter() {
@@ -203,8 +203,8 @@ impl TeamPlayerWorld {
         results
     }
 
-    pub fn search_mine_or_allies(&self, id : TeamPlayer, position : Vec2, range : f32) -> Vec<(Entity, Vec2)> {
-        let mut results : Vec<(Entity, Vec2)> = Vec::new();
+    pub fn search_mine_or_allies(&self, id: TeamPlayer, position: Vec2, range: f32) -> Vec<(Entity, Vec2)> {
+        let mut results: Vec<(Entity, Vec2)> = Vec::new();
         for i in self.layers.iter() {
             if i.0.team() == id.team() {
                 for sr in i.1.search(&Quad::new(position.x, position.y, range, range)).iter() {
@@ -215,8 +215,8 @@ impl TeamPlayerWorld {
         results
     }
 
-    pub fn search_enemies(&self, id : TeamPlayer, position : Vec2, range : f32) -> Vec<(Entity, Vec2)> {
-        let mut results : Vec<(Entity, Vec2)> = Vec::new();
+    pub fn search_enemies(&self, id: TeamPlayer, position: Vec2, range: f32) -> Vec<(Entity, Vec2)> {
+        let mut results: Vec<(Entity, Vec2)> = Vec::new();
         for i in self.layers.iter() {
             if i.0.team() != id.team() {
                 for sr in i.1.search(&Quad::new(position.x, position.y, range, range)).iter() {
@@ -227,9 +227,9 @@ impl TeamPlayerWorld {
         results
     }
 
-    pub fn player_count(team_players : Query<&TeamPlayer>) -> usize {
+    pub fn player_count(team_players: Query<&TeamPlayer>) -> usize {
         let layers = Self::sort(team_players);
-        let mut count : usize = 0;
+        let mut count: usize = 0;
 
         for i in 0..layers.len() {
             count += layers[i].len();
@@ -238,8 +238,8 @@ impl TeamPlayerWorld {
         count
     }
 
-    pub fn under_player_count(team_player : TeamPlayer, tps : Query<&TeamPlayer>) -> usize {
-        let mut count : usize = 0;
+    pub fn under_player_count(team_player: TeamPlayer, tps: Query<&TeamPlayer>) -> usize {
+        let mut count: usize = 0;
 
         tps.iter().for_each(|tp| {
             if *tp == team_player {
@@ -249,16 +249,4 @@ impl TeamPlayerWorld {
 
         count
     }
-
-    // pub fn under_player_values<'a, N : Component>(team_player : TeamPlayer, query : Query<(&TeamPlayer, &N)>) -> Vec<&'a N> {
-    //     let mut results : Vec<&'a N> = Vec::with_capacity(query.iter().count() / 2);
-
-    //     query.for_each(|(tp, item)| {
-    //         if *tp == team_player {
-    //             results.push();
-    //         }
-    //     });
-
-    //     results
-    // }
 }

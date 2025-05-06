@@ -1,12 +1,11 @@
 use std::f32::{NEG_INFINITY, INFINITY,};
-
-use avian3d::prelude::{SpatialQuery, SpatialQueryFilter};
 use bevy::{input::{mouse::{MouseButtonInput, MouseWheel}, ButtonState}, math::Vec3Swizzles, prelude::*, render::camera::Camera, ui::widget::NodeImageMode, window::PrimaryWindow};
+use bevy_rapier3d::{plugin::ReadRapierContext, prelude::QueryFilter};
 use serde::{Serialize, Deserialize};
 use crate::*;
 
-pub static CLEAR_COLOR : Color = Color::linear_rgba(0.0, 0.2, 0.7, 1.0);
-pub const CLICK_BUFFER : usize = 1;
+pub static CLEAR_COLOR: Color = Color::linear_rgba(0.0, 0.2, 0.7, 1.0);
+pub const CLICK_BUFFER: usize = 1;
 
 #[derive(Debug)]
 #[derive(Resource)]
@@ -65,7 +64,7 @@ pub struct CameraSettings {
     pub zoom_curve_weight: f32,
 
     //* Settings relating to Rotation, Scroll and Zoom.
-    pub minimum_fps_for_deltatime : u16,
+    pub minimum_fps_for_deltatime: u16,
 }
 
 impl CameraSettings {
@@ -137,16 +136,16 @@ pub enum BoxSelectStatus {
 
 #[derive(Debug, Copy, Clone)]
 pub struct RayCastResult {
-    pub entity : Entity,
-    pub point : Vec3,
-    pub len : f32,
+    pub entity: Entity,
+    pub point: Vec3,
+    pub len: f32,
 }
 
 #[derive(Debug, Default, Copy, Clone)]
 #[derive(Resource)]
 pub struct CameraRaycast {
-    pub last_valid_cast : Option<RayCastResult>,
-    pub current_cast : Option<RayCastResult>,
+    pub last_valid_cast: Option<RayCastResult>,
+    pub current_cast: Option<RayCastResult>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -159,10 +158,10 @@ pub enum SelectionEvent {
 #[derive(Debug, Clone, Copy)]
 #[derive(Resource)]
 pub struct CameraSelector {
-    selection_box_entity : Entity,
-    mouse_start_pos : Vec2,
-    mouse_end_pos : Vec2,
-    minimum_distance : f32,
+    selection_box_entity: Entity,
+    mouse_start_pos: Vec2,
+    mouse_end_pos: Vec2,
+    minimum_distance: f32,
     status: BoxSelectStatus,
 }
 
@@ -190,16 +189,16 @@ impl Default for PlacementStatus {
 
 #[derive(Debug, Clone)]
 #[derive(Resource)]
-pub struct CurrentPlacement<const U : usize> {
-    pub status : PlacementStatus,
-    pub placing : [bool; U],
+pub struct CurrentPlacement<const U: usize> {
+    pub status: PlacementStatus,
+    pub placing: [bool; U],
 }
 
-impl<const U : usize> CurrentPlacement<U> {
+impl<const U: usize> CurrentPlacement<U> {
     pub fn new() -> Self {
         Self {
-            status : PlacementStatus::Idle,
-            placing : [false; U],
+            status: PlacementStatus::Idle,
+            placing: [false; U],
         }
     }
 
@@ -254,9 +253,9 @@ impl CameraPlugin {
             Transform::default(),
             GlobalTransform::default(),
             LocalBounds {
-                x : Vec2::new(-map.0.x / 2.0, map.0.x / 2.0),
-                y : Vec2::new(NEG_INFINITY, INFINITY),
-                z : Vec2::new(-map.0.y / 2.0, map.0.y / 2.0)
+                x: Vec2::new(-map.0.x / 2.0, map.0.x / 2.0),
+                y: Vec2::new(NEG_INFINITY, INFINITY),
+                z: Vec2::new(-map.0.y / 2.0, map.0.y / 2.0)
             },
         )).id();
 
@@ -265,23 +264,23 @@ impl CameraPlugin {
         commands.entity(root_entity).add_child(camera_entity);
 
         commands.insert_resource(CameraController {
-            camera_root : root_entity,
-            camera : camera_entity,
+            camera_root: root_entity,
+            camera: camera_entity,
 
             root_velocity: Vec3::default(),
             rotation_velocity: 0.0,
             zoom_precentage: settings.default_zoom,
             zoom_velocity: 0.0,
 
-            outside_window : false,
-            just_entered : false,
-            holding : false,
+            outside_window: false,
+            just_entered: false,
+            holding: false,
         });
     }
 
     pub fn create_selector(
-        image_assets : Res<ImageAssets>,
-        mut commands : Commands
+        image_assets: Res<ImageAssets>,
+        mut commands: Commands
     ) {
         let entity = commands.spawn((ImageNode {
             image: image_assets.selection_box.clone(),
@@ -341,7 +340,7 @@ impl CameraPlugin {
         let adjusted_mouse_pos = window.cursor_position().map_or(Vec2::default(), |pos|
             if !camera_controller.outside_window && (!camera_controller.just_entered || !settings.post_action_stall) && !camera_controller.holding { pos - half_size } else { Vec2::default() });
 
-        let threshholds : (f32, f32) = (
+        let threshholds: (f32, f32) = (
             d1::normalize_from_01(settings.thresholds.0, 0., half_size.x),
             d1::normalize_from_01(settings.thresholds.1, 0., half_size.y),
         );
@@ -359,7 +358,7 @@ impl CameraPlugin {
 
         let mouse_dir = Vec3::new(adjusted_mouse_pos.x, 0.0, adjusted_mouse_pos.y).normalize_or_zero();
 
-        let mags : (f32,f32) = (
+        let mags: (f32,f32) = (
             d1::powf_sign(d1::normalize_to_01(adjusted_mouse_pos.x.abs(), threshholds.0, half_size.x).clamp(0.0, 1.0), settings.scroll_acceleration_curve),
             d1::powf_sign(d1::normalize_to_01(adjusted_mouse_pos.y.abs(), threshholds.1, half_size.y).clamp(0.0, 1.0), settings.scroll_acceleration_curve),
         );
@@ -514,8 +513,8 @@ impl CameraPlugin {
     }
 
     pub fn ui_hit_detection_system(
-        mut ui_hit : ResMut<UiHit<CLICK_BUFFER>>,
-        mut input : EventReader<MouseButtonInput>,
+        mut ui_hit: ResMut<UiHit<CLICK_BUFFER>>,
+        mut input: EventReader<MouseButtonInput>,
         interaction_query: Query<
             (&Interaction, &InheritedVisibility),
             (Changed<Interaction>, With<BlocksRaycast>),
@@ -545,12 +544,12 @@ impl CameraPlugin {
     }
 
     pub fn camera_raycast_system(
-        controller : Res<CameraController>,
-        ui_hit : Res<UiHit<CLICK_BUFFER>>,
-        context : SpatialQuery,
-        mut cast : ResMut<CameraRaycast>,
-        windows : Query<&Window, With<PrimaryWindow>>,
-        cameras : Query<(&GlobalTransform, &Camera)>,
+        controller: Res<CameraController>,
+        ui_hit: Res<UiHit<CLICK_BUFFER>>,
+        context: ReadRapierContext,
+        mut cast: ResMut<CameraRaycast>,
+        windows: Query<&Window, With<PrimaryWindow>>,
+        cameras: Query<(&GlobalTransform, &Camera)>,
     ) {
         cast.current_cast = None;
         if ui_hit.hit() { return; }
@@ -559,9 +558,9 @@ impl CameraPlugin {
             let Ok(window) = windows.single() else { return; };
             let Some(cursor) = window.cursor_position() else { return; };
             let Ok(ray) = camera.viewport_to_world(gl_transform, cursor) else { return; };
-            if let Some(hit) = context.cast_ray(ray.origin, ray.direction.into(), f32::MAX, true, &SpatialQueryFilter::default()) {
-                let point = ray.origin + ray.direction * hit.distance;
-                let cam_cast = RayCastResult { entity: hit.entity, point, len: hit.distance};
+            if let Some((entity, len)) = context.single().unwrap().cast_ray(ray.origin, ray.direction.into(), f32::MAX, true, QueryFilter::default()) {
+                let point = ray.origin + ray.direction * len;
+                let cam_cast = RayCastResult { entity, point, len};
                 cast.last_valid_cast = Some(cam_cast);
                 cast.current_cast = Some(cam_cast);
             }
@@ -569,12 +568,12 @@ impl CameraPlugin {
     }
 
     pub fn camera_raycast_response_system(
-        mut selection_events : EventWriter<SelectionEvent>,
-        mut selector : ResMut<CameraSelector>,
-        ui_hit : Res<UiHit<CLICK_BUFFER>>,
-        placement : Res<CurrentPlacement<CLICK_BUFFER>>,
-        mouse_input : Res<ButtonInput<MouseButton>>,
-        window : Query<&Window, With<PrimaryWindow>>,
+        mut selection_events: EventWriter<SelectionEvent>,
+        mut selector: ResMut<CameraSelector>,
+        ui_hit: Res<UiHit<CLICK_BUFFER>>,
+        placement: Res<CurrentPlacement<CLICK_BUFFER>>,
+        mouse_input: Res<ButtonInput<MouseButton>>,
+        window: Query<&Window, With<PrimaryWindow>>,
     ) {
         if ui_hit.hit()
         || placement.placing()
@@ -603,10 +602,10 @@ impl CameraPlugin {
     }
 
     pub fn show_selection_box(
-        selector : Res<CameraSelector>,
-        placement : Res<CurrentPlacement<CLICK_BUFFER>>,
+        selector: Res<CameraSelector>,
+        placement: Res<CurrentPlacement<CLICK_BUFFER>>,
 
-        mut nodes : Query<&mut Node>,
+        mut nodes: Query<&mut Node>,
         mut visible_query: Query<(&mut Visibility, &InheritedVisibility)>,
     ) {
         if placement.placing() { return; };
@@ -639,16 +638,16 @@ impl CameraPlugin {
     }
 
     pub fn camera_select(
-        mut selection_event : EventReader<SelectionEvent>,
-        mut command_events : EventWriter<CommandEvent>,
-        camera : Res<CameraController>,
-        cast : Res<CameraRaycast>,
-        player : Res<Player>,
+        mut selection_event: EventReader<SelectionEvent>,
+        mut command_events: EventWriter<CommandEvent>,
+        camera: Res<CameraController>,
+        cast: Res<CameraRaycast>,
+        player: Res<LocalPlayer>,
 
-        key_input : Res<ButtonInput<KeyCode>>,
+        key_input: Res<ButtonInput<KeyCode>>,
 
-        mut objects : Query<(Entity, &GlobalTransform, &mut Selectable, &TeamPlayer)>,
-        cameras : Query<(&GlobalTransform, &Camera)>,
+        mut objects: Query<(Entity, &GlobalTransform, &mut Selectable, &TeamPlayer)>,
+        cameras: Query<(&GlobalTransform, &Camera)>,
     ) {
         for event in selection_event.read() {
             let add_to_selection = key_input.pressed(KeyCode::ShiftLeft) || key_input.pressed(KeyCode::ShiftRight);
@@ -756,8 +755,8 @@ impl CameraPlugin {
     }
 
     pub fn camera_context_focus_system(
-        mut focus : ResMut<ContextFocus>,
-        selectables : Query<(Entity, &Selectable)>
+        mut focus: ResMut<ContextFocus>,
+        selectables: Query<(Entity, &Selectable)>
     ) {
         let selects = selectables.iter().filter_map(|(e, s)| if s.selected && s.context == SelectableType::Single { Some(e) } else { None}).collect::<Vec<Entity>>();
         if selects.len() == 1 {
@@ -768,9 +767,9 @@ impl CameraPlugin {
     }
 
     pub fn selection_highlighter(
-        cast : Res<CameraRaycast>,
+        cast: Res<CameraRaycast>,
         mut gizmos: Gizmos,
-        query : Query<(&GlobalTransform, &Selectable)>,
+        query: Query<(&GlobalTransform, &Selectable)>,
     ) {
         if let Some((glt, _)) = cast.current_cast
             .and_then(|c| query.get(c.entity)
@@ -797,15 +796,15 @@ impl CameraPlugin {
     }
 
     pub fn command_system(
-        mut unit_commands : EventWriter<CommandEvent>,
-        player : Res<Player>,
-        cast : Res<CameraRaycast>,
-        current_placement : Res<CurrentPlacement<CLICK_BUFFER>>,
-        input : Res<ButtonInput<MouseButton>>,
+        mut unit_commands: EventWriter<CommandEvent>,
+        player: Res<LocalPlayer>,
+        cast: Res<CameraRaycast>,
+        current_placement: Res<CurrentPlacement<CLICK_BUFFER>>,
+        input: Res<ButtonInput<MouseButton>>,
 
-        units : Query<(Entity, &Selectable), With<PathFinder>>,
-        team_players : Query<&TeamPlayer>,
-        teamplayer_world : Res<TeamPlayerWorld>,
+        units: Query<(Entity, &Selectable), With<PathFinder>>,
+        team_players: Query<&TeamPlayer>,
+        teamplayer_world: Res<TeamPlayerWorld>,
     ) {
         if current_placement.placing() { return; }
         if input.just_released(MouseButton::Right) {
@@ -814,14 +813,14 @@ impl CameraPlugin {
                     .map_or(false, |t| t) {
                     let command = CommandEvent{
                         player: player.0,
-                        objects : units.iter().filter_map(|(id, sel)| if sel.selected { Some(id) } else { None }).collect(),
+                        objects: units.iter().filter_map(|(id, sel)| if sel.selected { Some(id) } else { None }).collect(),
                         command: CommandType::Attack(ray_cast.entity),
                     };
                     unit_commands.write(command);
                 } else {
                     unit_commands.write(CommandEvent {
                         player: player.0,
-                        objects : units.iter().filter_map(|(id, sel)| if sel.selected { Some(id) } else { None }).collect(),
+                        objects: units.iter().filter_map(|(id, sel)| if sel.selected { Some(id) } else { None }).collect(),
                         command: CommandType::Move(ray_cast.point.xz()),
                     });
                 }
@@ -831,14 +830,14 @@ impl CameraPlugin {
 
     pub fn building_placement_system(
         mut command_events: EventWriter<CommandEvent>,
-        mut current_placement : ResMut<CurrentPlacement::<CLICK_BUFFER>>,
-        input : Res<ButtonInput<MouseButton>>,
-        cast : Res<CameraRaycast>,
-        team_players : Query<&TeamPlayer>,
+        mut current_placement: ResMut<CurrentPlacement::<CLICK_BUFFER>>,
+        input: Res<ButtonInput<MouseButton>>,
+        cast: Res<CameraRaycast>,
+        team_players: Query<&TeamPlayer>,
         mut queueses: Query<&mut Queues>,
-        mut trans : Query<&mut Transform>,
-        mut visibles : Query<&mut Visibility>,
-        mut commands : Commands,
+        mut trans: Query<&mut Transform>,
+        mut visibles: Query<&mut Visibility>,
+        mut commands: Commands,
     ) {
         for i in 1..current_placement.placing.len() {
             current_placement.placing[i-1] = current_placement.placing[i];

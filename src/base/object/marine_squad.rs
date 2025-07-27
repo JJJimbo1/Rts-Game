@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::{Collider, RigidBody, Velocity};
 use serde::{Serialize, Deserialize};
@@ -96,8 +98,7 @@ impl From<MarineSquadPrefab> for MarineSquadBundle {
     fn from(prefab: MarineSquadPrefab) -> Self {
         Self {
             marker: MarineSquad,
-            // object_type: MarineSquadMarker::default().into(),
-            object_type: MarineSquad::default().into(),
+            object_type: MarineSquad.into(),
             snowflake: Snowflake::new(),
             health: prefab.health,
             squad: prefab.squad,
@@ -119,8 +120,7 @@ impl From<(MarineSquadDisk, &MarineSquadPrefab)> for MarineSquadBundle {
     fn from((save, prefab): (MarineSquadDisk, &MarineSquadPrefab)) -> Self {
         Self {
             marker: MarineSquad,
-            // object_type: MarineSquadMarker::default().into(),
-            object_type: MarineSquad::default().into(),
+            object_type: MarineSquad.into(),
             snowflake: save.disk_snowflake.unwrap_or(Snowflake::new()),
             health: save.disk_health.unwrap_or(prefab.health),
             squad: save.disk_squad.unwrap_or_else(|| prefab.squad.clone()),
@@ -154,7 +154,7 @@ impl<'a> From<MarineSquadDiskQuery<'a>> for MarineSquadDisk {
     }
 }
 
-impl From<MarineSquadDisk> for LoadObjects {
+impl From<MarineSquadDisk> for SpawnObject {
     fn from(value: MarineSquadDisk) -> Self {
         Self {
             object_type: ObjectType::MarineSquad,
@@ -172,6 +172,8 @@ impl From<MarineSquadDisk> for LoadObjects {
                 velocity: value.disk_velocity.map(|vel| vel.into()),
                 ..default()
             }),
+            spawn_mode: SpawnMode::Load,
+            phantom_data: PhantomData,
         }
     }
 }
@@ -184,13 +186,6 @@ impl From<Marine> for ObjectType {
         ObjectType::Marine
     }
 }
-
-// impl From<Marine> for AssetType {
-//     fn from(_: Marine) -> Self {
-//         Self::Object(ObjectType::Marine)
-//     }
-// }
-
 
 #[derive(Clone, Bundle)]
 pub struct MarineBundle {
@@ -211,13 +206,13 @@ impl Default for MarineBundle {
     fn default() -> Self {
         Self {
             marine: Marine,
-            // object_type: Marine.into(),
             object_type: Marine.into(),
             visibility: Visibility::default(),
             transform: Transform::default(),
         }
     }
 }
+
 /*
 ( 1,    0   )
 ( 0.5,  √3/2)
@@ -246,49 +241,15 @@ impl Default for MarineSpawnPoints {
 pub struct MarineSquadPlugin;
 
 impl MarineSquadPlugin {
-    pub fn _spawn(
+    pub fn spawn(
         points: Local<MarineSpawnPoints>,
-        mut load_events: EventReader<LoadObject<MarineSquad>>,
         mut spawn_events: EventReader<SpawnObject<MarineSquad>>,
-        mut fetch_events: EventReader<FetchObject<MarineSquad>>,
         mut client_requests: EventWriter<ClientRequest>,
         prefabs: Res<ObjectPrefabs>,
-        mut loading_status: ResMut<LoadingStatus>,
+        mut status: ResMut<LoadingStatus>,
         mut commands: Commands,
     ) {
-        for event in load_events.read() {
-            commands.spawn(MarineSquadBundle::from(prefabs.marine_squad_prefab.clone()).with_spawn_data(event.spawn_data.clone()).with_disk_data(event.disk_data.clone())).with_children(|parent| {
-                let squad = event.disk_data.clone().and_then(|disk_data| disk_data.squad).unwrap_or(prefabs.marine_squad_prefab.squad.clone());
-                for ((object_type, _), point) in squad.members.iter().zip(points.0.iter()) {
-                    let transform = Transform::from_translation(Vec3::from((*point, 0.0)).xzy());
-                    match object_type {
-                        ObjectType::Marine => {
-                            parent.spawn(MarineBundle::default().with_transform(transform));
-                        },
-                        _ => { },
-                    };
-                }
-            });
-            loading_status.factories_loaded = Some(true);
-        }
-
         for event in spawn_events.read() {
-            commands.spawn(MarineSquadBundle::from(prefabs.marine_squad_prefab.clone()).with_spawn_data(event.spawn_data.clone())).with_children(|parent| {
-                let squad = prefabs.marine_squad_prefab.squad.clone();
-                for ((object_type, _), point) in squad.members.iter().zip(points.0.iter()) {
-                    let transform = Transform::from_translation(Vec3::from((*point, 0.0)).xzy());
-                    match object_type {
-                        ObjectType::Marine => {
-                            parent.spawn(MarineBundle::default().with_transform(transform));
-                        },
-                        _ => { },
-                    };
-                }
-            });
-            client_requests.write(ClientRequest::SpawnObject(event.clone().into()));
-        }
-
-        for event in fetch_events.read() {
             commands.spawn(MarineSquadBundle::from(prefabs.marine_squad_prefab.clone()).with_spawn_data(event.spawn_data.clone()).with_disk_data(event.disk_data.clone())).with_children(|parent| {
                 let squad = event.disk_data.clone().and_then(|disk_data| disk_data.squad).unwrap_or(prefabs.marine_squad_prefab.squad.clone());
                 for ((object_type, _), point) in squad.members.iter().zip(points.0.iter()) {
@@ -301,8 +262,12 @@ impl MarineSquadPlugin {
                     };
                 }
             });
+            match event.spawn_mode {
+                SpawnMode::Load => { status.marines_loaded = Some(true); },
+                SpawnMode::Spawn => { client_requests.write(ClientRequest::SpawnObject(event.clone().into())); },
+                SpawnMode::Fetch => { },
+            }
         }
-
     }
 }
 
@@ -310,7 +275,7 @@ impl Plugin for MarineSquadPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_systems(Update, (
-                Self::_spawn
+                Self::spawn
             ).run_if(resource_exists::<ObjectPrefabs>))
         ;
     }

@@ -20,6 +20,7 @@ pub struct SaveObjects {
     pub factories: Vec<FactoryDisk>,
     pub marine_squads: Vec<MarineSquadDisk>,
     pub resource_nodes: Vec<ResourceNodeDisk>,
+    pub armadillos: Vec<ArmadilloDisk>,
     pub tanks: Vec<TankBaseDisk>,
 }
 
@@ -33,6 +34,7 @@ pub struct LoadingStatus {
     pub barracks_loaded: Option<bool>,
     pub factories_loaded: Option<bool>,
     pub marines_loaded: Option<bool>,
+    pub armadillos_loaded: Option<bool>,
     pub tanks_loaded: Option<bool>,
 }
 
@@ -44,6 +46,7 @@ impl LoadingStatus {
         & self.resource_nodes_loaded.unwrap_or(true)
         & self.factories_loaded.unwrap_or(true)
         & self.marines_loaded.unwrap_or(true)
+        & self.armadillos_loaded.unwrap_or(true)
         & self.tanks_loaded.unwrap_or(true)
     }
 }
@@ -53,6 +56,7 @@ pub type BarracksDiskQuery<'a> = (&'a Snowflake, &'a Health, &'a Queues, &'a Tea
 pub type FactoryDiskQuery<'a> = (&'a Snowflake, &'a Health, &'a Queues, &'a TeamPlayer, &'a Transform);
 pub type MarineSquadDiskQuery<'a> = (&'a Snowflake, &'a Health, &'a Squad, &'a PathFinder, &'a Navigator, &'a WeaponSet, &'a Velocity, &'a TeamPlayer, &'a Transform);
 pub type ResourceNodeDiskQuery<'a> = (&'a Snowflake, &'a ResourceNodePlatforms, &'a TeamPlayer, &'a Transform);
+pub type ArmadilloDiskQuery<'a> = (&'a Snowflake, &'a Health, &'a PathFinder, &'a Navigator, &'a WeaponSet, &'a Velocity, &'a TeamPlayer, &'a Transform);
 pub type TankBaseDiskQuery<'a> = (&'a Snowflake, &'a Health, &'a PathFinder, &'a Navigator, &'a WeaponSet, &'a Reference, &'a Velocity, &'a TeamPlayer, &'a Transform);
 
 #[derive(Debug, Clone, Copy)]
@@ -74,6 +78,7 @@ impl DiskPlugin {
             Query<FactoryDiskQuery, With<Factory>>,
             Query<MarineSquadDiskQuery, With<MarineSquad>>,
             Query<ResourceNodeDiskQuery, With<ResourceNodePlatforms>>,
+            Query<ArmadilloDiskQuery, With<Armadillo>>,
             Query<TankBaseDiskQuery, With<TankBase>>,
         ),
     ) {
@@ -85,7 +90,8 @@ impl DiskPlugin {
             let factories = object.2.iter().map(|object| FactoryDisk::from(object)).collect();
             let marine_squads = object.3.iter().map(|object| MarineSquadDisk::from(object)).collect();
             let resource_nodes = object.4.iter().map(|object| ResourceNodeDisk::from(object)).collect();
-            let tanks = object.5.iter().map(|object| TankBaseDisk::from(object)).collect();
+            let armadillos = object.5.iter().map(|object| ArmadilloDisk::from(object)).collect();
+            let tanks = object.6.iter().map(|object| TankBaseDisk::from(object)).collect();
 
             let objects = SaveObjects {
                 crane_yards,
@@ -93,6 +99,7 @@ impl DiskPlugin {
                 factories,
                 marine_squads,
                 resource_nodes,
+                armadillos,
                 tanks,
             };
 
@@ -120,7 +127,7 @@ impl DiskPlugin {
 
         mut load_level: EventWriter<LoadLevels>,
         mut load_map: EventWriter<MapLoadEvent>,
-        mut load_objects: EventWriter<LoadObjects>,
+        mut load_objects: EventWriter<SpawnObject>,
 
         mut status: ResMut<LoadingStatus>,
 
@@ -143,8 +150,10 @@ impl DiskPlugin {
         let objects = base_save_state.objects;
         for object in &objects.crane_yards { status.crane_yards_loaded = Some(false); load_objects.write(object.clone().into()); }
         for object in &objects.resource_nodes { status.resource_nodes_loaded = Some(false); load_objects.write(object.clone().into()); }
+        for object in &objects.barracks { status.barracks_loaded = Some(false); load_objects.write(object.clone().into()); }
         for object in &objects.factories { status.factories_loaded = Some(false); load_objects.write(object.clone().into()); }
         for object in &objects.marine_squads { status.marines_loaded = Some(false); load_objects.write(object.clone().into()); }
+        for object in &objects.armadillos { status.armadillos_loaded = Some(false); load_objects.write(object.clone().into()); }
         for object in &objects.tanks { status.tanks_loaded = Some(false); load_objects.write(object.clone().into()); }
     }
 

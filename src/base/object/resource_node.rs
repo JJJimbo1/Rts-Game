@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
@@ -134,7 +136,7 @@ impl<'a> From<ResourceNodeDiskQuery<'a>> for ResourceNodeDisk {
     }
 }
 
-impl From<ResourceNodeDisk> for LoadObjects {
+impl From<ResourceNodeDisk> for SpawnObject {
     fn from(value: ResourceNodeDisk) -> Self {
         Self {
             object_type: ObjectType::ResourceNode,
@@ -147,6 +149,8 @@ impl From<ResourceNodeDisk> for LoadObjects {
                 resource_node: value.disk_resource_node,
                 ..default()
             }),
+            spawn_mode: SpawnMode::Load,
+            phantom_data: PhantomData,
         }
     }
 }
@@ -334,12 +338,14 @@ impl ResourceNodePlugin {
 
     // }
     pub fn load(
-        mut load_events: EventReader<LoadObject<ResourceNode>>,
+        mut spawn_events: EventReader<SpawnObject<ResourceNode>>,
+        mut client_requests: EventWriter<ClientRequest>,
         prefabs: Res<ObjectPrefabs>,
         mut status: ResMut<LoadingStatus>,
         mut commands: Commands,
     ) {
-        for event in load_events.read() {
+        for event in spawn_events.read() {
+            match event.spawn_mode { SpawnMode::Load => { }, _ => { continue; } }
             let resource_node = ResourceNodeBundle::from(prefabs.resource_node_prefab.clone()).with_spawn_data(event.spawn_data.clone()).with_disk_data(event.disk_data.clone());
             let entity = commands.spawn(resource_node).id();
             let transform = event.spawn_data.transform;
@@ -370,7 +376,11 @@ impl ResourceNodePlugin {
                     }
                 }
             }
-            status.resource_nodes_loaded = Some(true);
+            match event.spawn_mode {
+                SpawnMode::Load => { status.resource_nodes_loaded = Some(true); },
+                SpawnMode::Spawn => { client_requests.write(ClientRequest::SpawnObject(event.clone().into())); },
+                SpawnMode::Fetch => { },
+            }
         }
     }
 
@@ -380,6 +390,7 @@ impl ResourceNodePlugin {
         mut commands: Commands,
     ) {
         for event in spawn_events.read() {
+            match event.spawn_mode { SpawnMode::Spawn => { }, _ => { continue; } }
             let resource_node = ResourceNodeBundle::from(prefabs.resource_node_prefab.clone()).with_spawn_data(event.spawn_data.clone());
             commands.spawn(resource_node);
             let transform = event.spawn_data.transform;

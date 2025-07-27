@@ -1,10 +1,12 @@
+use std::marker::PhantomData;
+
 use bevy::{prelude::*, platform::collections::HashMap};
 use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
 use superstruct::*;
 use crate::*;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy)]
 #[derive(Component)]
 pub struct Factory;
 
@@ -135,7 +137,7 @@ impl<'a> From<FactoryDiskQuery<'a>> for FactoryDisk {
     }
 }
 
-impl From<FactoryDisk> for LoadObjects {
+impl From<FactoryDisk> for SpawnObject {
     fn from(value: FactoryDisk) -> Self {
         Self {
             object_type: ObjectType::Factory,
@@ -149,6 +151,8 @@ impl From<FactoryDisk> for LoadObjects {
                 queues: value.disk_queues,
                 ..default()
             }),
+            spawn_mode: SpawnMode::Load,
+            phantom_data: PhantomData,
         }
     }
 }
@@ -157,34 +161,26 @@ pub struct FactoryPlugin;
 
 impl FactoryPlugin {
     pub fn spawn(
-        mut load_events: EventReader<LoadObject<Factory>>,
         mut spawn_events: EventReader<SpawnObject<Factory>>,
-        mut fetch_events: EventReader<FetchObject<Factory>>,
         mut client_requests: EventWriter<ClientRequest>,
         prefabs: Res<ObjectPrefabs>,
-        mut loading_status: ResMut<LoadingStatus>,
+        mut status: ResMut<LoadingStatus>,
         mut commands: Commands,
     ) {
-        for event in load_events.read() {
-            commands.spawn(FactoryBundle::from(prefabs.factory_prefab.clone()).with_spawn_data(event.spawn_data.clone()).with_disk_data(event.disk_data.clone()));
-            loading_status.factories_loaded = Some(true);
-        }
-
         for event in spawn_events.read() {
-            commands.spawn(FactoryBundle::from(prefabs.factory_prefab.clone()).with_spawn_data(event.spawn_data.clone()));
-            client_requests.write(ClientRequest::SpawnObject(event.clone().into()));
+            commands.spawn(FactoryBundle::from(prefabs.factory_prefab.clone()).with_spawn_data(event.spawn_data.clone()).with_disk_data(event.disk_data.clone()));
+            match event.spawn_mode {
+                SpawnMode::Load => { status.factories_loaded = Some(true); },
+                SpawnMode::Spawn => { client_requests.write(ClientRequest::SpawnObject(event.clone().into())); },
+                SpawnMode::Fetch => { },
+            }
         }
-
-        for event in fetch_events.read() {
-            commands.spawn(FactoryBundle::from(prefabs.factory_prefab.clone()).with_spawn_data(event.spawn_data.clone()));
-        }
-
     }
 
     pub fn ghost(
         mut ghost: Local<Option<Entity>>,
         mut command_events: EventReader<CommandEvent>,
-        mut spawn_events: EventWriter<SpawnObjects>,
+        mut spawn_events: EventWriter<SpawnObject>,
         mut commands: Commands,
     ) {
         for event in command_events.read() {
@@ -205,9 +201,12 @@ impl FactoryPlugin {
                             transform: *transform,
                         };
 
-                        let spawn_event = SpawnObjects {
+                        let spawn_event = SpawnObject {
                             object_type: ObjectType::Factory,
                             spawn_data: spawn_data,
+                            disk_data: None,
+                            spawn_mode: SpawnMode::Spawn,
+                            phantom_data: PhantomData,
                         };
 
                         spawn_events.write(spawn_event);
@@ -219,38 +218,26 @@ impl FactoryPlugin {
     }
 
     pub fn factory_system(
-        mut spawn_events: EventWriter<SpawnObjects>,
+        mut spawn_events: EventWriter<SpawnObject>,
         mut queues: Query<(&Transform, &TeamPlayer, &mut Queues), With<Factory>>
     ) {
         queues.iter_mut().for_each(|(transform, teamplayer, mut queues)| {
-            // for data in queues.queues[&ActiveQueue::Infantry].buffer.spine() {
-            //     let mut transform = *transform;
-            //     transform.translation += transform.forward() * 20.0;
-            //     let spawn_data = SpawnObjects {
-            //         object_type: data.object,
-            //         spawn_data: ObjectSpawnData {
-            //             snowflake: Snowflake::new(),
-            //             teamplayer: *teamplayer,
-            //             transform
-            //         },
-            //     };
-            //     spawn_events.write(spawn_data);
-            // }
             for data in queues.queues[&ActiveQueue::Vehicles].buffer.spine() {
                 let mut transform = *transform;
                 transform.translation += transform.forward() * 20.0;
-                let spawn_data = SpawnObjects {
+                let spawn_data = SpawnObject {
                     object_type: data.object,
                     spawn_data: ObjectSpawnData {
                         snowflake: Snowflake::new(),
                         teamplayer: *teamplayer,
                         transform,
                     },
+                    disk_data: None,
+                    spawn_mode: SpawnMode::Spawn,
+                    phantom_data: PhantomData,
                 };
                 spawn_events.write(spawn_data);
             }
-
-            // queues.queues.get_mut(&ActiveQueue::Infantry).unwrap().buffer.clear();
             queues.queues.get_mut(&ActiveQueue::Vehicles).unwrap().buffer.clear();
         });
     }

@@ -104,6 +104,7 @@ Data({
                     ),
                 ],
                 marine_squads: [],
+                armadillos: [],
                 tanks: [
                     (
                         transform: (

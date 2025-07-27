@@ -1,0 +1,55 @@
+#![enable(implicit_some)]
+(
+    stack: (
+        Vehicles,
+        (
+            object: Armadillo,
+            time_to_build: Duration (
+                secs: 12,
+                nanos: 0,
+            ),
+            cost: 600,
+            buffered: false,
+        )
+    ),
+    health: (
+        max_health: 600,
+        health: 600,
+        resistance: 0.0,
+        resistances: (
+            kinetic: 0.0,
+            fire: -1.0,
+            explosive: 0.0,
+            laser: 0.0,
+            shock: -1.0,
+        ),
+        dense: false,
+    ),
+    navigator: (
+        follow: false,
+        max_forward_speed: 18.0,
+        max_backwards_speed: 16.0,
+    ),
+    weapon_set: (
+        closing_range: 39.0,
+        weapons: [
+            (
+                target: None,
+                target_force: Enemy,
+                target_type: Universal,
+                range: 40.0,
+                damage: 6.0,
+                damage_types: (
+                    kinetic: 1.0,
+                    fire: 0.0,
+                    explosive: 0.0,
+                    laser: 0.0,
+                    shock: 0.0,
+                ),
+                fire_rate: 0.05,
+                cooldown: 0.0,
+            )
+        ],
+    ),
+    collider_string: "GAAAAAAAAAAAAIA/AAAAQAAAAMAAAIA/AAAAQAAAAMAAAIA/AAAAQAAAAMAAAIA/AAAAAAAAAMAAAIA/AAAAAAAAAMAAAIA/AAAAAAAAAMAAAIA/AAAAQAAAAEAAAIA/AAAAQAAAAEAAAIA/AAAAQAAAAEAAAIA/AAAAAAAAAEAAAIA/AAAAAAAAAEAAAIA/AAAAAAAAAEAAAIC/AAAAQAAAAMAAAIC/AAAAQAAAAMAAAIC/AAAAQAAAAMAAAIC/AAAAAAAAAMAAAIC/AAAAAAAAAMAAAIC/AAAAAAAAAMAAAIC/AAAAQAAAAEAAAIC/AAAAQAAAAEAAAIC/AAAAQAAAAEAAAIC/AAAAAAAAAEAAAIC/AAAAAAAAAEAAAIC/AAAAAAAAAEAMAAAAAAAAAA0AAAAHAAAAAQAAAAYAAAAVAAAACQAAABQAAAARAAAAFwAAAAQAAAAWAAAAEAAAAAIAAAALAAAABQAAAAwAAAADAAAADwAAAA0AAAATAAAABwAAAAYAAAASAAAAFQAAABQAAAAOAAAAEQAAAAQAAAAKAAAAFgAAAAIAAAAIAAAACwAAAAwAAAAAAAAAAwAAAA=="
+)

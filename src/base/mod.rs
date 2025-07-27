@@ -33,6 +33,8 @@ pub struct GltfAssets {
     pub factory: Handle<Scene>,
     #[asset(path = "models/marine.glb#Scene0")]
     pub marine: Handle<Scene>,
+    #[asset(path = "models/armadillo.glb#Scene0")]
+    pub armadillo: Handle<Scene>,
     #[asset(path = "models/tank_base.glb#Scene0")]
     pub tank_base: Handle<Scene>,
     #[asset(path = "models/tank_gun.glb#Scene0")]
@@ -55,6 +57,7 @@ impl GltfAssets {
             ObjectType::ResourcePlatformClaimed => Some(&self.resource_platform_claimed),
             ObjectType::Barracks => Some(&self.barracks),
             ObjectType::Factory => Some(&self.factory),
+            ObjectType::Armadillo => Some(&self.armadillo),
             ObjectType::Marine => Some(&self.marine),
             ObjectType::TankBase => Some(&self.tank_base),
             ObjectType::TankGun => Some(&self.tank_gun),

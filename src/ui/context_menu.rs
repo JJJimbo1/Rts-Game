@@ -341,8 +341,8 @@ impl ContextMenuPlugin {
                     }
                 },
                 ContextMenuButtonsEvent::BeginPlaceBufferedButton(id) => {
-                    if let Some((entity, stack_data)) = id {
-                        if !current_placement.placing() {
+                    if !current_placement.placing() {
+                        if let Some((entity, stack_data)) = id {
                             let ppi = PrePlacementInfo {
                                 constructor: entity,
                                 queue: menu.active_tab.unwrap(),

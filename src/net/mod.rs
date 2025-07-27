@@ -9,7 +9,7 @@ pub use lobby::*;
 pub use client::*;
 pub use server::*;
 
-use crate::SpawnObjects;
+use crate::SpawnObject;
 
 pub const SERVER_ADDRESS: &'static str = "127.0.0.1:40256";
 pub const CLIENT_ADDRESS: &'static str = "0.0.0.0:0";
@@ -40,7 +40,7 @@ impl From<Vec<ClientRequest>> for ClientRequests {
 pub enum ClientRequest {
     #[default]
     Empty,
-    SpawnObject(SpawnObjects),
+    SpawnObject(SpawnObject),
 }
 
 ///Sent from the server to the client
@@ -70,7 +70,7 @@ impl From<Vec<ServerCommand>> for ServerCommands {
 pub enum ServerCommand {
     #[default]
     Empty,
-    SpawnObject(SpawnObjects),
+    SpawnObject(SpawnObject),
 }
 
 // impl ServerCommand {

@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::{f32::consts::PI, marker::PhantomData};
 
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::{Collider, RigidBody, Velocity};
@@ -158,7 +158,7 @@ impl<'a> From<TankBaseDiskQuery<'a>> for TankBaseDisk {
     }
 }
 
-impl From<TankBaseDisk> for LoadObjects {
+impl From<TankBaseDisk> for SpawnObject {
     fn from(value: TankBaseDisk) -> Self {
         Self {
             object_type: ObjectType::TankBase,
@@ -176,6 +176,8 @@ impl From<TankBaseDisk> for LoadObjects {
                 velocity: value.disk_velocity.map(|vel| vel.into()),
                 ..default()
             }),
+            spawn_mode: SpawnMode::Load,
+            phantom_data: PhantomData,
         }
     }
 }
@@ -226,13 +228,14 @@ impl Default for TankGunBundle {
 pub struct TankPlugin;
 
 impl TankPlugin {
-    pub fn load(
-        mut load_events: EventReader<LoadObject<TankBase>>,
+    pub fn spawn(
+        mut spawn_events: EventReader<SpawnObject<TankBase>>,
+        mut client_requests: EventWriter<ClientRequest>,
         prefabs: Res<ObjectPrefabs>,
         mut status: ResMut<LoadingStatus>,
         mut commands: Commands,
     ) {
-        for event in load_events.read() {
+        for event in spawn_events.read() {
             let reference = event.disk_data.clone().and_then(|disk_data| disk_data.reference).unwrap_or(prefabs.tank_prefab.reference.clone());
             let Some(mut transform) = reference.references[0].0 else { continue; };
             transform.rotate_local_y(PI);
@@ -247,30 +250,11 @@ impl TankPlugin {
             let tank = TankBaseBundle::from(prefabs.tank_prefab.clone()).with_spawn_data(event.spawn_data.clone()).with_disk_data(event.disk_data.clone()).with_reference(turret_entity);
             let tank_entity = commands.spawn(tank).id();
             commands.entity(tank_entity).add_child(turret_entity);
-            status.tanks_loaded = Some(true);
-        }
-    }
-
-    pub fn spawn(
-        mut spawn_events: EventReader<SpawnObject<TankBase>>,
-        prefabs: Res<ObjectPrefabs>,
-        mut commands: Commands,
-    ) {
-        for event in spawn_events.read() {
-            let reference = prefabs.tank_prefab.reference.clone();
-            let Some(mut transform) = reference.references[0].0 else { continue; };
-            transform.rotate_local_y(PI);
-            let gun_spawn_data = ObjectSpawnData {
-                snowflake: Snowflake::new(),
-                teamplayer: TeamPlayer::default(),
-                transform,
-            };
-            let turret = TankGunBundle::default().with_spawn_data(&gun_spawn_data);
-            let turret_entity = commands.spawn(turret).id();
-
-            let tank = TankBaseBundle::from(prefabs.tank_prefab.clone()).with_spawn_data(event.spawn_data.clone()).with_reference(turret_entity);
-            let tank_entity = commands.spawn(tank).id();
-            commands.entity(tank_entity).add_child(turret_entity);
+            match event.spawn_mode {
+                SpawnMode::Load => { status.tanks_loaded = Some(true); },
+                SpawnMode::Spawn => { client_requests.write(ClientRequest::SpawnObject(event.clone().into())); },
+                SpawnMode::Fetch => { },
+            }
         }
     }
 
@@ -307,10 +291,7 @@ impl Plugin for TankPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_systems(Update, (
-                (
-                    Self::load,
-                    Self::spawn
-                ).run_if(resource_exists::<ObjectPrefabs>),
+                Self::spawn.run_if(resource_exists::<ObjectPrefabs>),
                 Self::aim_tank_gun
             ))
         ;

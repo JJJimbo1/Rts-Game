@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use bevy::{prelude::*, platform::collections::HashMap};
 use bevy_rapier3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
@@ -133,7 +135,7 @@ impl<'a> From<CraneYardDiskQuery<'a>> for CraneYardDisk {
     }
 }
 
-impl From<CraneYardDisk> for LoadObjects {
+impl From<CraneYardDisk> for SpawnObject {
     fn from(value: CraneYardDisk) -> Self {
         Self {
             object_type: ObjectType::CraneYard,
@@ -147,6 +149,8 @@ impl From<CraneYardDisk> for LoadObjects {
                 queues: value.disk_queues,
                 ..default()
             }),
+            spawn_mode: SpawnMode::Load,
+            phantom_data: PhantomData,
         }
     }
 }
@@ -155,34 +159,26 @@ pub struct CraneYardPlugin;
 
 impl CraneYardPlugin {
     pub fn spawn(
-        mut load_events: EventReader<LoadObject<CraneYard>>,
         mut spawn_events: EventReader<SpawnObject<CraneYard>>,
-        mut fetch_events: EventReader<FetchObject<CraneYard>>,
         mut client_requests: EventWriter<ClientRequest>,
         prefabs: Res<ObjectPrefabs>,
-        mut loading_status: ResMut<LoadingStatus>,
+        mut status: ResMut<LoadingStatus>,
         mut commands: Commands,
     ) {
-        for event in load_events.read() {
-            commands.spawn(CraneYardBundle::from(prefabs.crane_yard_prefab.clone()).with_spawn_data(event.spawn_data.clone()).with_disk_data(event.disk_data.clone()));
-            loading_status.crane_yards_loaded = Some(true);
-        }
-
         for event in spawn_events.read() {
-            commands.spawn(CraneYardBundle::from(prefabs.crane_yard_prefab.clone()).with_spawn_data(event.spawn_data.clone()));
-            client_requests.write(ClientRequest::SpawnObject(event.clone().into()));
+            commands.spawn(CraneYardBundle::from(prefabs.crane_yard_prefab.clone()).with_spawn_data(event.spawn_data.clone()).with_disk_data(event.disk_data.clone()));
+            match event.spawn_mode {
+                SpawnMode::Load => { status.crane_yards_loaded = Some(true); },
+                SpawnMode::Spawn => { client_requests.write(ClientRequest::SpawnObject(event.clone().into())); },
+                SpawnMode::Fetch => { },
+            }
         }
-
-        for event in fetch_events.read() {
-            commands.spawn(CraneYardBundle::from(prefabs.crane_yard_prefab.clone()).with_spawn_data(event.spawn_data.clone()));
-        }
-
     }
 
     pub fn ghost(
         mut ghost: Local<Option<Entity>>,
         mut command_events: EventReader<CommandEvent>,
-        mut spawn_events: EventWriter<SpawnObjects>,
+        mut spawn_events: EventWriter<SpawnObject>,
         mut commands: Commands,
     ) {
         for event in command_events.read() {
@@ -203,9 +199,12 @@ impl CraneYardPlugin {
                             transform: *transform,
                         };
 
-                        let spawn_event = SpawnObjects {
+                        let spawn_event = SpawnObject {
                             object_type: ObjectType::CraneYard,
                             spawn_data: spawn_data,
+                            disk_data: None,
+                            spawn_mode: SpawnMode::Spawn,
+                            phantom_data: PhantomData,
                         };
 
                         spawn_events.write(spawn_event);

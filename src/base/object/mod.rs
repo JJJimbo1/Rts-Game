@@ -1,3 +1,4 @@
+pub mod armadillo;
 pub mod barracks;
 pub mod crane_yard;
 pub mod factory;
@@ -5,8 +6,8 @@ pub mod marine_squad;
 pub mod resource_node;
 pub mod tank;
 
+pub use armadillo::*;
 pub use barracks::*;
-use bevy_rapier3d::prelude::{Collider, Velocity};
 pub use crane_yard::*;
 pub use factory::*;
 pub use marine_squad::*;
@@ -16,6 +17,7 @@ pub use tank::*;
 use std::fmt::Display;
 use serde::{Serialize, Deserialize};
 use bevy::{prelude::*, asset::{AssetLoader, io::Reader}, platform::collections::HashMap, reflect::TypePath};
+use bevy_rapier3d::prelude::{Collider, Velocity};
 use bevy_asset_loader::prelude::AssetCollection;
 use bevy_mod_event_group::{event_group, EventGroupAppExt};
 use crate::*;
@@ -32,15 +34,10 @@ pub enum ObjectType {
     CommunicationsCenter,
     MarineSquad,
     Marine,
+    Armadillo,
     TankBase,
     TankGun,
 }
-
-// impl From<ObjectType> for AssetType {
-//     fn from(object_type: ObjectType) -> Self {
-//         Self::Object(object_type)
-//     }
-// }
 
 impl Display for ObjectType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -54,75 +51,27 @@ impl Display for ObjectType {
             ObjectType::CommunicationsCenter => write!(f, "Communications Center"),
             ObjectType::MarineSquad => write!(f, "Marine Squad"),
             ObjectType::Marine => write!(f, "Marine"),
+            ObjectType::Armadillo => write!(f, "Armadillo"),
             ObjectType::TankBase => write!(f, "Tank"),
             ObjectType::TankGun => write!(f, "Tank Gun"),
         }
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Event)]
-#[event_group(
-    event_type(object_type),
-    group(LoadObject),
-    events(CraneYard, Barracks, Factory, ResourceNode, MarineSquad, TankBase),
-)]
-pub struct LoadObjects {
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum SpawnMode {
+    Load,
+    Spawn,
+    Fetch,
+}
+
+#[event_group((Debug, Clone, Serialize, Deserialize, Event),)]
+pub struct SpawnObject {
+    #[events(CraneYard, Barracks, Factory, ResourceNode, MarineSquad, Armadillo, TankBase)]
     pub object_type: ObjectType,
     pub spawn_data: ObjectSpawnData,
     pub disk_data: Option<ObjectDiskData>,
-}
-
-impl From<SpawnObjects> for LoadObjects {
-    fn from(value: SpawnObjects) -> Self {
-        LoadObjects {
-            object_type: value.object_type,
-            spawn_data: value.spawn_data,
-            disk_data: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Event)]
-#[event_group(
-    event_type(object_type),
-    group(SpawnObject),
-    events(CraneYard, Barracks, Factory, ResourceNode, MarineSquad, TankBase),
-)]
-pub struct SpawnObjects {
-    pub object_type: ObjectType,
-    pub spawn_data: ObjectSpawnData,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Event)]
-#[event_group(
-    event_type(object_type),
-    group(FetchObject),
-    events(CraneYard, Barracks, Factory, ResourceNode, MarineSquad, TankBase),
-)]
-pub struct FetchObjects {
-    pub object_type: ObjectType,
-    pub spawn_data: ObjectSpawnData,
-    pub disk_data: Option<ObjectDiskData>,
-}
-
-impl From<SpawnObjects> for FetchObjects {
-    fn from(value: SpawnObjects) -> Self {
-        Self {
-            object_type: value.object_type,
-            spawn_data: value.spawn_data,
-            disk_data: None,
-        }
-    }
-}
-
-impl From<LoadObjects> for FetchObjects {
-    fn from(value: LoadObjects) -> Self {
-        Self {
-            object_type: value.object_type,
-            spawn_data: value.spawn_data,
-            disk_data: value.disk_data,
-        }
-    }
+    pub spawn_mode: SpawnMode,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -210,6 +159,8 @@ pub struct ObjectAssets {
     pub factory: Handle<ObjectAsset>,
     #[asset(path = "objects/marine_squad.ron")]
     pub marine_squad: Handle<ObjectAsset>,
+    #[asset(path = "objects/armadillo.ron")]
+    pub armadillo: Handle<ObjectAsset>,
     #[asset(path = "objects/tank.ron")]
     pub tank: Handle<ObjectAsset>,
 }
@@ -224,36 +175,32 @@ pub struct ObjectPrefabs {
     pub barracks_prefab: BarracksPrefab,
     pub factory_prefab: FactoryPrefab,
     pub marine_squad_prefab: MarineSquadPrefab,
+    pub armadillo_prefab: ArmadilloPrefab,
     pub tank_prefab: TankBasePrefab,
 }
 
 impl FromWorld for ObjectPrefabs {
     fn from_world(world: &mut World) -> Self {
         let cell = world.as_unsafe_world_cell();
-        let assets = unsafe {
-            cell.get_resource_mut::<Assets<ObjectAsset>>().expect("Failed to get Assets<ObjectAsset>")
-        };
+        let assets = unsafe { cell.get_resource_mut::<Assets<ObjectAsset>>().expect("Failed to get Assets<ObjectAsset>") };
+        let objects = unsafe { cell.get_resource::<ObjectAssets>().expect("Failed to get ObjectAssets") };
 
-        let object_assets = unsafe {
-            cell
-            .get_resource::<ObjectAssets>()
-            .expect("Failed to get ObjectAssets")
-        };
-
-        let crane_yard_prefab_asset = assets.get(&object_assets.crane_yard).expect("Failed to load crane_yard");
-        let resource_node_prefab_asset = assets.get(&object_assets.resource_node).expect("Failed to load resource_node");
-        let resource_platform_claimed_prefab_asset = assets.get(&object_assets.resource_platform_claimed).expect("Failed to load resource_platform_claimed");
-        let resource_platform_unclaimed_prefab_asset = assets.get(&object_assets.resource_platform_unclaimed).expect("Failed to load resource_platform_unclaimed");
-        let barracks_prefab_asset = assets.get(&object_assets.barracks).expect("Failed to load barracks");
-        let factory_prefab_asset = assets.get(&object_assets.factory).expect("Failed to load factory");
-        let marine_squad_prefab_asset = assets.get(&object_assets.marine_squad).expect("Failed to load marine_squad");
-        let tank_prefab_asset = assets.get(&object_assets.tank).expect("Failed to load tank");
+        let crane_yard_prefab_asset = assets.get(&objects.crane_yard).expect("Failed to load crane_yard");
+        let resource_node_prefab_asset = assets.get(&objects.resource_node).expect("Failed to load resource_node");
+        let resource_platform_claimed_prefab_asset = assets.get(&objects.resource_platform_claimed).expect("Failed to load resource_platform_claimed");
+        let resource_platform_unclaimed_prefab_asset = assets.get(&objects.resource_platform_unclaimed).expect("Failed to load resource_platform_unclaimed");
+        let barracks_prefab_asset = assets.get(&objects.barracks).expect("Failed to load barracks");
+        let factory_prefab_asset = assets.get(&objects.factory).expect("Failed to load factory");
+        let marine_squad_prefab_asset = assets.get(&objects.marine_squad).expect("Failed to load marine_squad");
+        let armadillo_prefab_asset = assets.get(&objects.armadillo).expect("Failed to load tank");
+        let tank_prefab_asset = assets.get(&objects.tank).expect("Failed to load tank");
 
         let mut stacks: HashMap<ObjectType, (ActiveQueue, StackData)> = HashMap::new();
 
         stacks.insert(ObjectType::Barracks, barracks_prefab_asset.stack.clone().unwrap());
         stacks.insert(ObjectType::Factory, factory_prefab_asset.stack.clone().unwrap());
         stacks.insert(ObjectType::MarineSquad, marine_squad_prefab_asset.stack.clone().unwrap());
+        stacks.insert(ObjectType::Armadillo, armadillo_prefab_asset.stack.clone().unwrap());
         stacks.insert(ObjectType::TankBase, tank_prefab_asset.stack.clone().unwrap());
 
         let crane_yard_prefab = CraneYardPrefab::try_from((crane_yard_prefab_asset, &stacks)).unwrap();
@@ -263,6 +210,7 @@ impl FromWorld for ObjectPrefabs {
         let barracks_prefab = BarracksPrefab::try_from((barracks_prefab_asset, &stacks)).unwrap();
         let factory_prefab = FactoryPrefab::try_from((factory_prefab_asset, &stacks)).unwrap();
         let marine_squad_prefab = MarineSquadPrefab::try_from(marine_squad_prefab_asset).unwrap();
+        let armadillo_prefab = ArmadilloPrefab::try_from(armadillo_prefab_asset).unwrap();
         let tank_prefab = TankBasePrefab::try_from(tank_prefab_asset).unwrap();
 
         let object_prefabs = ObjectPrefabs {
@@ -273,6 +221,7 @@ impl FromWorld for ObjectPrefabs {
             barracks_prefab,
             factory_prefab,
             marine_squad_prefab,
+            armadillo_prefab,
             tank_prefab,
         };
 
@@ -382,9 +331,7 @@ impl ObjectPlugin {
 impl Plugin for ObjectPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_event_group::<LoadObjects>()
-            .add_event_group::<SpawnObjects>()
-            .add_event_group::<FetchObjects>()
+            .add_event_group::<SpawnObject>()
             .add_event::<ObjectKilledEvent>()
             .add_plugins((
                 CraneYardPlugin,
@@ -392,6 +339,7 @@ impl Plugin for ObjectPlugin {
                 BarracksPlugin,
                 FactoryPlugin,
                 MarineSquadPlugin,
+                ArmadilloPlugin,
                 TankPlugin,
             ))
             .add_systems(Update, (Self::patch_grid_spawn, Self::patch_grid_kill, Self::show_grid, Self::spawn_object.run_if(resource_exists::<GltfAssets>)))

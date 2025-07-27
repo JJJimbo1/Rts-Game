@@ -43,7 +43,7 @@ impl ClientPlugin {
     fn read_messages(
         mut client_events: EventWriter<ServerCommand>,
         mut client: ResMut<RenetClient>,
-        mut load_events: EventWriter<LoadObjects>,
+        mut spawn_events: EventWriter<SpawnObject>,
     ) {
         let mut loop_count = 0;
         while let Some(Some(bytes)) = (loop_count < 20).then(|| client.receive_message(DefaultChannel::ReliableOrdered)) {
@@ -55,7 +55,7 @@ impl ClientPlugin {
                 match messege {
                     ServerCommand::Empty => {},
                     ServerCommand::SpawnObject(event) => {
-                        load_events.write(event.into());
+                        spawn_events.write(event.into());
                     }
                 }
             }

@@ -43,7 +43,7 @@ impl HealthBar {
     pub fn adjust_bar_percent(&self, percent: f32, query: &mut Query<&mut Node>) {
         if let Ok(mut x) = query.get_mut(self.bar) {
             let clamped = percent.clamp(0.0, 1.0);
-            let normalized = d1::normalize_from_01(clamped, 0.0, self.segments as f32 * SIZE);
+            let normalized = clamped.remap(0.0, 1.0, 0.0, self.segments as f32 * SIZE);
             x.width = Val::Px(normalized);
         }
     }

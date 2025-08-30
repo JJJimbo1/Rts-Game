@@ -29,8 +29,3 @@ pub fn decode(base64_string: String) -> Option<(Vec<Vec3>, Vec<[u32; 3]>)> {
     }
     None
 }
-
-//TODO: Extract Collider and save to file
-pub fn main() {
-
-}

@@ -1,9 +1,8 @@
-use bevy_rapier3d::prelude::Velocity;
+use avian3d::prelude::LinearVelocity;
 use serde::{Serialize, Deserialize};
 use bevy::{prelude::*, platform::collections::HashMap};
 use crate::*;
 
-///Target Maximum: 125,829,120
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 pub struct BaseSaveState {
@@ -54,10 +53,10 @@ impl LoadingStatus {
 pub type CraneYardDiskQuery<'a> = (&'a Snowflake, &'a Health, &'a Queues, &'a TeamPlayer, &'a Transform);
 pub type BarracksDiskQuery<'a> = (&'a Snowflake, &'a Health, &'a Queues, &'a TeamPlayer, &'a Transform);
 pub type FactoryDiskQuery<'a> = (&'a Snowflake, &'a Health, &'a Queues, &'a TeamPlayer, &'a Transform);
-pub type MarineSquadDiskQuery<'a> = (&'a Snowflake, &'a Health, &'a Squad, &'a PathFinder, &'a Navigator, &'a WeaponSet, &'a Velocity, &'a TeamPlayer, &'a Transform);
+pub type MarineSquadDiskQuery<'a> = (&'a Snowflake, &'a Health, &'a Squad, &'a PathFinder, &'a Navigator, &'a WeaponSet, &'a LinearVelocity, &'a TeamPlayer, &'a Transform);
 pub type ResourceNodeDiskQuery<'a> = (&'a Snowflake, &'a ResourceNodePlatforms, &'a TeamPlayer, &'a Transform);
-pub type ArmadilloDiskQuery<'a> = (&'a Snowflake, &'a Health, &'a PathFinder, &'a Navigator, &'a WeaponSet, &'a Velocity, &'a TeamPlayer, &'a Transform);
-pub type TankBaseDiskQuery<'a> = (&'a Snowflake, &'a Health, &'a PathFinder, &'a Navigator, &'a WeaponSet, &'a Reference, &'a Velocity, &'a TeamPlayer, &'a Transform);
+pub type ArmadilloDiskQuery<'a> = (&'a Snowflake, &'a Health, &'a PathFinder, &'a Navigator, &'a WeaponSet, &'a LinearVelocity, &'a TeamPlayer, &'a Transform);
+pub type TankBaseDiskQuery<'a> = (&'a Snowflake, &'a Health, &'a PathFinder, &'a Navigator, &'a WeaponSet, &'a Reference, &'a LinearVelocity, &'a TeamPlayer, &'a Transform);
 
 #[derive(Debug, Clone, Copy)]
 pub struct DiskPlugin;

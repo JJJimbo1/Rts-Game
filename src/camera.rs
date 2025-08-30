@@ -1,6 +1,6 @@
 use std::f32::{NEG_INFINITY, INFINITY,};
 use bevy::{input::{mouse::{MouseButtonInput, MouseWheel}, ButtonState}, math::Vec3Swizzles, prelude::*, render::camera::Camera, ui::widget::NodeImageMode, window::PrimaryWindow};
-use bevy_rapier3d::{plugin::ReadRapierContext, prelude::QueryFilter};
+use avian3d::prelude::{SpatialQuery, SpatialQueryFilter};
 use serde::{Serialize, Deserialize};
 use crate::*;
 
@@ -30,14 +30,14 @@ pub struct CameraSettings {
     pub offset_z: (f32, f32),
     pub curve_power: (f32, f32),
 
-    //* Settings relating to Rotation.
+    //* Camera rotation settings.
     pub max_rotation_speed: f32,
     pub rotation_acceleration: f32,
     pub rotation_deceleration: f32,
     pub slow_rotation_multiplier: f32,
     pub rotation_acceleration_curve: f32,
 
-    //* Setting relating to Scrolling.
+    //* Camera scrolling settings.
     pub thresholds: (f32, f32),
     pub max_scroll_speed: f32,
     pub scroll_acceleration: f32,
@@ -50,7 +50,7 @@ pub struct CameraSettings {
     pub scroll_button_speed_multiplier: f32,
     pub post_action_stall: bool,
 
-    //* Settings relating to Zooming.
+    //* Camera zooming settings.
     pub max_zoom_speed: f32,
     pub zoom_acceleration: f32,
     pub zoom_deceleration: f32,
@@ -63,15 +63,15 @@ pub struct CameraSettings {
     pub zoom_ratio: f32,
     pub zoom_curve_weight: f32,
 
-    //* Settings relating to Rotation, Scroll and Zoom.
+    //* Misc settings.
     pub minimum_fps_for_deltatime: u16,
 }
 
 impl CameraSettings {
     pub fn default_direction_and_distance(&self) -> (Vec3, f32) {
-        (Vec3::new(0.0, d1::normalize_from_01(self.default_zoom, self.min_zoom().y, self.max_zoom().y),
-        d1::normalize_from_01(self.default_zoom, self.min_zoom().z, self.max_zoom().z)).normalize_or_zero(),
-        d1::normalize_from_01(self.default_zoom, self.min_zoom, self.max_zoom))
+        (Vec3::new(0.0, self.default_zoom.remap(0.0, 1.0, self.min_zoom().y, self.max_zoom().y),
+        self.default_zoom.remap(0.0, 1.0, self.min_zoom().z, self.max_zoom().z)).normalize_or_zero(),
+        self.default_zoom.remap(0.0, 1.0, self.min_zoom, self.max_zoom))
     }
 
     pub fn min_zoom(&self) -> Vec3 {
@@ -323,31 +323,18 @@ impl CameraPlugin {
             camera_controller.holding = true;
         }
 
-        let real_mouse_pos = match window.cursor_position() {
-            Some(pos) => {
-                if camera_controller.outside_window {
-                    camera_controller.just_entered = true;
-                }
-                camera_controller.outside_window = false;
-                pos - half_size
-            },
-            None => {
-                camera_controller.outside_window = true;
-                Vec2::default()
-            }
-        };
-
-        let adjusted_mouse_pos = window.cursor_position().map_or(Vec2::default(), |pos|
-            if !camera_controller.outside_window && (!camera_controller.just_entered || !settings.post_action_stall) && !camera_controller.holding { pos - half_size } else { Vec2::default() });
+        let mouse_pos = window.cursor_position().map_or(Vec2::default(), |pos|
+            if !camera_controller.outside_window && (!camera_controller.just_entered || !settings.post_action_stall) && !camera_controller.holding { pos - half_size } else { Vec2::default() }
+        );
 
         let threshholds: (f32, f32) = (
-            d1::normalize_from_01(settings.thresholds.0, 0., half_size.x),
-            d1::normalize_from_01(settings.thresholds.1, 0., half_size.y),
+            settings.thresholds.0.remap(0.0, 1.0, 0., half_size.x),
+            settings.thresholds.1.remap(0.0, 1.0, 0., half_size.y),
         );
 
         let height = trans.get_mut(camera_controller.camera).map_or(1.0, |x|{
-            d1::normalize_from_to(x.translation.distance(Vec3::default()), settings.min_zoom().length(), settings.max_zoom().length(),
-            settings.zoom_base, settings.zoom_base * settings.zoom_ratio).clamp(settings.zoom_base, settings.zoom_base * settings.zoom_ratio)
+            x.translation.length().remap_clamped(settings.min_zoom().length(), settings.max_zoom().length(),
+            settings.zoom_base, settings.zoom_base * settings.zoom_ratio)
         });
 
         let slow = if key_input.pressed(KeyCode::KeyC) {
@@ -356,11 +343,11 @@ impl CameraPlugin {
             (1., 1., 1.)
         };
 
-        let mouse_dir = Vec3::new(adjusted_mouse_pos.x, 0.0, adjusted_mouse_pos.y).normalize_or_zero();
+        let mouse_dir = Vec3::new(mouse_pos.x, 0.0, mouse_pos.y).normalize_or_zero();
 
         let mags: (f32,f32) = (
-            d1::powf_sign(d1::normalize_to_01(adjusted_mouse_pos.x.abs(), threshholds.0, half_size.x).clamp(0.0, 1.0), settings.scroll_acceleration_curve),
-            d1::powf_sign(d1::normalize_to_01(adjusted_mouse_pos.y.abs(), threshholds.1, half_size.y).clamp(0.0, 1.0), settings.scroll_acceleration_curve),
+            mouse_pos.x.abs().remap_clamped(threshholds.0, half_size.x, 0.0, 1.0).powf_signum(settings.scroll_acceleration_curve),
+            mouse_pos.y.abs().remap_clamped(threshholds.1, half_size.y, 0.0, 1.0).powf_signum(settings.scroll_acceleration_curve),
         );
 
         let hor = {
@@ -401,78 +388,46 @@ impl CameraPlugin {
             }
 
             if dir != 0. {
-                camera_controller.rotation_velocity = d1::lerp(camera_controller.rotation_velocity, dir * delta * settings.max_rotation_speed * slow.0, (settings.rotation_acceleration * delta).clamp(0.0, 1.0));
+                camera_controller.rotation_velocity = camera_controller.rotation_velocity.lerp(dir * delta * settings.max_rotation_speed * slow.0, (settings.rotation_acceleration * delta).clamp(0.0, 1.0));
             } else {
-                camera_controller.rotation_velocity = d1::lerp(camera_controller.rotation_velocity, 0.0, (settings.rotation_deceleration * delta).clamp(0.0, 1.0));
+                camera_controller.rotation_velocity = camera_controller.rotation_velocity.lerp(0.0, (settings.rotation_deceleration * delta).clamp(0.0, 1.0));
             }
             tran.rotate(Quat::from_rotation_y(camera_controller.rotation_velocity));
 
-            //* Scrolling
-            if x.is_normal() {
-                if x.signum() == camera_controller.root_velocity.x.signum() {
-                    if d1::farther_from_zero(x, camera_controller.root_velocity.x) {
-                        camera_controller.root_velocity.x = d1::more_than_or_zero_pog(
-                            d1::lerp(camera_controller.root_velocity.x, x, (settings.scroll_acceleration * delta).clamp(0.0,1.0))
-                        );
-                    } else {
-                        camera_controller.root_velocity.x = d1::more_than_or_zero_pog(
-                            d1::lerp(camera_controller.root_velocity.x, x, (settings.scroll_deceleration * delta).clamp(0.0, 1.0))
-                        );
-                    }
-                } else {
-                    if camera_controller.root_velocity.x.abs() < settings.fast_decceleration_threshold {
-                        camera_controller.root_velocity.x = d1::more_than_or_zero_pog(
-                            d1::lerp(camera_controller.root_velocity.x, x, (settings.scroll_acceleration * delta).clamp(0.0, 1.0))
-                        );
-                    } else {
-                        camera_controller.root_velocity.x = d1::more_than_or_zero_pog(
-                            d1::lerp(camera_controller.root_velocity.x, x, (settings.scroll_deceleration * settings.fast_decceleration_strength * delta).clamp(0.0, 1.0))
-                        );
-                    }
-                }
-            } else {
-                camera_controller.root_velocity.x = d1::more_than_or_zero_pog(
-                    d1::lerp(camera_controller.root_velocity.x, 0.0, (settings.scroll_deceleration * delta).clamp(0.0, 1.0))
-                );
+            if key_input.just_pressed(KeyCode::Backquote) {
+                tran.rotation = Quat::default();
+                camera_controller.rotation_velocity = 0.0;
             }
 
-            if z.is_normal() {
-                if z.signum() == camera_controller.root_velocity.z.signum() {
-                    if d1::farther_from_zero(z, camera_controller.root_velocity.z) {
-                        camera_controller.root_velocity.z = d1::more_than_or_zero_pog(
-                            d1::lerp(camera_controller.root_velocity.z, z, (settings.scroll_acceleration * delta).clamp(0.0, 1.0))
-                        );
-                    } else {
-                        camera_controller.root_velocity.z = d1::more_than_or_zero_pog(
-                            d1::lerp(camera_controller.root_velocity.z, z, (settings.scroll_deceleration * delta).clamp(0.0, 1.0))
-                        );
-                    }
+            //* Scrolling
+
+            let x_acceleration = {
+                delta * if !x.is_normal() { settings.scroll_deceleration }
+                else if x.signum() == camera_controller.root_velocity.x.signum() {
+                    if x.abs() > camera_controller.root_velocity.x.abs() { settings.scroll_acceleration } else { settings.scroll_deceleration }
                 } else {
-                    if camera_controller.root_velocity.z.abs() < settings.fast_decceleration_threshold {
-                        camera_controller.root_velocity.z = d1::more_than_or_zero_pog(
-                            d1::lerp(camera_controller.root_velocity.z, z, (settings.scroll_acceleration * delta).clamp(0.0, 1.0))
-                        );
-                    } else {
-                        camera_controller.root_velocity.z = d1::more_than_or_zero_pog(
-                            d1::lerp(camera_controller.root_velocity.z, z, (settings.scroll_deceleration * settings.fast_decceleration_strength * delta).clamp(0.0, 1.0))
-                        );
-                    }
+                    if camera_controller.root_velocity.x.abs() < settings.fast_decceleration_threshold { settings.scroll_acceleration } else { settings.scroll_deceleration * settings.fast_decceleration_strength }
                 }
-            } else {
-                camera_controller.root_velocity.z = d1::more_than_or_zero_pog(
-                    d1::lerp(camera_controller.root_velocity.z, 0.0, (settings.scroll_deceleration * delta).clamp(0.0, 1.0))
-                );
-            }
+            }.clamp(0.0, 1.0);
+
+            let z_acceleration = {
+                delta * if !z.is_normal() { settings.scroll_deceleration }
+                else if z.signum() == camera_controller.root_velocity.z.signum() {
+                    if z.abs() > camera_controller.root_velocity.z.abs() { settings.scroll_acceleration } else { settings.scroll_deceleration }
+                } else {
+                    if camera_controller.root_velocity.z.abs() < settings.fast_decceleration_threshold { settings.scroll_acceleration } else { settings.scroll_deceleration * settings.fast_decceleration_strength }
+                }
+            }.clamp(0.0, 1.0);
+
+            camera_controller.root_velocity.x = camera_controller.root_velocity.x.lerp(x, x_acceleration).deadzone(0.001);
+            camera_controller.root_velocity.z = camera_controller.root_velocity.z.lerp(z, z_acceleration).deadzone(0.001);
 
             let movement = tran.rotation * camera_controller.root_velocity * delta;
             tran.translation += movement;
-
-            if key_input.just_pressed(KeyCode::Backquote) {
-                tran.rotation = Quat::default();
-            }
         }
 
         if let Ok(mut tran) = trans.get_mut(camera_controller.camera) {
+            //* Zooming
             let mut zoom_add = 0.0;
             for ev in scroll_event_reader.read() {
                 zoom_add = (0.01 * -ev.y.signum()) / delta;
@@ -485,16 +440,16 @@ impl CameraPlugin {
             }
 
             if zoom_add != 0.0 {
-                camera_controller.zoom_velocity = d1::lerp(camera_controller.zoom_velocity, zoom_add * height * settings.max_zoom_speed * slow.2, (settings.zoom_acceleration * delta).clamp(0.0, 1.0));
+                camera_controller.zoom_velocity = camera_controller.zoom_velocity.lerp(zoom_add * height * settings.max_zoom_speed * slow.2, (settings.zoom_acceleration * delta).clamp(0.0, 1.0));
             } else {
-                camera_controller.zoom_velocity = d1::lerp(camera_controller.zoom_velocity, 0., (settings.zoom_deceleration * delta).clamp(0.0, 1.0));
+                camera_controller.zoom_velocity = camera_controller.zoom_velocity.lerp(0., (settings.zoom_deceleration * delta).clamp(0.0, 1.0));
             }
 
             camera_controller.zoom_precentage = (camera_controller.zoom_precentage + camera_controller.zoom_velocity * delta).clamp(0.0, 1.0);
 
-            let direction = Vec3::new(0.0, d1::normalize_from_01(camera_controller.zoom_precentage, settings.min_zoom().y, settings.max_zoom().y),
-                d1::normalize_from_01(camera_controller.zoom_precentage, settings.min_zoom().z, settings.max_zoom().z)).normalize_or_zero();
-            let distance = d1::normalize_from_01(camera_controller.zoom_precentage, settings.min_zoom, settings.max_zoom);
+            let direction = Vec3::new(0.0, camera_controller.zoom_precentage.remap(0.0, 1.0, settings.min_zoom().y, settings.max_zoom().y),
+                camera_controller.zoom_precentage.remap(0.0, 1.0, settings.min_zoom().z, settings.max_zoom().z)).normalize_or_zero();
+            let distance = camera_controller.zoom_precentage.remap(0.0, 1.0, settings.min_zoom, settings.max_zoom);
             tran.translation = direction * distance;
 
             if key_input.just_pressed(KeyCode::Backquote) {
@@ -506,7 +461,21 @@ impl CameraPlugin {
             tran.look_at(Vec3::ZERO, Vec3::Y);
         }
 
-        if (real_mouse_pos.x.abs() < threshholds.0.abs() && real_mouse_pos.y.abs() < threshholds.1.abs()) || !settings.post_action_stall {
+        let mouse_pos = match window.cursor_position() {
+            Some(pos) => {
+                if camera_controller.outside_window {
+                    camera_controller.just_entered = true;
+                }
+                camera_controller.outside_window = false;
+                pos - half_size
+            },
+            None => {
+                camera_controller.outside_window = true;
+                Vec2::default()
+            }
+        };
+
+        if (mouse_pos.x.abs() < threshholds.0.abs() && mouse_pos.y.abs() < threshholds.1.abs()) || !settings.post_action_stall {
             camera_controller.just_entered = false;
             camera_controller.holding = false;
         }
@@ -546,7 +515,7 @@ impl CameraPlugin {
     pub fn camera_raycast_system(
         controller: Res<CameraController>,
         ui_hit: Res<UiHit<CLICK_BUFFER>>,
-        context: ReadRapierContext,
+        context: SpatialQuery,
         mut cast: ResMut<CameraRaycast>,
         windows: Query<&Window, With<PrimaryWindow>>,
         cameras: Query<(&GlobalTransform, &Camera)>,
@@ -558,9 +527,9 @@ impl CameraPlugin {
             let Ok(window) = windows.single() else { return; };
             let Some(cursor) = window.cursor_position() else { return; };
             let Ok(ray) = camera.viewport_to_world(gl_transform, cursor) else { return; };
-            if let Some((entity, len)) = context.single().unwrap().cast_ray(ray.origin, ray.direction.into(), f32::MAX, true, QueryFilter::default()) {
-                let point = ray.origin + ray.direction * len;
-                let cam_cast = RayCastResult { entity, point, len};
+            if let Some(hit) = context.cast_ray(ray.origin, ray.direction.into(), f32::MAX, true, &SpatialQueryFilter::default()) {
+                let point = ray.origin + ray.direction * hit.distance;
+                let cam_cast = RayCastResult { entity: hit.entity, point, len: hit.distance};
                 cast.last_valid_cast = Some(cam_cast);
                 cast.current_cast = Some(cam_cast);
             }
@@ -804,12 +773,12 @@ impl CameraPlugin {
 
         units: Query<(Entity, &Selectable), With<PathFinder>>,
         team_players: Query<&TeamPlayer>,
-        teamplayer_world: Res<TeamPlayerWorld>,
+        combat_world: Res<CombatWorld>,
     ) {
         if current_placement.placing() { return; }
         if input.just_released(MouseButton::Right) {
             if let Some(ray_cast) = cast.current_cast {
-                if teamplayer_world.is_enemy(ray_cast.entity, player.0, &team_players)
+                if combat_world.is_enemy(ray_cast.entity, player.0, &team_players)
                     .map_or(false, |t| t) {
                     let command = CommandEvent{
                         player: player.0,

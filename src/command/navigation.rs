@@ -9,6 +9,8 @@ use crate::Slim;
 pub struct Navigator {
     pub max_forward_speed: f32,
     pub max_backwards_speed: f32,
+    //Radians per second
+    pub max_turn_speed: Option<f32>,
     pub pursue: Option<Entity>,
 }
 

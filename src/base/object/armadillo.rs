@@ -1,7 +1,8 @@
 use std::marker::PhantomData;
 
 use bevy::prelude::*;
-use bevy_rapier3d::prelude::{Collider, RigidBody, Velocity};
+use avian3d::prelude::{Collider, RigidBody, LinearVelocity};
+use bevy_mod_event_group::IntoGroup;
 use superstruct::*;
 use serde::{Serialize, Deserialize};
 use crate::*;
@@ -34,7 +35,7 @@ pub struct Armadillo {
     #[superstruct(only(Bundle))]            pub tank_marker: Armadillo,
     #[superstruct(only(Bundle))]            pub object_type: ObjectType,
     #[superstruct(only(Bundle))]            pub snowflake: Snowflake,
-    #[superstruct(only(Bundle))]            pub velocity: Velocity,
+    #[superstruct(only(Bundle))]            pub velocity: LinearVelocity,
     #[superstruct(only(Bundle))]            pub path_finder: PathFinder,
     #[superstruct(only(Bundle))]            pub selectable: Selectable,
     #[superstruct(only(Bundle))]            pub rigid_body: RigidBody,
@@ -46,7 +47,7 @@ pub struct Armadillo {
     #[superstruct(only(Disk))]              pub disk_path_finder: Option<PathFinder>,
     #[superstruct(only(Disk))]              pub disk_controller: Option<Navigator>,
     #[superstruct(only(Disk))]              pub disk_weapon_set: Option<WeaponSet>,
-    #[superstruct(only(Disk))]              pub disk_velocity: Option<Velocity>,
+    #[superstruct(only(Disk))]              pub disk_velocity: Option<LinearVelocity>,
 }
 
 impl TryFrom<&ObjectAsset> for ArmadilloPrefab {
@@ -58,7 +59,7 @@ impl TryFrom<&ObjectAsset> for ArmadilloPrefab {
         let Some(collider_string) = prefab.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
         let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
 
-        let Ok(collider) = Collider::trimesh(vertices, indices) else { return Err(ContentError::ColliderDecodeError); };
+        let collider = Collider::trimesh(vertices, indices);
 
         Ok(Self {
             health,
@@ -100,8 +101,8 @@ impl From<ArmadilloPrefab> for ArmadilloBundle {
             weapon_set: prefab.weapon_set,
             team_player: TeamPlayer::default(),
             selectable: Selectable::multiselect(),
-            velocity: Velocity::default(),
-            rigid_body: RigidBody::KinematicVelocityBased,
+            velocity: LinearVelocity::default(),
+            rigid_body: RigidBody::Kinematic,
             collider: prefab.collider.clone(),
             visibility: Visibility::default(),
             transform: Transform::default(),
@@ -120,8 +121,8 @@ impl From<(ArmadilloDisk, &ArmadilloPrefab)> for ArmadilloBundle {
             controller: save.disk_controller.unwrap_or(prefab.controller),
             weapon_set: save.disk_weapon_set.unwrap_or(prefab.weapon_set.clone()),
             team_player: save.team_player,
-            velocity: save.disk_velocity.unwrap_or(Velocity::default()),
-            rigid_body: RigidBody::KinematicVelocityBased,
+            velocity: save.disk_velocity.unwrap_or(LinearVelocity::default()),
+            rigid_body: RigidBody::Kinematic,
             collider: prefab.collider.clone(),
             selectable: Selectable::multiselect(),
             visibility: Visibility::default(),
@@ -225,7 +226,7 @@ impl ArmadilloPlugin {
             commands.spawn(ArmadilloBundle::from(prefabs.armadillo_prefab.clone()).with_spawn_data(event.spawn_data.clone()).with_disk_data(event.disk_data.clone()));
             match event.spawn_mode {
                 SpawnMode::Load => { status.armadillos_loaded = Some(true); },
-                SpawnMode::Spawn => { client_requests.write(ClientRequest::SpawnObject(event.clone().into())); },
+                SpawnMode::Spawn => { client_requests.write(ClientRequest::SpawnObject(event.clone().into_group())); },
                 SpawnMode::Fetch => { },
             }
         }

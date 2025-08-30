@@ -21,7 +21,7 @@ pub use teamplayer::*;
 // pub use pathing::*;
 
 use bevy::prelude::*;
-use bevy_rapier3d::prelude::{Collider, Velocity};
+use avian3d::prelude::{Collider, LinearVelocity};
 use pathing::DS2Map;
 use xtrees::Quad;
 use crate::*;
@@ -145,25 +145,25 @@ impl CommandPlugin {
     fn teamplayer_world_updater(
         actors: Res<Commanders>,
         bounds: Res<MapBounds>,
-        mut teamplayer_world: ResMut<TeamPlayerWorld>,
+        mut combat_world: ResMut<CombatWorld>,
         query: Query<(Entity, &Transform, &Collider, &TeamPlayer)>
     ) {
         if actors.is_changed() || bounds.is_changed() {
-            *teamplayer_world = TeamPlayerWorld::new(&actors, &bounds);
+            *combat_world = CombatWorld::new(&actors, &bounds);
         } else {
-            teamplayer_world.clear_trees();
+            combat_world.clear_trees();
         }
         query.iter().for_each(|(ent, tran, _, tp)| {
             //TODO: Fix Extents
             let quad = Quad::new(tran.translation.x, tran.translation.z, 0.5, 0.5);
-            teamplayer_world.insert(*tp, ent, quad);
+            combat_world.insert(*tp, ent, quad);
         })
     }
 
     fn follow_path(
         mut gizmos: Gizmos,
         time: Res<Time>,
-        mut followers: Query<(&mut PathFinder, &mut Transform, &mut Velocity, &Navigator)>,
+        mut followers: Query<(&mut PathFinder, &mut Transform, &mut LinearVelocity, &Navigator)>,
     ) {
         followers.iter_mut().for_each(|(pathfinder, tran, _, _)| {
             let Some(path) = pathfinder.path() else { return; };
@@ -177,44 +177,55 @@ impl CommandPlugin {
             }
         });
 
-        //TODO: Implement nice looking driving behaviour.
         followers.iter_mut().for_each(|(mut pathfinder, mut transform, mut velocity, navigator)| {
             let Some(path) = pathfinder.path_mut() else { return; };
             let y = transform.translation.y;
             match (path.get(0).cloned(), path.get(1).cloned()) {
                 (Some(first), Some(_second)) => {
+                    let distance = first.distance(transform.translation.xz());
+                    let new_velocity = transform.rotation * -Vec3::Z  * navigator.max_forward_speed.abs().min(distance * 3.0);
                     let desired_rotation = transform.looking_at(first.extend(y).xzy(), Vec3::Y).rotation;
-                    let difference = transform.rotation.angle_between(desired_rotation);
-                    let speed = (1.5 / difference) * time.delta_secs();
-                    let new_rotation = transform.rotation.slerp(desired_rotation, speed.clamp(0.0, 1.0));
+
+                    let max_turn_speed = navigator.max_turn_speed.unwrap_or(f32::INFINITY);
+
+                    let turn_speed = navigator.max_turn_speed.unwrap_or(f32::INFINITY)
+                        * time.delta_secs()
+                        * if distance > 2.0 * new_velocity.length() / max_turn_speed * (transform.rotation.angle_between(desired_rotation).abs() / 2.0).sin() { 1.0 } else { -1.0 };
+                    
+                    let new_rotation = transform.rotation.rotate_towards(desired_rotation, turn_speed);
                     transform.rotation = new_rotation;
 
-                    let distance = first.distance(transform.translation.xz());
                     if distance > 1.0 {
-                        velocity.linvel = transform.rotation * -Vec3::Z * navigator.max_forward_speed.abs();
+                        velocity.0 = transform.rotation * -Vec3::Z * navigator.max_forward_speed.abs();
                     } else {
                         path.remove(0);
                     }
                 },
                 (Some(first), None) => {
+                    let distance = first.distance(transform.translation.xz());
+                    let new_velocity = transform.rotation * -Vec3::Z  * navigator.max_forward_speed.abs().min(distance * 3.0);
                     let desired_rotation = transform.looking_at(first.extend(y).xzy(), Vec3::Y).rotation;
-                    let difference = transform.rotation.angle_between(desired_rotation);
-                    let speed = (1.5 / difference) * time.delta_secs();
-                    let new_rotation = transform.rotation.slerp(desired_rotation, speed.clamp(0.0, 1.0));
+
+                    let max_turn_speed = navigator.max_turn_speed.unwrap_or(f32::INFINITY);
+
+                    let turn_speed = navigator.max_turn_speed.unwrap_or(f32::INFINITY)
+                        * time.delta_secs()
+                        * if distance > 2.0 * new_velocity.length() / max_turn_speed * (transform.rotation.angle_between(desired_rotation).abs() / 2.0).sin() { 1.0 } else { -1.0 };
+                    
+                    let new_rotation = transform.rotation.rotate_towards(desired_rotation, turn_speed);
                     transform.rotation = new_rotation;
 
-                    let distance = first.distance(transform.translation.xz());
                     if distance > 0.05 {
-                        velocity.linvel = transform.rotation * -Vec3::Z  * navigator.max_forward_speed.abs().min(distance * 3.0);
+                        velocity.0 = new_velocity;
                     } else {
                         transform.translation = first.extend(y).xzy();
                         path.remove(0);
                     }
                 },
                 _ => {
-                    velocity.linvel.x = 0.0;
-                    velocity.linvel.z = 0.0;
-                    *pathfinder = PathFinder::Idle;
+                    velocity.0.x = 0.0;
+                    velocity.0.z = 0.0;
+                    pathfinder.clear_path();
                 }
             }
         });
@@ -229,7 +240,7 @@ impl Plugin for CommandPlugin {
         app.add_event::<CommandEvent>();
         let commanders = app.world_mut().get_resource_or_insert_with(|| Commanders::default()).clone();
         let bounds = app.world_mut().get_resource_or_insert_with(|| MapBounds::default()).clone();
-        app.world_mut().get_resource_or_insert_with(|| TeamPlayerWorld::new(&commanders, &bounds));
+        app.world_mut().get_resource_or_insert_with(|| CombatWorld::new(&commanders, &bounds));
 
         app.world_mut().get_resource_or_insert_with(|| GridMap(DS2Map::new()));
         app.world_mut().get_resource_or_insert_with(|| GridSpace::default());

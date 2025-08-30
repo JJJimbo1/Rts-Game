@@ -1,9 +1,9 @@
 use bevy::prelude::*;
-use bevy_rapier3d::{plugin::{NoUserData, RapierPhysicsPlugin}, prelude::Velocity, render::RapierDebugRenderPlugin};
+use avian3d::{prelude::{LinearVelocity, PhysicsDebugPlugin}, PhysicsPlugins};
 
 use crate::Slim;
 
-impl Slim for Velocity {
+impl Slim for LinearVelocity {
     fn slim(&self) -> Option<Self> {
         Some(self.clone())
     }
@@ -15,7 +15,8 @@ pub struct PhysicsPlugin;
 impl Plugin for PhysicsPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_plugins((RapierPhysicsPlugin::<NoUserData>::default(), RapierDebugRenderPlugin::default()))
+            .add_plugins((PhysicsPlugins::new(PreUpdate), PhysicsDebugPlugin::default()))
+            // .add_plugins((RapierPhysicsPlugin::<NoUserData>::default(), RapierDebugRenderPlugin::default()))
             .add_systems(PostUpdate, bound_system)
         ;
     }

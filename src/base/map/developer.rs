@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_rapier3d::prelude::Collider;
+use avian3d::prelude::Collider;
 use serde::{Serialize, Deserialize};
 use superstruct::superstruct;
 use crate::*;
@@ -40,7 +40,7 @@ impl TryFrom<&MapAsset> for DeveloperPrefab {
         let Some(collider_string) = map.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
         let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
 
-        let Ok(collider) = Collider::trimesh(vertices, indices) else { return Err(ContentError::ColliderDecodeError); };
+        let collider = Collider::trimesh(vertices, indices);
 
         Ok(Self {
             bounds,

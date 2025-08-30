@@ -4,19 +4,141 @@ pub mod weapon;
 pub use health::*;
 pub use weapon::*;
 
-use bevy::{math::Vec3Swizzles, prelude::*};
+use bevy::{math::Vec3Swizzles, platform::collections::HashMap, prelude::*};
+use xtrees::{Quad, QuadTree};
 use crate::*;
 
 #[derive(Debug, Clone, Copy)]
 #[derive(Event)]
 pub struct ObjectKilledEvent(pub Entity);
 
+
+#[derive(Debug, Default, Clone)]
+#[derive(Resource)]
+pub struct CombatWorld {
+    pub layers: HashMap<TeamPlayer, QuadTree<Entity>>
+}
+
+impl CombatWorld {
+    pub fn new(actors: &Commanders , map: &MapBounds) -> Self {
+        let mut layers = HashMap::new();
+        for a in actors.commanders.keys() {
+            layers.insert(*a, QuadTree::new(Quad::new(0.0, 0.0, map.0.x as f32, map.0.y as f32)));
+        }
+        Self {
+            layers,
+        }
+    }
+
+    pub fn insert(&mut self, tp: TeamPlayer, ent: Entity, quad: Quad) {
+        match self.layers.get_mut(&tp) {
+            Some(x) => {
+                x.insert(ent, quad);
+            },
+            None => { }
+        }
+    }
+
+    pub fn clear_trees(&mut self) {
+        for i in self.layers.values_mut() {
+            i.clear();
+        }
+    }
+
+    pub fn is_players(&self, e: Entity, player_id: TeamPlayer, team_players: Query<&TeamPlayer>) -> Result<bool, String> {
+        match team_players.get(e) {
+            Ok(x) => {
+                Ok(x.team() == player_id.team() && x.player() == player_id.player())
+            },
+            Err(_) => {
+                Err(String::from("Entity is not owned."))
+            }
+        }
+    }
+
+    pub fn is_ally(&self, e: Entity, player_id: TeamPlayer, team_players: Query<&TeamPlayer>) -> Result<bool, String> {
+        match team_players.get(e) {
+            Ok(x) => {
+                Ok(x.team() == player_id.team() && x.player() != player_id.player())
+            },
+            Err(_) => {
+                Err(String::from("Entity is not owned."))
+            }
+        }
+    }
+
+    pub fn is_players_or_ally(&self, e: Entity, player_id: TeamPlayer, team_players: Query<&TeamPlayer>) -> Result<bool, String> {
+        match team_players.get(e) {
+            Ok(x) => {
+                Ok(x.team() == player_id.team())
+            },
+            Err(_) => {
+                Err(String::from("Entity is not owned."))
+            }
+        }
+    }
+
+    pub fn is_enemy(&self, e: Entity, player_id: TeamPlayer, team_players: &Query<&TeamPlayer>) -> Result<bool, String> {
+        match team_players.get(e) {
+            Ok(x) => {
+                Ok(x.team() != player_id.team())
+            },
+            Err(_) => {
+                Err(String::from("Entity is not owned."))
+            }
+        }
+    }
+
+    pub fn search_targets(&self, id: TeamPlayer, position: Vec3, weapon: &Weapon) -> Vec<Entity> {
+        let pos = position.xz();
+
+        match weapon.target_force {
+            TargetForce::Mine => { self.search_mine(id, pos, weapon.range) },
+            TargetForce::Ally => { self.search_allies(id, pos, weapon.range) },
+            TargetForce::Team => { self.search_mine_or_allies(id, pos, weapon.range) },
+            TargetForce::Enemy => { self.search_enemies(id, pos, weapon.range) },
+        }.iter().filter_map(|(e, target_pos)| (pos.distance(*target_pos) <= weapon.range).then_some(*e) ).collect()
+    }
+
+    fn search_mine(&self, id: TeamPlayer, position: Vec2, range: f32) -> Vec<(Entity, Vec2)> {
+        self.layers.iter()
+            .filter(|(_id, _)| _id.team() == id.team() && _id.player() == id.player())
+            .map(|(_id, tree)| {
+                tree.search(&Quad::new(position.x, position.y, range, range)).iter().map(|(entity, quad)| (*entity, Vec2::new(quad.x, quad.y))).collect::<Vec<_>>()
+            }).flatten().collect()
+    }
+
+    fn search_allies(&self, id: TeamPlayer, position: Vec2, range: f32) -> Vec<(Entity, Vec2)> {
+        self.layers.iter()
+            .filter(|(_id, _)| _id.team() == id.team() && _id.player() != id.player())
+            .map(|(_id, tree)| {
+                tree.search(&Quad::new(position.x, position.y, range, range)).iter().map(|(entity, quad)| (*entity, Vec2::new(quad.x, quad.y))).collect::<Vec<_>>()
+            }).flatten().collect()
+    }
+
+    fn search_mine_or_allies(&self, id: TeamPlayer, position: Vec2, range: f32) -> Vec<(Entity, Vec2)> {
+        self.layers.iter()
+            .filter(|(_id, _)| _id.team() == id.team())
+            .map(|(_id, tree)| {
+                tree.search(&Quad::new(position.x, position.y, range, range)).iter().map(|(entity, quad)| (*entity, Vec2::new(quad.x, quad.y))).collect::<Vec<_>>()
+            }).flatten().collect()
+    }
+
+    fn search_enemies(&self, id: TeamPlayer, position: Vec2, range: f32) -> Vec<(Entity, Vec2)> {
+        self.layers.iter()
+            .filter(|(_id, _)| _id.team() != id.team())
+            .map(|(_id, tree)| {
+                tree.search(&Quad::new(position.x, position.y, range, range)).iter().map(|(entity, quad)| (*entity, Vec2::new(quad.x, quad.y))).collect::<Vec<_>>()
+            }).flatten().collect()
+    }
+}
+
 #[derive(Default)]
 pub struct CombatPlugin;
 
 impl CombatPlugin {
     fn targeting_system(
-        teamplayer_world: Res<TeamPlayerWorld>,
+        teamplayer_world: Res<CombatWorld>,
         transforms: Query<&Transform>,
         mut query: Query<(&Transform, &mut PathFinder, &mut Navigator, &mut WeaponSet, &TeamPlayer,)>,
     ) {
@@ -25,15 +147,16 @@ impl CombatPlugin {
             match navigator.pursue {
                 Some(target) => {
                     if let Ok(target_transform) = transforms.get(target) {
-                        let dir = Vec2::new(transform.translation.x - target_transform.translation.x, transform.translation.z - target_transform.translation.z).normalize() * weapon_set.closing_range;
-                        if mathfu::d2::distance_magnitude((transform.translation.x, transform.translation.z), (target_transform.translation.x, target_transform.translation.z)) > dir.length_squared() {
+                        let pos = transform.translation.xz();
+                        let target_pos = target_transform.translation.xz();
+                        if pos.distance(target_pos) > weapon_set.closing_range {
                             let start = transform.translation.xz();
-                            let end = target_transform.translation.xz() + dir;
+                            let end = target_transform.translation.xz() + (pos - target_pos).normalize() * weapon_set.closing_range;
                             pathfinder.set_trip((start, end));
                         }
 
                         for weapon in weapon_set.weapons.iter_mut() {
-                            if mathfu::d2::distance_magnitude((transform.translation.x, transform.translation.z), (target_transform.translation.x, target_transform.translation.z)) < weapon.range.powi(2) {
+                            if pos.distance(target_pos) > weapon.range {
                                 weapon.target = Target::ManualTarget(target);
                             } else if let Target::AutoTarget(_) = weapon.target {
 
@@ -51,7 +174,7 @@ impl CombatPlugin {
                             weapon.target = Target::None;
                         } else if let Target::AutoTarget(target) = weapon.target {
                             if let Ok(target_transform) = transforms.get(target) {
-                                if mathfu::d2::distance_magnitude((transform.translation.x, transform.translation.z), (target_transform.translation.x, target_transform.translation.z)) > weapon.range.powi(2) {
+                                if transform.translation.xz().distance(target_transform.translation.xz()) > weapon.range {
                                     weapon.target = Target::None;
                                 }
                             } else {

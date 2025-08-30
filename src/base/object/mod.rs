@@ -17,7 +17,7 @@ pub use tank::*;
 use std::fmt::Display;
 use serde::{Serialize, Deserialize};
 use bevy::{prelude::*, asset::{AssetLoader, io::Reader}, platform::collections::HashMap, reflect::TypePath};
-use bevy_rapier3d::prelude::{Collider, Velocity};
+use avian3d::prelude::{Collider, LinearVelocity};
 use bevy_asset_loader::prelude::AssetCollection;
 use bevy_mod_event_group::{event_group, EventGroupAppExt};
 use crate::*;
@@ -65,7 +65,7 @@ pub enum SpawnMode {
     Fetch,
 }
 
-#[event_group((Debug, Clone, Serialize, Deserialize, Event),)]
+#[event_group(Debug, Clone, Serialize, Deserialize, Event,)]
 pub struct SpawnObject {
     #[events(CraneYard, Barracks, Factory, ResourceNode, MarineSquad, Armadillo, TankBase)]
     pub object_type: ObjectType,
@@ -97,7 +97,7 @@ pub struct ObjectDiskData {
     pub weapon_set: Option<WeaponSet>,
     pub reference: Option<Reference>,
     pub squad: Option<Squad>,
-    pub velocity: Option<Velocity>,
+    pub velocity: Option<LinearVelocity>,
     pub resource_node: Option<ResourceNodePlatforms>
 }
 

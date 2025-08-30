@@ -1,7 +1,8 @@
 use std::{f32::consts::PI, marker::PhantomData};
 
 use bevy::prelude::*;
-use bevy_rapier3d::prelude::{Collider, RigidBody, Velocity};
+use avian3d::prelude::{Collider, RigidBody, LinearVelocity};
+use bevy_mod_event_group::IntoGroup;
 use superstruct::*;
 use serde::{Serialize, Deserialize};
 use crate::*;
@@ -35,7 +36,7 @@ pub struct TankBase {
     #[superstruct(only(Bundle))]            pub tank_marker: TankBase,
     #[superstruct(only(Bundle))]            pub object_type: ObjectType,
     #[superstruct(only(Bundle))]            pub snowflake: Snowflake,
-    #[superstruct(only(Bundle))]            pub velocity: Velocity,
+    #[superstruct(only(Bundle))]            pub velocity: LinearVelocity,
     #[superstruct(only(Bundle))]            pub path_finder: PathFinder,
     #[superstruct(only(Bundle))]            pub selectable: Selectable,
     #[superstruct(only(Bundle))]            pub rigid_body: RigidBody,
@@ -47,7 +48,7 @@ pub struct TankBase {
     #[superstruct(only(Disk))]              pub disk_path_finder: Option<PathFinder>,
     #[superstruct(only(Disk))]              pub disk_controller: Option<Navigator>,
     #[superstruct(only(Disk))]              pub disk_weapon_set: Option<WeaponSet>,
-    #[superstruct(only(Disk))]              pub disk_velocity: Option<Velocity>,
+    #[superstruct(only(Disk))]              pub disk_velocity: Option<LinearVelocity>,
     #[superstruct(only(Disk))]              pub disk_reference: Option<Reference>,
 }
 
@@ -61,7 +62,7 @@ impl TryFrom<&ObjectAsset> for TankBasePrefab {
         let Some(reference) = prefab.reference.clone() else { return Err(ContentError::MissingReference); };
         let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
 
-        let Ok(collider) = Collider::trimesh(vertices, indices) else { return Err(ContentError::ColliderDecodeError); };
+        let collider = Collider::trimesh(vertices, indices);
 
         Ok(Self {
             health,
@@ -111,8 +112,8 @@ impl From<TankBasePrefab> for TankBaseBundle {
             reference: prefab.reference.into(),
             team_player: TeamPlayer::default(),
             selectable: Selectable::multiselect(),
-            velocity: Velocity::default(),
-            rigid_body: RigidBody::KinematicVelocityBased,
+            velocity: LinearVelocity::default(),
+            rigid_body: RigidBody::Kinematic,
             collider: prefab.collider.clone(),
             visibility: Visibility::default(),
             transform: Transform::default(),
@@ -132,8 +133,8 @@ impl From<(TankBaseDisk, &TankBasePrefab)> for TankBaseBundle {
             weapon_set: save.disk_weapon_set.unwrap_or(prefab.weapon_set.clone()),
             reference: save.disk_reference.unwrap_or(prefab.reference.clone()),
             team_player: save.team_player,
-            velocity: save.disk_velocity.unwrap_or(Velocity::default()),
-            rigid_body: RigidBody::KinematicVelocityBased,
+            velocity: save.disk_velocity.unwrap_or(LinearVelocity::default()),
+            rigid_body: RigidBody::Kinematic,
             collider: prefab.collider.clone(),
             selectable: Selectable::multiselect(),
             visibility: Visibility::default(),
@@ -252,7 +253,7 @@ impl TankPlugin {
             commands.entity(tank_entity).add_child(turret_entity);
             match event.spawn_mode {
                 SpawnMode::Load => { status.tanks_loaded = Some(true); },
-                SpawnMode::Spawn => { client_requests.write(ClientRequest::SpawnObject(event.clone().into())); },
+                SpawnMode::Spawn => { client_requests.write(ClientRequest::SpawnObject(event.clone().into_group())); },
                 SpawnMode::Fetch => { },
             }
         }

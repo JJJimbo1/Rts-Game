@@ -1,7 +1,8 @@
 use std::marker::PhantomData;
 
 use bevy::prelude::*;
-use bevy_rapier3d::prelude::Collider;
+use avian3d::prelude::Collider;
+use bevy_mod_event_group::IntoGroup;
 use serde::{Serialize, Deserialize};
 use superstruct::*;
 use crate::*;
@@ -72,7 +73,7 @@ impl TryFrom<&ObjectAsset> for ResourceNodePrefab {
         let Some(collider_string) = prefab.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
         let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
 
-        let Ok(collider) = Collider::trimesh(vertices, indices) else { return Err(ContentError::ColliderDecodeError); };
+        let collider = Collider::trimesh(vertices, indices);
 
         Ok(Self {
             collider,
@@ -203,7 +204,7 @@ impl TryFrom<&ObjectAsset> for ResourcePlatformClaimedPrefab {
         let Some(collider_string) = asset.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
         let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
 
-        let Ok(collider) = Collider::trimesh(vertices, indices) else { return Err(ContentError::ColliderDecodeError); };
+        let collider = Collider::trimesh(vertices, indices);
 
         Ok(Self {
             stack,
@@ -284,7 +285,7 @@ impl TryFrom<&ObjectAsset> for ResourcePlatformUnclaimedPrefab {
         let Some(collider_string) = asset.collider_string.clone() else { return Err(ContentError::MissingColliderString); };
         let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
 
-        let Ok(collider) = Collider::trimesh(vertices, indices) else { return Err(ContentError::ColliderDecodeError); };
+        let collider = Collider::trimesh(vertices, indices);
 
         Ok(Self {
             collider,
@@ -378,7 +379,7 @@ impl ResourceNodePlugin {
             }
             match event.spawn_mode {
                 SpawnMode::Load => { status.resource_nodes_loaded = Some(true); },
-                SpawnMode::Spawn => { client_requests.write(ClientRequest::SpawnObject(event.clone().into())); },
+                SpawnMode::Spawn => { client_requests.write(ClientRequest::SpawnObject(event.clone().into_group())); },
                 SpawnMode::Fetch => { },
             }
         }

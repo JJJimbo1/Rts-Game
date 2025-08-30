@@ -1,7 +1,6 @@
-use crate::mathfu::*;
 use bevy::prelude::*;
 
-pub trait Generator: Sized {
+pub trait RNG: Sized {
     type Seed;
     fn seeded(seed: Self::Seed) -> Self;
     fn cycle(&mut self) -> f32;
@@ -13,7 +12,7 @@ pub struct WichmannHill {
     s3: i64,
 }
 
-impl Generator for WichmannHill {
+impl RNG for WichmannHill {
     type Seed = f32;
 
     fn seeded(seed: f32) -> Self {
@@ -36,11 +35,11 @@ impl Generator for WichmannHill {
 
 #[derive(Debug, Clone, Copy)]
 #[derive(Resource)]
-pub struct Random<G: Generator = WichmannHill> {
+pub struct Random<G: RNG = WichmannHill> {
     source: G,
 }
 
-impl<G: Generator> Random<G> {
+impl<G: RNG> Random<G> {
     pub fn seeded(seed: G::Seed) -> Self {
         Self {
             source: G::seeded(seed)
@@ -52,7 +51,7 @@ impl<G: Generator> Random<G> {
     }
 
     pub fn range(&mut self, low: f32, high: f32) -> f32 {
-        d1::normalize_from_01(self.cycle(), low, high)
+        self.cycle().remap(0.0, 1.0, low, high)
     }
 
     pub fn range_pog(&mut self, low: f32, high: f32) -> f32 {

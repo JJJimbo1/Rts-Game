@@ -19,17 +19,20 @@ pub enum MapType {
     // Sandbox,
 }
 
-// impl From<MapType> for AssetType {
-//     fn from(map_type: MapType) -> Self {
-//         Self::Map(map_type)
-//     }
-// }
-
 impl Display for MapType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             MapType::Developer => write!(f, "Developer")
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Resource)]
+pub struct MapBounds(pub Vec2);
+
+impl Default for MapBounds {
+    fn default() -> Self {
+        Self(Vec2::new(1000.0, 1000.0))
     }
 }
 

@@ -64,52 +64,45 @@ impl Default for GridSpace {
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, Component)]
-pub enum PathFinder {
-    #[default]
-    Idle,
-    Queued(Vec2, Vec2),
-    Ready(Vec<Vec2>),
-    ReQueue(Vec<Vec2>, Vec2, Vec2),
+pub struct PathFinder {
+
+    trip: Option<(Vec2, Vec2)>,
+    path: Option<Vec<Vec2>>,
 }
 
 impl PathFinder {
-    pub fn trip(&self) -> Option<(Vec2, Vec2)> {
-        match self {
-            PathFinder::Queued(start, end) | PathFinder::ReQueue(_, start, end) => { Some((*start, *end)) },
-            _ => { None }
-        }
-    }
-
     pub fn set_trip(&mut self, (start, end): (Vec2, Vec2)) {
-        match self {
-            PathFinder::Idle => { *self = PathFinder::Queued(start, end); },
-            PathFinder::Queued(_, _) => { *self = PathFinder::Queued(start, end); },
-            PathFinder::Ready(path) => { *self = PathFinder::ReQueue(path.clone(), start, end); },
-            PathFinder::ReQueue(path, _, _) => { *self = PathFinder::ReQueue(path.clone(), start, end); },
-        }
+        self.trip = Some((start, end));
     }
 
-    pub fn path(&self) -> Option<Vec<Vec2>> {
-        match self {
-            PathFinder::Ready(path) | PathFinder::ReQueue(path, _, _) => { Some(path.clone()) },
-            _ => { None }
-        }
+    pub fn clear_trip(&mut self) {
+        self.trip = None;
+    }
+
+    pub fn trip(&self) -> &Option<(Vec2, Vec2)> {
+        &self.trip
+    }
+
+    pub fn set_path(&mut self, path: Vec<Vec2>) {
+        self.path = Some(path);
+    }
+
+    pub fn clear_path(&mut self) {
+        self.path = None;
+    }
+
+    pub fn path(&self) -> &Option<Vec<Vec2>> {
+        &self.path
     }
 
     pub fn path_mut(&mut self) -> Option<&mut Vec<Vec2>> {
-        match self {
-            PathFinder::Ready(path) | PathFinder::ReQueue(path, _, _) => { Some(path) },
-            _ => { None }
-        }
+        self.path.as_mut()
     }
 }
 
 impl Slim for PathFinder {
     fn slim(&self) -> Option<Self> {
-        match self {
-            Self::Idle => None,
-            _ => Some(self.clone()),
-        }
+        (self.trip().is_some() || self.path().is_some()).then_some(self.clone())
     }
 }
 
@@ -177,14 +170,15 @@ impl PathFindingPlugin {
     ) {
         path_finders.p0().iter().for_each(|(entity, pathfinder)| {
             if let Some((start, end)) = pathfinder.trip() {
-                let _ = input.try_send((entity, start, end));
+                let _ = input.try_send((entity, *start, *end));
             }
         });
 
         output.try_iter().for_each(|(entity, path)| {
             let mut p1 = path_finders.p1();
             let Ok(mut path_finder) = p1.get_mut(entity) else { return; };
-            *path_finder = PathFinder::Ready(path);
+            path_finder.set_path(path);
+            path_finder.clear_trip();
         })
     }
 }
@@ -195,13 +189,12 @@ impl Plugin for PathFindingPlugin {
             .add_systems(Startup, Self::setup)
             .add_systems(Update, (
                 Self::grid_update
-                    .in_set(PathFindingSystems::GridSpaceUpdateSystem)
-                    .run_if(resources_exist),
+                    .in_set(PathFindingSystems::GridSpaceUpdateSystem),
                 Self::path_finding_system
                     .in_set(PathFindingSystems::PathFindingSystem)
                     .after(PathFindingSystems::GridSpaceUpdateSystem)
-                    .run_if(resources_exist)
                 )
+                .run_if(resources_exist)
             );
     }
 }

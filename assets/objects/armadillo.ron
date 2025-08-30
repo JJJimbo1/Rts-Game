@@ -26,9 +26,9 @@
         dense: false,
     ),
     navigator: (
-        follow: false,
         max_forward_speed: 18.0,
         max_backwards_speed: 16.0,
+        max_turn_speed: 2.0,
     ),
     weapon_set: (
         closing_range: 39.0,

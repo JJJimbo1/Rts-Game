@@ -1,7 +1,8 @@
 use std::marker::PhantomData;
 
 use bevy::{prelude::*, platform::collections::HashMap};
-use bevy_rapier3d::prelude::Collider;
+use avian3d::prelude::Collider;
+use bevy_mod_event_group::IntoGroup;
 use serde::{Serialize, Deserialize};
 use superstruct::*;
 use crate::*;
@@ -52,7 +53,7 @@ impl TryFrom<(&ObjectAsset, &HashMap<ObjectType, (ActiveQueue, StackData)>)> for
         let Some((vertices, indices)) = decode(collider_string) else { return Err(ContentError::ColliderDecodeError); };
 
         let queues = Queues::from((&asset_queues, stacks));
-        let Ok(collider) = Collider::trimesh(vertices, indices) else { return Err(ContentError::ColliderDecodeError); };
+        let collider = Collider::trimesh(vertices, indices);
 
         Ok(Self {
             health,
@@ -169,7 +170,7 @@ impl BarracksPlugin {
             commands.spawn(BarracksBundle::from(prefabs.barracks_prefab.clone()).with_spawn_data(event.spawn_data.clone()).with_disk_data(event.disk_data.clone()));
             match event.spawn_mode {
                 SpawnMode::Load => { status.barracks_loaded = Some(true); },
-                SpawnMode::Spawn => { client_requests.write(ClientRequest::SpawnObject(event.clone().into())); },
+                SpawnMode::Spawn => { client_requests.write(ClientRequest::SpawnObject(event.clone().into_group())); },
                 SpawnMode::Fetch => { },
             }
         }

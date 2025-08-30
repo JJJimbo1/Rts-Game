@@ -23,15 +23,10 @@ enum Mode {
     #[clap(short_flag('s'))]
     Server,
     #[clap(short_flag('a'))]
-    Asset
+    Asset {
+        path: String,
+    }
 }
-
-// pub fn main() {
-//     // println!("{:?}", std::env::current_dir());
-//     let trimesh = extract_trimesh(format!("{}/assets/models/armadillo.glb", std::env::current_dir().unwrap().to_str().unwrap())).unwrap();
-//     let code = encode(trimesh).unwrap();
-//     println!("{}", code);
-// }
 
 pub fn main() {
     match Args::try_parse() {
@@ -39,7 +34,7 @@ pub fn main() {
             match arg.mode {
                 Mode::Client => client(),
                 Mode::Server => server(),
-                Mode::Asset => todo!(),
+                Mode::Asset {path, } => asset(path),
             };
         },
         Err(_) => client(),
@@ -76,8 +71,6 @@ pub fn client() {
             ClientLoadingPlugin,
             ClientUIPlugins,
             ClientPlugin,
-        // ))
-        // .add_plugins((
 
             LoadingStatePlugin,
             MatchLoadingStatePlugin,
@@ -99,4 +92,10 @@ pub fn server() {
 
     .add_plugins((MinimalPlugins, ServerPlugin))
     .run();
+}
+
+pub fn asset(path: String) {
+    let trimesh = extract_trimesh(format!("{}/assets/{}", std::env::current_dir().unwrap().to_str().unwrap(), path)).unwrap();
+    let code = encode(trimesh).unwrap();
+    println!("{}", code);
 }

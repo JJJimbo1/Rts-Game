@@ -1,7 +1,7 @@
 pub mod colliders;
-pub mod mathfu;
+pub mod ext;
 pub mod random;
 
 pub use colliders::*;
-pub use mathfu::*;
+pub use ext::*;
 pub use random::*;
